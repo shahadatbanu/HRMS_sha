@@ -184,7 +184,7 @@ import BudgetExpenses from "../accounting/budget-expenses";
 import BudgetRevenues from "../accounting/budget-revenues";
 import Appearance from "../settings/websiteSettings/appearance";
 import SuperAdminDashboard from "../super-admin/dashboard";
-import LayoutDemo from "../mainMenu/layout-dashoard";
+// import LayoutDemo from "../mainMenu/layout-dashoard";
 import ExpensesReport from "../administration/reports/expensereport";
 import InvoiceReport from "../administration/reports/invoicereport";
 import PaymentReport from "../administration/reports/paymentreport";
@@ -461,222 +461,242 @@ export const publicRoutes = [
     route: Route,
   },
 
-  {
-    path: routes.accordion,
-    element: <Accordion />,
-    route: Route,
-  },
-  {
-    path: routes.avatar,
-    element: <Avatar />,
-    route: Route,
-  },
-  {
-    path: routes.badges,
-    element: <Badges />,
-    route: Route,
-  },
-  {
-    path: routes.border,
-    element: <Borders />,
-    route: Route,
-  },
-  {
-    path: routes.breadcrums,
-    element: <Breadcrumb />,
-    route: Route,
-  },
-  {
-    path: routes.button,
-    element: <Buttons />,
-    route: Route,
-  },
-  {
-    path: routes.buttonGroup,
-    element: <ButtonsGroup />,
-    route: Route,
-  },
-  {
-    path: routes.cards,
-    element: <Cards />,
-    route: Route,
-  },
-  {
-    path: routes.carousel,
-    element: <Carousel />,
-    route: Route,
-  },
-  {
-    path: routes.colors,
-    element: <Colors />,
-    route: Route,
-  },
-  {
-    path: routes.dropdowns,
-    element: <Dropdowns />,
-    route: Route,
-  },
-  {
-    path: routes.grid,
-    element: <Grid />,
-    route: Route,
-  },
-  {
-    path: routes.images,
-    element: <Images />,
-    route: Route,
-  },
-  {
-    path: routes.lightbox,
-    element: <Lightboxes />,
-    route: Route,
-  },
-  {
-    path: routes.media,
-    element: <Media />,
-    route: Route,
-  },
-  {
-    path: routes.modals,
-    element: <Modals />,
-    route: Route,
-  },
-  {
-    path: routes.navTabs,
-    element: <NavTabs />,
-    route: Route,
-  },
-  {
-    path: routes.offcanvas,
-    element: <Offcanvas />,
-    route: Route,
-  },
-  {
-    path: routes.pagination,
-    element: <Pagination />,
-    route: Route,
-  },
-  {
-    path: routes.popover,
-    element: <Popovers />,
-    route: Route,
-  },
-  {
-    path: routes.rangeSlider,
-    element: <RangeSlides />,
-    route: Route,
-  },
-  {
-    path: routes.progress,
-    element: <Progress />,
-    route: Route,
-  },
-  {
-    path: routes.spinner,
-    element: <Spinner />,
-    route: Route,
-  },
+  // --- UI Interface Route Entries ---
+  // {
+  //   path: routes.accordion,
+  //   element: <Accordion />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.avatar,
+  //   element: <Avatar />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.badges,
+  //   element: <Badges />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.border,
+  //   element: <Borders />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.breadcrums,
+  //   element: <Breadcrumb />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.button,
+  //   element: <Buttons />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.buttonGroup,
+  //   element: <ButtonsGroup />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.cards,
+  //   element: <Cards />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.carousel,
+  //   element: <Carousel />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.colors,
+  //   element: <Colors />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.dropdowns,
+  //   element: <Dropdowns />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.grid,
+  //   element: <Grid />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.images,
+  //   element: <Images />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.lightbox,
+  //   element: <Lightboxes />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.media,
+  //   element: <Media />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.modals,
+  //   element: <Modals />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.navTabs,
+  //   element: <NavTabs />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.offcanvas,
+  //   element: <Offcanvas />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.pagination,
+  //   element: <Pagination />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.popover,
+  //   element: <Popovers />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.rangeSlider,
+  //   element: <RangeSlides />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.progress,
+  //   element: <Progress />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.spinner,
+  //   element: <Spinner />,
+  //   route: Route,
+  // },
 
-  {
-    path: routes.typography,
-    element: <Typography />,
-    route: Route,
-  },
-  {
-    path: routes.video,
-    element: <Video />,
-    route: Route,
-  },
-  {
-    path: routes.sortable,
-    element: <Sortable />,
-    route: Route,
-  },
-  {
-    path: routes.swiperjs,
-    element: <Swiperjs />,
-    route: Route,
-  },
-  {
-    path: routes.bootstrapIcons,
-    element: <BootstrapIcons />,
-    route: Route,
-  },
-  {
-    path: routes.toasts,
-    element: <Toasts />,
-    route: Route,
-  },
-  {
-    path: routes.mapLeaflet,
-    element: <Leaflet />,
-    route: Route,
-  },
-  {
-    path: routes.RemixIcons,
-    element: <RemixIcons />,
-    route: Route,
-  },
-  {
-    path: routes.FlagIcons,
-    element: <FlagIcons />,
-    route: Route,
-  },
-  {
-    path: routes.banIpAddress,
-    element: <BanIpAddress />,
-    route: Route,
-  },
-  {
-    path: routes.todo,
-    element: <Todo />,
-    route: Route,
-  },
-  {
-    path: routes.TodoList,
-    element: <TodoList />,
-    route: Route,
-  },
-  {
-    path: routes.email,
-    element: <Email />,
-    route: Route,
-  },
-  {
-    path: routes.EmailReply,
-    element: <EmailReply />,
-    route: Route,
-  },
-  {
-    path: routes.chat,
-    element: <Chat />,
-    route: Route,
-  },
-  {
-    path: routes.pages,
-    element: <Page />,
-    route: Route,
-  },
+  // {
+  //   path: routes.typography,
+  //   element: <Typography />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.video,
+  //   element: <Video />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.sortable,
+  //   element: <Sortable />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.swiperjs,
+  //   element: <Swiperjs />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.bootstrapIcons,
+  //   element: <BootstrapIcons />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.toasts,
+  //   element: <Toasts />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.mapLeaflet,
+  //   element: <Leaflet />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.RemixIcons,
+  //   element: <RemixIcons />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.FlagIcons,
+  //   element: <FlagIcons />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.banIpAddress,
+  //   element: <BanIpAddress />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.todo,
+  //   element: <Todo />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.TodoList,
+  //   element: <TodoList />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.email,
+  //   element: <Email />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.EmailReply,
+  //   element: <EmailReply />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.chat,
+  //   element: <Chat />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.pages,
+  //   element: <Page />,
+  //   route: Route,
+  // },
 
   {
     path: routes.fileManager,
     element: <FileManager />,
     route: Route,
   },
-  {
-    path: routes.faq,
-    element: <Faq />,
-    route: Route,
-  },
-
+  // {
+  //   path: routes.blogs,
+  //   element: <Blogs />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.blogCategories,
+  //   element: <BlogCategories />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.blogComments,
+  //   element: <BlogComments />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.blogTags,
+  //   element: <BlogTags />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.faq,
+  //   element: <Faq />,
+  //   route: Route,
+  // },
+  // {
+  //   path: routes.testimonials,
+  //   element: <Testimonials />,
+  //   route: Route,
+  // },
   {
     path: routes.states,
     element: <States />,
-    route: Route,
-  },
-  {
-    path: routes.testimonials,
-    element: <Testimonials />,
     route: Route,
   },
   {
@@ -974,62 +994,63 @@ export const publicRoutes = [
 
 
 
-  {
-    path: routes.Horizontal,
-    element: <LayoutDemo />,
-  },
-  {
-    path: routes.Detached,
-    element: <LayoutDemo />,
-  },
-  {
-    path: routes.Modern,
-    element: <LayoutDemo />,
-  },
-  {
-    path: routes.TwoColumn,
-    element: <LayoutDemo />,
-  },
-  {
-    path: routes.Hovered,
-    element: <LayoutDemo />,
-  },
-  {
-    path: routes.layoutBox,
-    element: <LayoutDemo />,
-  },
-  {
-    path: routes.HorizontalSingle,
-    element: <LayoutDemo />,
-  },
-  {
-    path: routes.HorizontalOverlay,
-    element: <LayoutDemo />,
-  },
-  {
-    path: routes.HorizontalBox,
-    element: <LayoutDemo />,
-  },
-  {
-    path: routes.MenuAside,
-    element: <LayoutDemo />,
-  },
-  {
-    path: routes.Transparent,
-    element: <LayoutDemo />,
-  },
-  {
-    path: routes.WithoutHeader,
-    element: <LayoutDemo />,
-  },
-  {
-    path: routes.layoutRtl,
-    element: <LayoutDemo />,
-  },
-  {
-    path: routes.layoutDark,
-    element: <LayoutDemo />,
-  },
+  // Comment out all LayoutDemo route entries
+  // {
+  //   path: routes.Horizontal,
+  //   element: <LayoutDemo />,
+  // },
+  // {
+  //   path: routes.Detached,
+  //   element: <LayoutDemo />,
+  // },
+  // {
+  //   path: routes.Modern,
+  //   element: <LayoutDemo />,
+  // },
+  // {
+  //   path: routes.TwoColumn,
+  //   element: <LayoutDemo />,
+  // },
+  // {
+  //   path: routes.Hovered,
+  //   element: <LayoutDemo />,
+  // },
+  // {
+  //   path: routes.layoutBox,
+  //   element: <LayoutDemo />,
+  // },
+  // {
+  //   path: routes.HorizontalSingle,
+  //   element: <LayoutDemo />,
+  // },
+  // {
+  //   path: routes.HorizontalOverlay,
+  //   element: <LayoutDemo />,
+  // },
+  // {
+  //   path: routes.HorizontalBox,
+  //   element: <LayoutDemo />,
+  // },
+  // {
+  //   path: routes.MenuAside,
+  //   element: <LayoutDemo />,
+  // },
+  // {
+  //   path: routes.Transparent,
+  //   element: <LayoutDemo />,
+  // },
+  // {
+  //   path: routes.WithoutHeader,
+  //   element: <LayoutDemo />,
+  // },
+  // {
+  //   path: routes.layoutRtl,
+  //   element: <LayoutDemo />,
+  // },
+  // {
+  //   path: routes.layoutDark,
+  //   element: <LayoutDemo />,
+  // },
 
   //Settings
 
@@ -1214,10 +1235,10 @@ export const publicRoutes = [
     path: routes.manageusers,
     element: <Manageusers />,
   },
-  {
-    path: routes.blogs,
-    element: <Blogs />,
-  },
+  // {
+  //   path: routes.blogs,
+  //   element: <Blogs />,
+  // },
   {
     path: routes.blogCategories,
     element: <BlogCategories />,
@@ -1231,7 +1252,16 @@ export const publicRoutes = [
     path: routes.blogTags,
     element: <BlogTags />,
   },
-
+  {
+    path: routes.faq,
+    element: <Faq />,
+    route: Route,
+  },
+  {
+    path: routes.testimonials,
+    element: <Testimonials />,
+    route: Route,
+  },
   {
     path: routes.profile,
     element: <Profile />,
@@ -1311,6 +1341,11 @@ export const publicRoutes = [
   },
   {
     path: routes.employeedetails,
+    element: <EmployeeDetails />,
+    route: Route,
+  },
+  {
+    path: routes.employeedetailsWithId,
     element: <EmployeeDetails />,
     route: Route,
   },

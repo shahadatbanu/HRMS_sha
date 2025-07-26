@@ -9,12 +9,13 @@ export type Option = {
 export interface SelectProps {
   options: Option[];
   defaultValue?: Option;
+  value?: Option; // allow controlled value
   className?: string;
   styles?: any;
   onChange?: (option: Option | null) => void;
 }
 
-const CommonSelect: React.FC<SelectProps> = ({ options, defaultValue, className, onChange }) => {
+const CommonSelect: React.FC<SelectProps> = ({ options, defaultValue, value, className, onChange }) => {
   const [selectedOption, setSelectedOption] = useState<Option | undefined>(defaultValue);
 
   const handleChange = (option: Option | null) => {
@@ -31,7 +32,7 @@ const CommonSelect: React.FC<SelectProps> = ({ options, defaultValue, className,
       className={className}
       // styles={customStyles}
       options={options}
-      value={selectedOption}
+      value={value !== undefined ? value : selectedOption}
       onChange={handleChange}
       placeholder="Select"
     />

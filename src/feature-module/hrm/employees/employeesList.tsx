@@ -9,6 +9,7 @@ import { DatePicker } from 'antd';
 import CommonSelect from '../../../core/common/commonSelect';
 import CollapseHeader from '../../../core/common/collapse-header/collapse-header';
 import axios from 'axios';
+import dayjs from 'dayjs';
 type PasswordField = "password" | "confirmPassword";
 
 declare const process: { env: { [key: string]: string | undefined } };
@@ -91,12 +92,14 @@ const EmployeeList = () => {
         console.error('Error fetching dashboard stats:', err);
       });
   }, []);
+
+
   const columns = [
     {
       title: "Emp ID",
       dataIndex: "EmpId",
       render: (text: String, record: any) => (
-        <Link to={all_routes.employeedetails}>{text}</Link>
+        <Link to={`${all_routes.employeedetails}/${record.key}`}>{text}</Link>
       ),
       sorter: (a: any, b: any) => a.EmpId.length - b.EmpId.length,
     },
@@ -106,7 +109,7 @@ const EmployeeList = () => {
       render: (text: string, record: any) => (
         <div className="d-flex align-items-center">
           <Link
-            to={all_routes.employeedetails}
+            to={`${all_routes.employeedetails}/${record.key}`}
             className="avatar avatar-md"
             data-bs-toggle="modal" data-inert={true}
             data-bs-target="#view_details"
@@ -121,7 +124,7 @@ const EmployeeList = () => {
           <div className="ms-2">
             <p className="text-dark mb-0">
               <Link
-                to={all_routes.employeedetails}
+                to={`${all_routes.employeedetails}/${record.key}`}
                 data-bs-toggle="modal" data-inert={true}
                 data-bs-target="#view_details"
               >
@@ -199,6 +202,7 @@ const EmployeeList = () => {
             className="me-2"
             data-bs-toggle="modal" data-inert={true}
             data-bs-target="#edit_employee"
+            onClick={() => handleEditClick(record)}
           >
             <i className="ti ti-edit" />
           </Link>
@@ -255,6 +259,13 @@ const EmployeeList = () => {
   const [successType, setSuccessType] = useState<'add' | 'edit' | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [showDeleteSuccess, setShowDeleteSuccess] = useState(false); // For delete success modal
+  
+  // Force re-render of CommonSelect components when form changes
+  const [selectKey, setSelectKey] = useState(0);
+  
+  React.useEffect(() => {
+    setSelectKey(prev => prev + 1);
+  }, [form.department, form.designation]);
 
   // Helper to handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -313,6 +324,51 @@ const EmployeeList = () => {
     setSelectedEmployee(null);
   };
 
+  // Helper to populate form with employee data for editing
+  const populateFormWithEmployee = (employee: any) => {
+    // Log the raw value for debugging
+    console.log('Raw employee.JoiningDate:', employee.JoiningDate);
+
+    // Try to parse with multiple formats, fallback to native
+    let joiningDate = '';
+    if (employee.JoiningDate) {
+      let parsed = dayjs(employee.JoiningDate, ['DD-MM-YYYY', 'M/D/YYYY', 'MM/DD/YYYY'], true);
+      if (!parsed.isValid()) {
+        parsed = dayjs(employee.JoiningDate); // fallback to native parse (ISO, timestamp, etc)
+      }
+      joiningDate = parsed.isValid() ? parsed.format('DD-MM-YYYY') : '';
+    }
+    const formData = {
+      firstName: employee.Name.split(' ')[0] || '',
+      lastName: employee.Name.split(' ').slice(1).join(' ') || '',
+      employeeId: employee.EmpId || '',
+      joiningDate,
+      username: employee.Email?.split('@')[0] || '',
+      email: employee.Email || '',
+      phoneNumber: employee.Phone || '',
+      company: 'Company Name', // Default value since not in table data
+      department: employee.Designation || '',
+      designation: employee.Designation || '',
+      status: employee.Status || 'Active',
+      about: 'Employee description', // Default value since not in table data
+    };
+    
+    setForm(formData);
+    
+    // Set image preview if available
+    if (employee.Image && employee.Image !== 'assets/img/users/user-1.jpg') {
+      setImagePreview(employee.Image);
+    } else {
+      setImagePreview(null);
+    }
+  };
+
+  // Handle edit button click
+  const handleEditClick = (employee: any) => {
+    setSelectedEmployee(employee);
+    populateFormWithEmployee(employee);
+  };
+
   // Add Employee
   const handleAddEmployee = async () => {
     setLoading(true);
@@ -359,7 +415,8 @@ const EmployeeList = () => {
     }
     if (!selectedEmployee) return;
     try {
-      await editEmployeeRequest(selectedEmployee._id, form);
+      // Use selectedEmployee.key (which is the MongoDB _id)
+      await editEmployeeRequest(selectedEmployee.key, form);
       setSuccessType('edit');
       setShowSuccess(true);
       // Do not clear form or refresh list yet
@@ -451,6 +508,15 @@ const EmployeeList = () => {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
     }).then((res: any) => setData(mapEmployeeData(res.data)));
     refreshDashboardStats();
+  };
+
+  const statusOptions = [
+    { value: "Active", label: "Active" },
+    { value: "Inactive", label: "Inactive" },
+  ];
+
+  const handleStatusChange = (option: { value: string; label: string } | null) => {
+    setForm(prev => ({ ...prev, status: option ? option.value : '' }));
   };
 
   return (
@@ -770,6 +836,7 @@ const EmployeeList = () => {
                 className="btn-close custom-btn-close"
                 data-bs-dismiss="modal"
                 aria-label="Close"
+                onClick={clearForm}
               >
                 <i className="ti ti-x" />
               </button>
@@ -860,13 +927,13 @@ const EmployeeList = () => {
                           <label className="form-label">
                             First Name <span className="text-danger"> *</span>
                           </label>
-                          <input type="text" name="firstName" className="form-control" onChange={handleInputChange} />
+                          <input type="text" name="firstName" className="form-control" value={form.firstName || ''} onChange={handleInputChange} />
                         </div>
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Last Name</label>
-                          <input type="email" name="lastName" className="form-control" onChange={handleInputChange} />
+                          <input type="text" name="lastName" className="form-control" value={form.lastName || ''} onChange={handleInputChange} />
                         </div>
                       </div>
                       <div className="col-md-6">
@@ -874,7 +941,7 @@ const EmployeeList = () => {
                           <label className="form-label">
                             Employee ID <span className="text-danger"> *</span>
                           </label>
-                          <input type="text" name="employeeId" className="form-control" onChange={handleInputChange} />
+                          <input type="text" name="employeeId" className="form-control" value={form.employeeId || ''} onChange={handleInputChange} />
                         </div>
                       </div>
                       <div className="col-md-6">
@@ -904,7 +971,7 @@ const EmployeeList = () => {
                           <label className="form-label">
                             Username <span className="text-danger"> *</span>
                           </label>
-                          <input type="text" name="username" className="form-control" onChange={handleInputChange} />
+                          <input type="text" name="username" className="form-control" value={form.username || ''} onChange={handleInputChange} />
                         </div>
                       </div>
                       <div className="col-md-6">
@@ -912,7 +979,7 @@ const EmployeeList = () => {
                           <label className="form-label">
                             Email <span className="text-danger"> *</span>
                           </label>
-                          <input type="email" name="email" className="form-control" onChange={handleInputChange} />
+                          <input type="email" name="email" className="form-control" value={form.email || ''} onChange={handleInputChange} />
                         </div>
                       </div>
                       <div className="col-md-6">
@@ -976,7 +1043,7 @@ const EmployeeList = () => {
                           <label className="form-label">
                             Phone Number <span className="text-danger"> *</span>
                           </label>
-                          <input type="text" name="phoneNumber" className="form-control" onChange={handleInputChange} />
+                          <input type="text" name="phoneNumber" className="form-control" value={form.phoneNumber || ''} onChange={handleInputChange} />
                         </div>
                       </div>
                       <div className="col-md-6">
@@ -984,16 +1051,17 @@ const EmployeeList = () => {
                           <label className="form-label">
                             Company<span className="text-danger"> *</span>
                           </label>
-                          <input type="text" name="company" className="form-control" onChange={handleInputChange} />
+                          <input type="text" name="company" className="form-control" value={form.company || ''} onChange={handleInputChange} />
                         </div>
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Department</label>
                           <CommonSelect
+                            key={`add-dept-${selectKey}`}
                             className='select'
                             options={department}
-                            defaultValue={department[0]}
+                            value={department.find(d => d.value === form.department) || department[0]}
                             onChange={handleDepartmentChange}
                           />
                         </div>
@@ -1002,9 +1070,10 @@ const EmployeeList = () => {
                         <div className="mb-3">
                           <label className="form-label">Designation</label>
                           <CommonSelect
+                            key={`add-desig-${selectKey}`}
                             className='select'
                             options={designation}
-                            defaultValue={designation[0]}
+                            value={designation.find(d => d.value === form.designation) || designation[0]}
                             onChange={handleDesignationChange}
                           />
                         </div>
@@ -1012,15 +1081,12 @@ const EmployeeList = () => {
                       <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Status</label>
-                          <select 
-                            name="status" 
-                            className="form-control" 
-                            onChange={handleInputChange}
-                            defaultValue="Active"
-                          >
-                            <option value="Active">Active</option>
-                            <option value="Inactive">Inactive</option>
-                          </select>
+                          <CommonSelect
+                            className="select"
+                            options={statusOptions}
+                            value={statusOptions.find(s => s.value === form.status) || statusOptions[0]}
+                            onChange={handleStatusChange}
+                          />
                         </div>
                       </div>
                       <div className="col-md-12">
@@ -1032,6 +1098,7 @@ const EmployeeList = () => {
                             className="form-control"
                             rows={3}
                             name="about"
+                            value={form.about || ''}
                             onChange={handleInputChange}
                           />
                         </div>
@@ -1776,6 +1843,7 @@ const EmployeeList = () => {
                 className="btn-close custom-btn-close"
                 data-bs-dismiss="modal"
                 aria-label="Close"
+                onClick={clearForm}
               >
                 <i className="ti ti-x" />
               </button>
@@ -1870,7 +1938,7 @@ const EmployeeList = () => {
                             type="text"
                             name="firstName"
                             className="form-control"
-                            defaultValue="Anthony"
+                            value={form.firstName || ''}
                             onChange={handleInputChange}
                           />
                         </div>
@@ -1879,10 +1947,10 @@ const EmployeeList = () => {
                         <div className="mb-3">
                           <label className="form-label">Last Name</label>
                           <input
-                            type="email"
+                            type="text"
                             name="lastName"
                             className="form-control"
-                            defaultValue="Lewis"
+                            value={form.lastName || ''}
                             onChange={handleInputChange}
                           />
                         </div>
@@ -1896,7 +1964,7 @@ const EmployeeList = () => {
                             type="text"
                             name="employeeId"
                             className="form-control"
-                            defaultValue="Emp-001"
+                            value={form.employeeId || ''}
                             onChange={handleInputChange}
                           />
                         </div>
@@ -1932,7 +2000,7 @@ const EmployeeList = () => {
                             type="text"
                             name="username"
                             className="form-control"
-                            defaultValue="Anthony"
+                            value={form.username || ''}
                             onChange={handleInputChange}
                           />
                         </div>
@@ -1946,7 +2014,7 @@ const EmployeeList = () => {
                             type="email"
                             name="email"
                             className="form-control"
-                            defaultValue="anthony@example.com	"
+                            value={form.email || ''}
                             onChange={handleInputChange}
                           />
                         </div>
@@ -2012,7 +2080,7 @@ const EmployeeList = () => {
                           <label className="form-label">
                             Phone Number <span className="text-danger"> *</span>
                           </label>
-                          <input type="text" name="phoneNumber" className="form-control" onChange={handleInputChange} />
+                          <input type="text" name="phoneNumber" className="form-control" value={form.phoneNumber || ''} onChange={handleInputChange} />
                         </div>
                       </div>
                       <div className="col-md-6">
@@ -2020,16 +2088,17 @@ const EmployeeList = () => {
                           <label className="form-label">
                             Company<span className="text-danger"> *</span>
                           </label>
-                          <input type="text" name="company" className="form-control" onChange={handleInputChange} />
+                          <input type="text" name="company" className="form-control" value={form.company || ''} onChange={handleInputChange} />
                         </div>
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Department</label>
                           <CommonSelect
+                            key={`dept-${selectKey}`}
                             className='select'
                             options={department}
-                            defaultValue={department[1]}
+                            defaultValue={department.find(d => d.value === form.department) || department[0]}
                             onChange={handleDepartmentChange}
                           />
                         </div>
@@ -2038,9 +2107,10 @@ const EmployeeList = () => {
                         <div className="mb-3">
                           <label className="form-label">Designation</label>
                           <CommonSelect
+                            key={`desig-${selectKey}`}
                             className='select'
                             options={designation}
-                            defaultValue={designation[1]}
+                            value={designation.find(d => d.value === form.designation) || designation[0]}
                             onChange={handleDesignationChange}
                           />
                         </div>
@@ -2048,15 +2118,12 @@ const EmployeeList = () => {
                       <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">Status</label>
-                          <select 
-                            name="status" 
-                            className="form-control" 
-                            onChange={handleInputChange}
-                            defaultValue="Active"
-                          >
-                            <option value="Active">Active</option>
-                            <option value="Inactive">Inactive</option>
-                          </select>
+                          <CommonSelect
+                            className="select"
+                            options={statusOptions}
+                            value={statusOptions.find(s => s.value === form.status) || statusOptions[0]}
+                            onChange={handleStatusChange}
+                          />
                         </div>
                       </div>
                       <div className="col-md-12">
@@ -2068,6 +2135,7 @@ const EmployeeList = () => {
                             className="form-control"
                             rows={3}
                             name="about"
+                            value={form.about || ''}
                             onChange={handleInputChange}
                           />
                         </div>

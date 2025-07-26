@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import PredefinedDateRanges from '../../../core/common/datePicker'
 import Table from "../../../core/common/dataTable/index";
 import { all_routes } from '../../router/all_routes';
@@ -8,9 +8,48 @@ import { employeereportDetails } from '../../../core/data/json/employeereportDet
 import { DatePicker, TimePicker } from "antd";
 import CommonSelect from '../../../core/common/commonSelect';
 import CollapseHeader from '../../../core/common/collapse-header/collapse-header';
+import axios from 'axios';
+import dayjs from 'dayjs';
+
+declare const process: { env: { [key: string]: string | undefined } };
+
 type PasswordField = "password" | "confirmPassword";
 
 const EmployeeDetails = () => {
+  const { id } = useParams();
+  const [employee, setEmployee] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+
+  useEffect(() => {
+    if (id) {
+      fetchEmployeeDetails();
+    } else {
+      setLoading(false);
+    }
+  }, [id]);
+
+  const fetchEmployeeDetails = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${BACKEND_URL}/api/employees/${id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      console.log('Employee details response:', response.data);
+      console.log('Profile image path:', response.data.profileImage);
+      setEmployee(response.data);
+      setError(null);
+    } catch (err: any) {
+      console.error('Error fetching employee details:', err);
+      setError(err.response?.data?.message || 'Failed to fetch employee details');
+    } finally {
+      setLoading(false);
+    }
+  };
 
     const [passwordVisibility, setPasswordVisibility] = useState({
         password: false,
@@ -33,13 +72,22 @@ const EmployeeDetails = () => {
         return modalElement ? modalElement : document.body; // Fallback to document.body if modalElement is null
     };
 
-    const data = employeereportDetails;
+    // Use dynamic data if available, otherwise fallback to static data
+    const data = employee ? [
+        {
+            Name: `${employee.firstName} ${employee.lastName}`,
+            Email: employee.email,
+            CreatedDate: employee.joiningDate ? new Date(employee.joiningDate).toLocaleDateString() : 'N/A',
+            Role: employee.designation || 'Employee',
+            Status: employee.status || 'Active'
+        }
+    ] : employeereportDetails;
     const columns = [
         {
             title: "Name",
             dataIndex: "Name",
             render: (text: String, record: any) => (
-                <Link to={all_routes.employeedetails} className="link-default">Emp-001</Link>
+                <Link to={`${all_routes.employeedetails}/${id}`} className="link-default">{employee?.employeeId || 'Emp-001'}</Link>
 
             ),
             sorter: (a: any, b: any) => a.Name.length - b.Name.length,
@@ -127,6 +175,70 @@ const EmployeeDetails = () => {
         { value: "Maternity Benefit ", label: "Maternity Benefit " },
     ];
 
+    // Show loading state
+    if (loading) {
+        return (
+            <div className="page-wrapper">
+                <div className="content">
+                    <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
+                        <div className="text-center">
+                            <div className="spinner-border text-primary" role="status">
+                                <span className="visually-hidden">Loading...</span>
+                            </div>
+                            <p className="mt-3">Loading employee details...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Show error state
+    if (error) {
+        return (
+            <div className="page-wrapper">
+                <div className="content">
+                    <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
+                        <div className="text-center">
+                            <div className="text-danger mb-3">
+                                <i className="ti ti-alert-circle fs-48"></i>
+                            </div>
+                            <h5>Error Loading Employee Details</h5>
+                            <p className="text-muted">{error}</p>
+                            <Link to={all_routes.employeeList} className="btn btn-primary">
+                                <i className="ti ti-arrow-left me-2"></i>
+                                Back to Employee List
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Show message if no employee data
+    if (!employee) {
+        return (
+            <div className="page-wrapper">
+                <div className="content">
+                    <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
+                        <div className="text-center">
+                            <div className="text-muted mb-3">
+                                <i className="ti ti-user-off fs-48"></i>
+                            </div>
+                            <h5>Employee Not Found</h5>
+                            <p className="text-muted">The requested employee could not be found.</p>
+                            <Link to={all_routes.employeeList} className="btn btn-primary">
+                                <i className="ti ti-arrow-left me-2"></i>
+                                Back to Employee List
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <>
             {/* Page Wrapper */}
@@ -141,6 +253,11 @@ const EmployeeDetails = () => {
                                     Employee Details
                                 </Link>
                             </h6>
+                            {employee && (
+                                <h5 className="mb-0">
+                                    {employee.firstName} {employee.lastName} - {employee.employeeId}
+                                </h5>
+                            )}
                         </div>
                         <div className="d-flex my-xl-auto right-content align-items-center flex-wrap ">
                             <div className="mb-2">
@@ -165,47 +282,58 @@ const EmployeeDetails = () => {
                             <div className="card card-bg-1">
                                 <div className="card-body p-0">
                                     <span className="avatar avatar-xl avatar-rounded border border-2 border-white m-auto d-flex mb-2">
-                                        <ImageWithBasePath
-                                            src="assets/img/users/user-13.jpg"
-                                            className="w-auto h-auto"
-                                            alt="Img"
+                                        <img
+                                            src={employee.profileImage ? 
+                                                (employee.profileImage.startsWith('http') ? 
+                                                    employee.profileImage : 
+                                                    `${BACKEND_URL}/uploads/${employee.profileImage}`
+                                                ) : 
+                                                "assets/img/users/user-13.jpg"
+                                            }
+                                            className="w-auto rounded-circle"
+                                            alt="Employee Profile"
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                            onError={(e) => {
+                                                const target = e.target as HTMLImageElement;
+                                                target.src = "assets/img/users/user-13.jpg";
+                                            }}
                                         />
                                     </span>
                                     <div className="text-center px-3 pb-3 border-bottom">
                                         <div className="mb-3">
                                             <h5 className="d-flex align-items-center justify-content-center mb-1">
-                                                Stephan Peralt
+                                                {employee.firstName} {employee.lastName}
                                                 <i className="ti ti-discount-check-filled text-success ms-1" />
                                             </h5>
                                             <span className="badge badge-soft-dark fw-medium me-2">
                                                 <i className="ti ti-point-filled me-1" />
-                                                Software Developer
+                                                {employee.designation || 'Employee'}
                                             </span>
                                             <span className="badge badge-soft-secondary fw-medium">
-                                                10+ years of Experience
+                                                {employee.department || 'Department'}
                                             </span>
                                         </div>
                                         <div>
                                             <div className="d-flex align-items-center justify-content-between mb-2">
                                                 <span className="d-inline-flex align-items-center">
                                                     <i className="ti ti-id me-2" />
-                                                    Client ID
+                                                    Employee ID
                                                 </span>
-                                                <p className="text-dark">CLT-0024</p>
+                                                <p className="text-dark">{employee.employeeId || 'N/A'}</p>
                                             </div>
                                             <div className="d-flex align-items-center justify-content-between mb-2">
                                                 <span className="d-inline-flex align-items-center">
                                                     <i className="ti ti-star me-2" />
-                                                    Team
+                                                    Department
                                                 </span>
-                                                <p className="text-dark">UI/UX Design</p>
+                                                <p className="text-dark">{employee.department || 'N/A'}</p>
                                             </div>
                                             <div className="d-flex align-items-center justify-content-between mb-2">
                                                 <span className="d-inline-flex align-items-center">
                                                     <i className="ti ti-calendar-check me-2" />
                                                     Date Of Join
                                                 </span>
-                                                <p className="text-dark">1st Jan 2023</p>
+                                                <p className="text-dark">{employee.joiningDate ? new Date(employee.joiningDate).toLocaleDateString() : 'N/A'}</p>
                                             </div>
                                             <div className="d-flex align-items-center justify-content-between">
                                                 <span className="d-inline-flex align-items-center">
@@ -219,7 +347,7 @@ const EmployeeDetails = () => {
                                                             alt="Img"
                                                         />
                                                     </span>
-                                                    <p className="text-gray-9 mb-0">Doglas Martini</p>
+                                                    <p className="text-gray-9 mb-0">{employee.reportOfficeName || 'N/A'}</p>
                                                 </div>
                                             </div>
                                             <div className="row gx-2 mt-3">
@@ -264,43 +392,37 @@ const EmployeeDetails = () => {
                                                 <i className="ti ti-phone me-2" />
                                                 Phone
                                             </span>
-                                            <p className="text-dark">(163) 2459 315</p>
+                                            <p className="text-dark">{employee.phoneNumber || 'N/A'}</p>
                                         </div>
                                         <div className="d-flex align-items-center justify-content-between mb-2">
                                             <span className="d-inline-flex align-items-center">
                                                 <i className="ti ti-mail-check me-2" />
                                                 Email
                                             </span>
-                                            <Link
-                                                to="#"
-                                                className="text-info d-inline-flex align-items-center"
-                                            >
-                                                perralt12@example.com
-                                                <i className="ti ti-copy text-dark ms-2" />
-                                            </Link>
+                                            <span className="text-info d-inline-flex align-items-center">
+                                                {employee.email || 'N/A'}
+                                            </span>
                                         </div>
                                         <div className="d-flex align-items-center justify-content-between mb-2">
                                             <span className="d-inline-flex align-items-center">
                                                 <i className="ti ti-gender-male me-2" />
                                                 Gender
                                             </span>
-                                            <p className="text-dark text-end">Male</p>
+                                            <p className="text-dark text-end">{employee.gender || 'N/A'}</p>
                                         </div>
                                         <div className="d-flex align-items-center justify-content-between mb-2">
                                             <span className="d-inline-flex align-items-center">
                                                 <i className="ti ti-cake me-2" />
-                                                Birdthday
+                                                Birthday
                                             </span>
-                                            <p className="text-dark text-end">24th July 2000</p>
+                                            <p className="text-dark text-end">{employee.birthday ? new Date(employee.birthday).toLocaleDateString() : 'N/A'}</p>
                                         </div>
                                         <div className="d-flex align-items-center justify-content-between">
                                             <span className="d-inline-flex align-items-center">
                                                 <i className="ti ti-map-pin-check me-2" />
                                                 Address
                                             </span>
-                                            <p className="text-dark text-end">
-                                                1861 Bayonne Ave, <br /> Manchester, NJ, 08759
-                                            </p>
+                                            <p className="text-dark text-end">{employee.address || 'N/A'}</p>
                                         </div>
                                     </div>
                                     <div className="p-3 border-bottom">
@@ -320,98 +442,87 @@ const EmployeeDetails = () => {
                                                 <i className="ti ti-e-passport me-2" />
                                                 Passport No
                                             </span>
-                                            <p className="text-dark">QRET4566FGRT</p>
+                                            <p className="text-dark">{employee.passportNumber || 'N/A'}</p>
                                         </div>
                                         <div className="d-flex align-items-center justify-content-between mb-2">
                                             <span className="d-inline-flex align-items-center">
                                                 <i className="ti ti-calendar-x me-2" />
                                                 Passport Exp Date
                                             </span>
-                                            <p className="text-dark text-end">15 May 2029</p>
+                                            <p className="text-dark text-end">{employee.passportExpiry ? new Date(employee.passportExpiry).toLocaleDateString() : 'N/A'}</p>
                                         </div>
                                         <div className="d-flex align-items-center justify-content-between mb-2">
                                             <span className="d-inline-flex align-items-center">
                                                 <i className="ti ti-gender-male me-2" />
                                                 Nationality
                                             </span>
-                                            <p className="text-dark text-end">Indian</p>
+                                            <p className="text-dark text-end">{employee.nationality || 'N/A'}</p>
                                         </div>
                                         <div className="d-flex align-items-center justify-content-between mb-2">
                                             <span className="d-inline-flex align-items-center">
                                                 <i className="ti ti-bookmark-plus me-2" />
                                                 Religion
                                             </span>
-                                            <p className="text-dark text-end">Christianity</p>
+                                            <p className="text-dark text-end">{employee.religion || 'N/A'}</p>
                                         </div>
                                         <div className="d-flex align-items-center justify-content-between mb-2">
                                             <span className="d-inline-flex align-items-center">
                                                 <i className="ti ti-hotel-service me-2" />
                                                 Marital status
                                             </span>
-                                            <p className="text-dark text-end">Yes</p>
+                                            <p className="text-dark text-end">{employee.maritalStatus || 'N/A'}</p>
                                         </div>
                                         <div className="d-flex align-items-center justify-content-between mb-2">
                                             <span className="d-inline-flex align-items-center">
                                                 <i className="ti ti-briefcase-2 me-2" />
                                                 Employment of spouse
                                             </span>
-                                            <p className="text-dark text-end">No</p>
+                                            <p className="text-dark text-end">{employee.spouseEmployment || 'N/A'}</p>
                                         </div>
                                         <div className="d-flex align-items-center justify-content-between">
                                             <span className="d-inline-flex align-items-center">
                                                 <i className="ti ti-baby-bottle me-2" />
                                                 No. of children
                                             </span>
-                                            <p className="text-dark text-end">2</p>
+                                            <p className="text-dark text-end">{employee.childrenCount !== undefined ? employee.childrenCount : 'N/A'}</p>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                            <div className="d-flex align-items-center justify-content-between mb-2">
-                                <h6>Emergency Contact Number</h6>
-                                <Link
-                                    to="#"
-                                    className="btn btn-icon btn-sm"
-                                    data-bs-toggle="modal" data-inert={true}
-                                    data-bs-target="#edit_emergency"
-                                >
-                                    <i className="ti ti-edit" />
-                                </Link>
-                            </div>
-                            <div className="card">
-                                <div className="card-body p-0">
-                                    <div className="p-3 border-bottom">
-                                        <div className="d-flex align-items-center justify-content-between">
-                                            <div>
-                                                <span className="d-inline-flex align-items-center">
-                                                    Primary
-                                                </span>
-                                                <h6 className="d-flex align-items-center fw-medium mt-1">
-                                                    Adrian Peralt{" "}
-                                                    <span className="d-inline-flex mx-1">
-                                                        <i className="ti ti-point-filled text-danger" />
-                                                    </span>
-                                                    Father
-                                                </h6>
-                                            </div>
-                                            <p className="text-dark">+1 127 2685 598</p>
-                                        </div>
+                                    <div className="d-flex align-items-center justify-content-between mb-2">
+                                        <h6>Emergency Contact Number</h6>
+                                        <Link
+                                            to="#"
+                                            className="btn btn-icon btn-sm"
+                                            data-bs-toggle="modal" data-inert={true}
+                                            data-bs-target="#edit_emergency"
+                                        >
+                                            <i className="ti ti-edit" />
+                                        </Link>
                                     </div>
-                                    <div className="p-3 border-bottom">
-                                        <div className="d-flex align-items-center justify-content-between">
-                                            <div>
-                                                <span className="d-inline-flex align-items-center">
-                                                    Secondry
-                                                </span>
-                                                <h6 className="d-flex align-items-center fw-medium mt-1">
-                                                    Karen Wills{" "}
-                                                    <span className="d-inline-flex mx-1">
-                                                        <i className="ti ti-point-filled text-danger" />
-                                                    </span>
-                                                    Mother
-                                                </h6>
-                                            </div>
-                                            <p className="text-dark">+1 989 7774 787</p>
+                                    <div className="card">
+                                        <div className="card-body p-0">
+                                            {employee.emergencyContacts && employee.emergencyContacts.length > 0 ? (
+                                                employee.emergencyContacts.map((contact: any, idx: number) => (
+                                                    <div className="p-3 border-bottom" key={idx}>
+                                                        <div className="d-flex align-items-center justify-content-between">
+                                                            <div>
+                                                                <span className="d-inline-flex align-items-center">
+                                                                    {contact.type || 'Contact'}
+                                                                </span>
+                                                                <h6 className="d-flex align-items-center fw-medium mt-1">
+                                                                    {contact.name || 'N/A'}
+                                                                    <span className="d-inline-flex mx-1">
+                                                                        <i className="ti ti-point-filled text-danger" />
+                                                                    </span>
+                                                                    {contact.relationship || 'N/A'}
+                                                                </h6>
+                                                            </div>
+                                                            <p className="text-dark">{contact.phone || 'N/A'}</p>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="p-3 border-bottom text-center text-muted">No emergency contacts available.</div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -462,12 +573,7 @@ const EmployeeDetails = () => {
                                                     data-bs-parent="#accordionExample"
                                                 >
                                                     <div className="accordion-body mt-2">
-                                                        As an award winning designer, I deliver exceptional
-                                                        quality work and bring value to your brand! With 10
-                                                        years of experience and 350+ projects completed
-                                                        worldwide with satisfied customers, I developed the 360°
-                                                        brand approach, which helped me to create numerous
-                                                        brands that are relevant, meaningful and loved.
+                                                        {employee.about || 'No description available for this employee.'}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1181,7 +1287,7 @@ const EmployeeDetails = () => {
                         <div className="modal-header">
                             <div className="d-flex align-items-center">
                                 <h4 className="modal-title me-2">Edit Employee</h4>
-                                <span>Employee ID : EMP -0024</span>
+                                <span>Employee ID : {employee?.employeeId || 'EMP-0024'}</span>
                             </div>
                             <button
                                 type="button"

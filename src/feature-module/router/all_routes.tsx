@@ -403,6 +403,7 @@ export const all_routes = {
   userreport: "/user-report",
   employeereport: "/employee-report",
   employeedetails: "/employee-details",
+  employeedetailsWithId: "/employee-details/:id",
   payslipreport: "/payslip-report",
   attendancereport: "/attendance-report",
   leavereport: "/leave-report",
