@@ -80,6 +80,10 @@ const Header = () => {
   // Logout handler
   const handleLogout = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
+    
+    // Dispatch custom logout event to clear user context
+    window.dispatchEvent(new Event('userLogout'));
+    
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/login");

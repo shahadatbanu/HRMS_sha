@@ -366,8 +366,8 @@ export const all_routes = {
   // RECRUITMENT
   jobgrid: "/job-grid",
   joblist: "/job-list",
-  candidatesGrid: "/candidates-grid",
-  candidateslist: "/candidates",
+  candidatesGrid: "/candidates",
+  candidateslist: "/candidates/list",
   candidateskanban: "/candidates-kanban",
   refferal: "/refferals",
   //FINANCE & ACCOUNTS

@@ -40,6 +40,10 @@ const Login = () => {
       // Save token and user info
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
+      
+      // Dispatch custom login event to refresh user context
+      window.dispatchEvent(new Event('userLogin'));
+      
       // Redirect based on role
       if (data.user.role === "admin" || data.user.role === "hr") {
         navigation(routes.adminDashboard);

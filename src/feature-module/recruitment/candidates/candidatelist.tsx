@@ -24,7 +24,7 @@ const CandidatesList = () => {
                     <Link to="#" className="avatar avatar-md ">
                         <ImageWithBasePath
                             src={`assets/img/users/${record.Image}`}
-                            className="img-fluid rounded-circle"
+                            className="img-fluid rounded"
                             alt="img"
                         />
                     </Link>
@@ -74,7 +74,7 @@ const CandidatesList = () => {
             title: "Status",
             dataIndex: "Status",
             render: (text: string, record: any) => (
-                <span className={`badge border   ${text==='Sent'?'border-purple text-purple':text==='Scheduled'?'border-pink text-pink':text==='Interviewed'?'border-info text-info':text==='Offered'?'border-warning text-warning':text==='Hired'?'border-success text-success':text==='App Received'?'border-purple text-purple':'border-danger text-danger'}`}>
+                <span className={`badge border   ${text==='New'?'border-purple text-purple':text==='Scheduled'?'border-pink text-pink':text==='Interviewed'?'border-info text-info':text==='Offered'?'border-warning text-warning':text==='Hired'?'border-success text-success':text==='Rejected'?'border-danger text-danger':'border-secondary text-secondary'}`}>
                     <i className="ti ti-point-filled" />
                     {text}
                 </span>

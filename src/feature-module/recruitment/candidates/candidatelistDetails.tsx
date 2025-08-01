@@ -96,7 +96,7 @@ export const candidatelistDetails = [
     Applied_Role: "Admin",
     Phone: "(128) 0975 348",
     Applied_Date: "03/11/2024",
-    Status: "App Received",
+    Status: "New",
   },
   {
     Key:"10",

@@ -15,6 +15,7 @@ import "../node_modules/@fortawesome/fontawesome-free/css/all.min.css";
 import "../src/style/icon/ionic/ionicons.css";
 import "../src/style/icon/tabler-icons/webfont/tabler-icons.css";
 import ALLRoutes from "./feature-module/router/router";
+import { UserProvider } from "./core/context/UserContext";
 import "../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js";
 
 const root = ReactDOM.createRoot(
@@ -23,9 +24,11 @@ const root = ReactDOM.createRoot(
 root.render(
   <React.StrictMode>
     <Provider store={store}>
-      <BrowserRouter basename={base_path}>
-        <ALLRoutes />
-      </BrowserRouter>
+      <UserProvider>
+        <BrowserRouter basename={base_path}>
+          <ALLRoutes />
+        </BrowserRouter>
+      </UserProvider>
     </Provider>
   </React.StrictMode>
 );

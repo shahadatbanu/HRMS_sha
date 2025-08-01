@@ -100,7 +100,9 @@ const Feature = () => {
                 <StackedSidebar />
                 <Outlet />
                 <DeleteModal />
+                {/* Theme Customizer - Commented out
                 {!location.pathname.includes("layout") && <ThemeSettings />}
+                */}
               </div>
             </> :
             <>
@@ -115,7 +117,9 @@ const Feature = () => {
                 <StackedSidebar />
                 <Outlet />
                 <DeleteModal />
+                {/* Theme Customizer - Commented out
                 {!location.pathname.includes("layout") && <ThemeSettings />}
+                */}
               </div>
             </>}
 

@@ -2173,7 +2173,12 @@ const CandidateKanban = () => {
                                             </li>
                                             <li>
                                                 <Link to="#" className="bg-gray-100">
-                                                    Hired / Rejected
+                                                    Hired
+                                                </Link>
+                                            </li>
+                                            <li>
+                                                <Link to="#" className="bg-gray-100">
+                                                    Rejected
                                                 </Link>
                                             </li>
                                         </ul>
