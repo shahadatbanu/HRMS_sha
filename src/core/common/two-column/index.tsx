@@ -2,10 +2,20 @@ import React, { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { TowColData } from '../../data/json/twoColData'
 import ImageWithBasePath from '../imageWithBasePath';
+import { useUser } from "../../context/UserContext";
 import { all_routes } from '../../../feature-module/router/all_routes';
 import Scrollbars from "react-custom-scrollbars-2";
 const TwoColumnSidebar = () => {
     const routes = all_routes
+    const { user } = useUser();
+
+    // Function to check if user has required role for menu item
+    const hasRequiredRole = (item: any) => {
+        if (!item.roles || !user) {
+            return true; // If no roles specified or no user, show the item
+        }
+        return item.roles.includes(user.role);
+    };
     const Location = useLocation();
     const [showSubMenusTab, SetShowSubMenusTab] = useState(true);
     const [isActive, SetIsActive] = useState<any>();

@@ -1,70 +1,128 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import CollapseHeader from "../../core/common/collapse-header/collapse-header";
 import { all_routes } from "../router/all_routes";
 import Table from "../../core/common/dataTable/index";
-import { HolidaysData } from "../../core/data/json/holidaysData";
 import HolidaysModal from "../../core/modals/holidaysModal";
+import holidayService, { Holiday } from "../../core/services/holidayService";
+import { message, Modal } from "antd";
+import { useUser } from '../../core/context/UserContext';
 
 const Holidays = () => {
-    const routes = all_routes;
-    const data = HolidaysData;
-    const columns = [
-        {
-          title: "Title",
-          dataIndex: "Title",
-          render: (text: string) => (
-            <h6 className="fw-medium">
-                <Link to="#">{text}</Link>
-            </h6>
-          ),
-          sorter: (a: any, b: any) => a.Title.length - b.Title.length,
-        },
-        {
-            title: "Date",
-            dataIndex: "Date",
-            sorter: (a: any, b: any) => a.Date.length - b.Date.length,
-        },
-        {
-            title: "Description",
-            dataIndex: "Description",
-            sorter: (a: any, b: any) => a.Description.length - b.Description.length,
-        },
-        {
-            title: "Status",
-            dataIndex: "Status",
-            render: (text: string) => (
-                <span className="badge badge-success d-inline-flex align-items-center badge-sm">
-                    <i className="ti ti-point-filled me-1" />
-                    {text}
-                </span>
-              ),
-            sorter: (a: any, b: any) => a.Status.length - b.Status.length,
-        },
-        {
-            title: "",
-            dataIndex: "actions",
-            render: () => (
-                <div className="action-icon d-inline-flex">
-                    <Link
-                        to="#"
-                        className="me-2"
-                        data-bs-toggle="modal" data-inert={true}
-                        data-bs-target="#edit_holiday"
-                    >
-                        <i className="ti ti-edit" />
-                    </Link>
-                    <Link
-                        to="#"
-                        data-bs-toggle="modal" data-inert={true}
-                        data-bs-target="#delete_modal"
-                    >
-                        <i className="ti ti-trash" />
-                    </Link>
-                </div>
-            ),
-        },
-    ];
+  const routes = all_routes;
+  const { user } = useUser();
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedHoliday, setSelectedHoliday] = useState<Holiday | null>(null);
+  const [modalType, setModalType] = useState<'add' | 'edit' | null>(null);
+
+  // Fetch holidays from backend
+  const fetchHolidays = async () => {
+    setLoading(true);
+    try {
+      const res = await holidayService.getHolidays();
+      setHolidays(res.data);
+    } catch (err) {
+      message.error("Failed to fetch holidays");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHolidays();
+  }, []);
+
+  // Table columns
+  const columns = [
+    {
+      title: "Title",
+      dataIndex: "name",
+      render: (text: string) => (
+        <h6 className="fw-medium">
+          <Link to="#">{text}</Link>
+        </h6>
+      ),
+      sorter: (a: any, b: any) => a.name.length - b.name.length,
+    },
+    {
+      title: "Date",
+      dataIndex: "date",
+      render: (date: string) => new Date(date).toLocaleDateString("en-IN", { year: 'numeric', month: 'short', day: '2-digit' }),
+      sorter: (a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    },
+    {
+      title: "Description",
+      dataIndex: "description",
+      sorter: (a: any, b: any) => (a.description || '').length - (b.description || '').length,
+    },
+    // Only show Actions column for admin or hr
+    ...(user && (user.role === 'admin' || user.role === 'hr') ? [{
+      title: "Actions",
+      dataIndex: "actions",
+      render: (_: any, record: Holiday) => (
+        <div className="action-icon d-inline-flex">
+          <Link
+            to="#"
+            className="me-2"
+            onClick={() => { setSelectedHoliday(record); setModalType('edit'); }}
+          >
+            <i className="ti ti-edit" />
+          </Link>
+          <Link
+            to="#"
+            onClick={() => handleDelete(record)}
+          >
+            <i className="ti ti-trash" />
+          </Link>
+        </div>
+      ),
+    }] : []),
+  ];
+
+  // Handle add
+  const handleAdd = () => {
+    setSelectedHoliday(null);
+    setModalType('add');
+    // window.$('#add_edit_holiday').modal('show'); // Not needed
+  };
+
+  // Handle delete
+  const handleDelete = (holiday: Holiday) => {
+    Modal.confirm({
+      title: 'Delete Holiday',
+      content: `Are you sure you want to delete "${holiday.name}"?`,
+      okText: 'Delete',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          await holidayService.deleteHoliday(holiday._id!);
+          message.success('Holiday deleted');
+          fetchHolidays();
+        } catch {
+          message.error('Failed to delete holiday');
+        }
+      },
+    });
+  };
+
+  // Handle submit (add/edit)
+  const handleSubmit = async (values: Partial<Holiday>) => {
+    try {
+      if (modalType === 'add') {
+        await holidayService.createHoliday(values as Holiday);
+        message.success('Holiday added');
+      } else if (modalType === 'edit' && selectedHoliday) {
+        await holidayService.updateHoliday(selectedHoliday._id!, values);
+        message.success('Holiday updated');
+      }
+      fetchHolidays();
+    } catch {
+      message.error('Failed to save holiday');
+    }
+  };
+
   return (
     <>
       {/* Page Wrapper */}
@@ -89,17 +147,19 @@ const Holidays = () => {
               </nav>
             </div>
             <div className="d-flex my-xl-auto right-content align-items-center flex-wrap ">
-              <div className="mb-2">
-                <Link
-                  to="#"
-                  data-bs-toggle="modal" data-inert={true}
-                  data-bs-target="#add_holiday"
-                  className="btn btn-primary d-flex align-items-center"
-                >
-                  <i className="ti ti-circle-plus me-2" />
-                  Add Holiday
-                </Link>
-              </div>
+              {/* Only show Add Holiday for admin or hr */}
+              {(user && (user.role === 'admin' || user.role === 'hr')) && (
+                <div className="mb-2">
+                  <Link
+                    to="#"
+                    className="btn btn-primary d-flex align-items-center"
+                    onClick={handleAdd}
+                  >
+                    <i className="ti ti-circle-plus me-2" />
+                    Add Holiday
+                  </Link>
+                </div>
+              )}
               <div className="head-icons ms-2">
                 <CollapseHeader />
               </div>
@@ -111,7 +171,7 @@ const Holidays = () => {
               <h5>Holidays List</h5>
             </div>
             <div className="card-body p-0">
-                <Table dataSource={data} columns={columns} Selection={true} />
+              <Table dataSource={holidays} columns={columns} Selection={true} rowKey="_id" />
             </div>
           </div>
         </div>
@@ -126,8 +186,16 @@ const Holidays = () => {
         </div>
       </div>
       {/* /Page Wrapper */}
-
-      <HolidaysModal />
+      {/* Only show HolidaysModal for admin or hr */}
+      {(user && (user.role === 'admin' || user.role === 'hr')) && (
+        <HolidaysModal
+          visible={!!modalType}
+          type={modalType}
+          holiday={selectedHoliday}
+          onSubmit={handleSubmit}
+          onClose={() => setModalType(null)}
+        />
+      )}
     </>
   );
 };

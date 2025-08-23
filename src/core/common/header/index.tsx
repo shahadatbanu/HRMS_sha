@@ -11,12 +11,16 @@ import {
 } from "../../data/redux/sidebarSlice";
 import { all_routes } from "../../../feature-module/router/all_routes";
 import { HorizontalSidebarData } from '../../data/json/horizontalSidebar'
+import { useUser } from '../../context/UserContext';
+import { backend_url } from '../../../environment';
+
 const Header = () => {
   const routes = all_routes;
   const dispatch = useDispatch();
   const dataLayout = useSelector((state: any) => state.themeSetting.dataLayout);
   const Location = useLocation();
   const navigate = useNavigate();
+  const { user } = useUser();
 
   const [subOpen, setSubopen] = useState<any>("");
   const [subsidebar, setSubsidebar] = useState("");
@@ -89,6 +93,38 @@ const Header = () => {
     navigate("/login");
   };
 
+  // Get user display name
+  const getUserDisplayName = () => {
+    if (!user) return "Guest";
+    return `${user.firstName} ${user.lastName}`;
+  };
+
+  // Get user email
+  const getUserEmail = () => {
+    return user?.email || "guest@example.com";
+  };
+
+  // Get profile image source
+  const getProfileImageSrc = () => {
+    if (user?.profileImage) {
+      // If profile image exists, use it
+      const imagePath = `${backend_url}/uploads/${user.profileImage}`;
+      return imagePath;
+    }
+    // Default avatar image
+    return "assets/img/profiles/avatar-12.jpg";
+  };
+
+  // Handle image load error
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.src = "assets/img/profiles/avatar-12.jpg";
+  };
+
+  // Handle image load success
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    // Image loaded successfully
+  };
+
   return (
     <>
       {/* Header */}
@@ -119,6 +155,7 @@ const Header = () => {
 							<Link id="toggle_btn" to="#" onClick={handleToggleMiniSidebar} className="btn btn-menubar me-1">
 								<i className="ti ti-arrow-bar-to-left"></i>
 							</Link>
+							{/*
 							<div className="input-group input-group-flat d-inline-flex me-1">
 								<span className="input-icon-addon">
 									<i className="ti ti-search"></i>
@@ -128,6 +165,7 @@ const Header = () => {
 									<kbd>CTRL + / </kbd>
 								</span>
 							</div>
+							*/}
 							<div className="dropdown crm-dropdown">
 								<Link to="#" className="btn btn-menubar me-1" data-bs-toggle="dropdown">
 									<i className="ti ti-layout-grid"></i>
@@ -184,9 +222,11 @@ const Header = () => {
 									</div>
 								</div>
 							</div>
+							{/*
 							<Link to={routes.profilesettings} className="btn btn-menubar">
 								<i className="ti ti-settings-cog"></i>
 							</Link>	
+							*/}
 						</div>
 
 						<div className="sidebar sidebar-horizontal" id="horizontal-single">
@@ -291,17 +331,25 @@ const Header = () => {
 									</div>
 								</div>
 							</div>
+							{/* Chat icon */}
+							{/*
 							<div className="me-1">
 								<Link to={routes.chat} className="btn btn-menubar position-relative">
 									<i className="ti ti-brand-hipchat"></i>
 									<span className="badge bg-info rounded-pill d-flex align-items-center justify-content-center header-badge">5</span>
 								</Link>
 							</div>
+							*/}
+							{/* Email icon */}
+							{/*
 							<div className="me-1">
 								<Link to={routes.email} className="btn btn-menubar">
 									<i className="ti ti-mail"></i>
 								</Link>
 							</div>
+							*/}
+							{/* Notification bell and dropdown */}
+							{/*
 							<div className="me-1 notification_item">
 								<Link to="#" className="btn btn-menubar position-relative me-1" id="notification_popup"
 									data-bs-toggle="dropdown">
@@ -412,10 +460,11 @@ const Header = () => {
 									</div>
 								</div>
 							</div>
+							*/}
 							<div className="dropdown profile-dropdown">
 								<Link to="#" className="dropdown-toggle d-flex align-items-center" data-bs-toggle="dropdown">
 									<span className="avatar avatar-sm online">
-										<ImageWithBasePath src="assets/img/profiles/avatar-12.jpg" alt="Img" className="img-fluid rounded-circle"/>
+										<img src={getProfileImageSrc()} alt="Profile" onError={handleImageError} onLoad={handleImageLoad} className="img-fluid rounded-circle"/>
 									</span>
 								</Link>
 								<div className="dropdown-menu shadow-none">
@@ -423,11 +472,11 @@ const Header = () => {
 										<div className="card-header">
 											<div className="d-flex align-items-center">
 												<span className="avatar avatar-lg me-2 avatar-rounded">
-													<ImageWithBasePath src="assets/img/profiles/avatar-12.jpg" alt="img"/>
+													<img src={getProfileImageSrc()} alt="Profile" onError={handleImageError} onLoad={handleImageLoad} className="img-fluid rounded-circle"/>
 												</span>
 												<div>
-													<h5 className="mb-0">Kevin Larry</h5>
-													<p className="fs-12 fw-medium mb-0">warren@example.com</p>
+													<h5 className="mb-0">{getUserDisplayName()}</h5>
+													<p className="fs-12 fw-medium mb-0">{getUserEmail()}</p>
 												</div>
 											</div>
 										</div>

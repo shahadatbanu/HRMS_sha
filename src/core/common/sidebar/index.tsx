@@ -11,12 +11,22 @@ import {
 } from "../../data/redux/themeSettingSlice";
 import usePreviousRoute from "./usePreviousRoute";
 import { SidebarDataTest } from "../../data/json/sidebarMenu";
+import { useUser } from "../../context/UserContext";
 
 const Sidebar = () => {
   const Location = useLocation();
+  const { user } = useUser();
 
   const [subOpen, setSubopen] = useState<any>("Dashboard");
   const [subsidebar, setSubsidebar] = useState("");
+
+  // Function to check if user has required role for menu item
+  const hasRequiredRole = (item: any) => {
+    if (!item.roles || !user) {
+      return true; // If no roles specified or no user, show the item
+    }
+    return item.roles.includes(user.role);
+  };
 
   const toggleSidebar = (title: any) => {
     localStorage.setItem("menuOpened", title);
@@ -285,7 +295,7 @@ const Sidebar = () => {
                                     display: subOpen === title?.label ? "block" : "none",
                                 }}
                                 >
-                                {title?.submenuItems?.map((item: any, j: any) => (
+                                {title?.submenuItems?.filter(hasRequiredRole).map((item: any, j: any) => (
                                     <li
                                     className={
                                         item?.submenuItems ? "submenu submenu-two" : ""
@@ -320,7 +330,7 @@ const Sidebar = () => {
                                             subsidebar === item?.label ? "block" : "none",
                                         }}
                                         >
-                                        {item?.submenuItems?.map((items: any, k: any) => (
+                                        {item?.submenuItems?.filter(hasRequiredRole).map((items: any, k: any) => (
                                             <li key={`submenu-item-${k}`}>
                                             <Link
                                                 to={items?.submenu ? "#" :items?.link}

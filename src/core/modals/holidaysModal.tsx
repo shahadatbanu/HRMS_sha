@@ -1,188 +1,112 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import CommonSelect from "../common/commonSelect";
-import { DatePicker } from "antd";
+import { DatePicker, Modal } from "antd";
+import dayjs from "dayjs";
+import { Holiday } from "../services/holidayService";
 
-const HolidaysModal = () => {
-    const status = [
-        { value: "Select", label: "Select" },
-        { value: "Active", label: "Active" },
-        { value: "Inactive", label: "Inactive" },
-    ];
-    const getModalContainer = () => {
-        const modalElement = document.getElementById("modal-datepicker");
-        return modalElement ? modalElement : document.body; // Fallback to document.body if modalElement is null
-    };
+interface HolidaysModalProps {
+  visible: boolean;
+  type: 'add' | 'edit' | null;
+  holiday: Holiday | null;
+  onSubmit: (values: Partial<Holiday>) => void;
+  onClose: () => void;
+}
+
+const HolidaysModal: React.FC<HolidaysModalProps> = ({ visible, type, holiday, onSubmit, onClose }) => {
+  const [form, setForm] = useState({
+    name: "",
+    date: null as any,
+    description: "",
+  });
+
+  useEffect(() => {
+    if (type === 'edit' && holiday) {
+      setForm({
+        name: holiday.name || "",
+        date: holiday.date ? dayjs(holiday.date) : null,
+        description: holiday.description || "",
+      });
+    } else {
+      setForm({ name: "", date: null, description: "" });
+    }
+  }, [type, holiday]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleDateChange = (date: any) => {
+    setForm({ ...form, date });
+  };
+
+  const handleOk = () => {
+    if (!form.name || !form.date) return;
+    onSubmit({
+      name: form.name,
+      date: form.date.format('YYYY-MM-DD'),
+      description: form.description,
+    });
+    onClose();
+  };
+
   return (
-    <>
-      {/* Add Plan */}
-      <div className="modal fade" id="add_holiday">
-        <div className="modal-dialog modal-dialog-centered modal-md">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h4 className="modal-title">Add Holiday</h4>
-              <button
-                type="button"
-                className="btn-close custom-btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-              >
-                <i className="ti ti-x" />
-              </button>
+    <Modal
+      open={visible}
+      title={type === 'add' ? 'Add Holiday' : 'Edit Holiday'}
+      onCancel={onClose}
+      onOk={handleOk}
+      okText={type === 'add' ? 'Add Holiday' : 'Save Changes'}
+      cancelText="Cancel"
+      destroyOnClose
+    >
+      <form onSubmit={e => { e.preventDefault(); handleOk(); }}>
+        <div className="row">
+          <div className="col-md-12">
+            <div className="mb-3">
+              <label className="form-label">Title</label>
+              <input
+                type="text"
+                className="form-control"
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                required
+              />
             </div>
-            <form>
-              <div className="modal-body pb-0">
-                <div className="row">
-                  <div className="col-md-12">
-                    <div className="mb-3">
-                      <label className="form-label">Title</label>
-                      <input type="text" className="form-control" />
-                    </div>
-                  </div>
-                  <div className="col-md-12">
-                    <div className="mb-3">
-                      <label className="form-label">Date</label>
-                      <div className="input-icon-end position-relative">
-                        <DatePicker
-                          className="form-control datetimepicker"
-                          format={{
-                            format: "DD-MM-YYYY",
-                            type: "mask",
-                          }}
-                          getPopupContainer={getModalContainer}
-                          placeholder="DD-MM-YYYY"
-                        />
-                        <span className="input-icon-addon">
-                          <i className="ti ti-calendar text-gray-7" />
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="col-md-12">
-                    <div className="mb-3">
-                      <label className="form-label">Description</label>
-                      <textarea
-                        className="form-control"
-                        rows={3}
-                        defaultValue={""}
-                      />
-                    </div>
-                  </div>
-                  <div className="col-md-12">
-                    <div className="mb-3">
-                      <label className="form-label">Status</label>
-                      <CommonSelect
-                        className="select"
-                        options={status}
-                        defaultValue={status[0]}
-                      />
-                    </div>
-                  </div>
-                </div>
+          </div>
+          <div className="col-md-12">
+            <div className="mb-3">
+              <label className="form-label">Date</label>
+              <div className="input-icon-end position-relative">
+                <DatePicker
+                  className="form-control datetimepicker"
+                  value={form.date}
+                  format="DD-MM-YYYY"
+                  onChange={handleDateChange}
+                  placeholder="DD-MM-YYYY"
+                  style={{ width: '100%' }}
+                />
+                <span className="input-icon-addon">
+                  <i className="ti ti-calendar text-gray-7" />
+                </span>
               </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-light me-2"
-                  data-bs-dismiss="modal"
-                >
-                  Cancel
-                </button>
-                <button type="button" data-bs-dismiss="modal" className="btn btn-primary">
-                  Add Holiday
-                </button>
-              </div>
-            </form>
+            </div>
+          </div>
+          <div className="col-md-12">
+            <div className="mb-3">
+              <label className="form-label">Description</label>
+              <textarea
+                className="form-control"
+                name="description"
+                rows={3}
+                value={form.description}
+                onChange={handleChange}
+              />
+            </div>
           </div>
         </div>
-      </div>
-      {/* /Add Plan */}
-      {/* Edit Plan */}
-      <div className="modal fade" id="edit_holiday">
-        <div className="modal-dialog modal-dialog-centered modal-md">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h4 className="modal-title">Edit Holiday</h4>
-              <button
-                type="button"
-                className="btn-close custom-btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-              >
-                <i className="ti ti-x" />
-              </button>
-            </div>
-            <form>
-              <div className="modal-body pb-0">
-                <div className="row">
-                  <div className="col-md-12">
-                    <div className="mb-3">
-                      <label className="form-label">Title</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        defaultValue="New Year"
-                      />
-                    </div>
-                  </div>
-                  <div className="col-md-12">
-                    <div className="mb-3">
-                      <label className="form-label">Date</label>
-                      <div className="input-icon-end position-relative">
-                      <DatePicker
-                          className="form-control datetimepicker"
-                          format={{
-                            format: "DD-MM-YYYY",
-                            type: "mask",
-                          }}
-                          getPopupContainer={getModalContainer}
-                          placeholder="DD-MM-YYYY"
-                        />
-                        <span className="input-icon-addon">
-                          <i className="ti ti-calendar text-gray-7" />
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="col-md-12">
-                    <div className="mb-3">
-                      <label className="form-label">Description</label>
-                      <textarea
-                        className="form-control"
-                        rows={3}
-                        defaultValue={"First day of the new year"}
-                      />
-                    </div>
-                  </div>
-                  <div className="col-md-12">
-                    <div className="mb-3">
-                      <label className="form-label">Status</label>
-                      <CommonSelect
-                        className="select"
-                        options={status}
-                        defaultValue={status[1]}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-light me-2"
-                  data-bs-dismiss="modal"
-                >
-                  Cancel
-                </button>
-                <button type="button" data-bs-dismiss="modal" className="btn btn-primary">
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-      {/* /Edit Plan */}
-    </>
+      </form>
+    </Modal>
   );
 };
 

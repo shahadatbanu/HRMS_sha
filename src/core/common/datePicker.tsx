@@ -3,7 +3,11 @@ import { DateRangePicker } from 'react-bootstrap-daterangepicker';
 import moment from 'moment';
 import 'bootstrap-daterangepicker/daterangepicker.css';
 
-const PredefinedDateRanges: React.FC = () => {
+interface PredefinedDateRangesProps {
+  onDateRangeChange?: (start: moment.Moment, end: moment.Moment) => void;
+}
+
+const PredefinedDateRanges: React.FC<PredefinedDateRangesProps> = ({ onDateRangeChange }) => {
   const [state, setState] = useState({
     start: moment().subtract(6, 'days'),
     end: moment(),
@@ -13,6 +17,9 @@ const PredefinedDateRanges: React.FC = () => {
 
   const handleCallback = (start: moment.Moment, end: moment.Moment) => {
     setState({ start, end });
+    if (onDateRangeChange) {
+      onDateRangeChange(start, end);
+    }
   };
 
   // Format to "MM/DD/YYYY"

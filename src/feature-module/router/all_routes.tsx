@@ -203,6 +203,7 @@ export const all_routes = {
   salarySettings: "/app-settings/salary-settings",
   approvalSettings: "/app-settings/approval-settings",
   leaveType: "/app-settings/leave-type",
+  attendanceSettings: "/app-settings/attendance-settings",
 
   banIpAddress: "/other-settings/ban-ip-address",
   customCss: "/other-settings/custom-css",
