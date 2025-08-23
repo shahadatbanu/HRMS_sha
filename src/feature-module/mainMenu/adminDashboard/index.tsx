@@ -746,54 +746,45 @@ const AdminDashboard = () => {
   })
 
   //Semi Donut ChartJs
-  const [semidonutData, setSemidonutData] = useState({});
-  const [semidonutOptions, setSemidonutOptions] = useState({});
-  const toggleTodo = (index: number) => {
+  const [semidonutData, setSemidonutData] = useState({
+    labels: ["Ongoing", "Onhold", "Completed", "Overdue"],
+    datasets: [
+      {
+        label: 'Semi Donut',
+        data: [20, 40, 20, 10],
+        backgroundColor: ['#FFC107', '#1B84FF', '#03C95A', '#E70D0D'],
+        borderWidth: -10,
+        borderColor: 'transparent',
+        hoverBorderWidth: 0,
+        cutout: '75%',
+        spacing: -30,
+      },
+    ],
+  });
+  const [semidonutOptions, setSemidonutOptions] = useState({
+    rotation: -100,
+    circumference: 185,
+    layout: {
+      padding: {
+        top: -20,
+        bottom: 20,
+      }
+    },
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false
+      }
+    }
+  });
+    const toggleTodo = (index: number) => {
     setIsTodo((prevIsTodo) => {
       const newIsTodo = [...prevIsTodo];
       newIsTodo[index] = !newIsTodo[index];
       return newIsTodo;
     });
   };
-  useEffect(() => {
-
-    const data = {
-      labels: ["Ongoing", "Onhold", "Completed", "Overdue"],
-      datasets: [
-        {
-          label: 'Semi Donut',
-          data: [20, 40, 20, 10],
-          backgroundColor: ['#FFC107', '#1B84FF', '#03C95A', '#E70D0D'],
-          borderWidth: -10,
-          borderColor: 'transparent', // Border between segments
-          hoverBorderWidth: 0,   // Border radius for curved edges
-          cutout: '75%',
-          spacing: -30,
-        },
-      ],
-    };
-
-    const options = {
-      rotation: -100,
-      circumference: 185,
-      layout: {
-        padding: {
-          top: -20,    // Set to 0 to remove top padding
-          bottom: 20, // Set to 0 to remove bottom padding
-        }
-      },
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false // Hide the legend
-        }
-        }
-    };
-
-    setSemidonutData(data);
-    setSemidonutOptions(options);
-  }, []);
 
   const profileImg = user && user.profileImage ? `${backend_url}/uploads/${user.profileImage}` : 'assets/img/profiles/avatar-31.jpg';
 
@@ -2155,6 +2146,1364 @@ const AdminDashboard = () => {
             </div>
             {/* /Todo */}
           </div>
+          <div className="row">
+            {/* Sales Overview */}
+            <div className="col-xl-7 d-flex">
+              <div className="card flex-fill">
+                <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
+                  <h5 className="mb-2">Sales Overview</h5>
+                  <div className="d-flex align-items-center">
+                    <div className="dropdown mb-2">
+                      <Link
+                        to="#"
+                        className="dropdown-toggle btn btn-white border-0 btn-sm d-inline-flex align-items-center fs-13 me-2"
+                        data-bs-toggle="dropdown"
+                      >
+                        All Departments
+                      </Link>
+                      <ul className="dropdown-menu  dropdown-menu-end p-3">
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                          >
+                            UI/UX Designer
+                          </Link>
+                        </li>
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                          >
+                            HR Manager
+                          </Link>
+                        </li>
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                          >
+                            Junior Tester
+                          </Link>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div className="card-body pb-0">
+                  <div className="d-flex align-items-center justify-content-between flex-wrap">
+                    <div className="d-flex align-items-center mb-1">
+                      <p className="fs-13 text-gray-9 me-3 mb-0">
+                        <i className="ti ti-square-filled me-2 text-primary" />
+                        Income
+                      </p>
+                      <p className="fs-13 text-gray-9 mb-0">
+                        <i className="ti ti-square-filled me-2 text-gray-2" />
+                        Expenses
+                      </p>
+                    </div>
+                    <p className="fs-13 mb-1">Last Updated at 11:30PM</p>
+                  </div>
+                  <ReactApexChart
+                    id="sales-income"
+                    options={salesIncome}
+                    series={salesIncome.series}
+                    type="bar"
+                    height={270}
+                  />
+                </div>
+              </div>
+            </div>
+            {/* /Sales Overview */}
+            {/* Invoices */}
+            <div className="col-xl-5 d-flex">
+              <div className="card flex-fill">
+                <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
+                  <h5 className="mb-2">Invoices</h5>
+                  <div className="d-flex align-items-center">
+                    <div className="dropdown mb-2">
+                      <Link
+                        to="#"
+                        className="dropdown-toggle btn btn-white btn-sm d-inline-flex align-items-center fs-13 me-2 border-0"
+                        data-bs-toggle="dropdown"
+                      >
+                        Invoices
+                      </Link>
+                      <ul className="dropdown-menu  dropdown-menu-end p-3">
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                          >
+                            Invoices
+                          </Link>
+                        </li>
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                          >
+                            Paid
+                          </Link>
+                        </li>
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                          >
+                            Unpaid
+                          </Link>
+                        </li>
+                      </ul>
+                    </div>
+                    <div className="dropdown mb-2">
+                      <Link
+                        to="#"
+                        className="btn btn-white border btn-sm d-inline-flex align-items-center"
+                        data-bs-toggle="dropdown"
+                      >
+                        <i className="ti ti-calendar me-1" />
+                        This Week
+                      </Link>
+                      <ul className="dropdown-menu  dropdown-menu-end p-3">
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                          >
+                            This Month
+                          </Link>
+                        </li>
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                          >
+                            This Week
+                          </Link>
+                        </li>
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                          >
+                            Today
+                          </Link>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div className="card-body pt-2">
+                  <div className="table-responsive pt-1">
+                    <table className="table table-nowrap table-borderless mb-0">
+                      <tbody>
+                        <tr>
+                          <td className="px-0">
+                            <div className="d-flex align-items-center">
+                              <Link to="invoice-details.html" className="avatar">
+                                <ImageWithBasePath
+                                  src="assets/img/users/user-39.jpg"
+                                  className="img-fluid rounded-circle"
+                                  alt="img"
+                                />
+                              </Link>
+                              <div className="ms-2">
+                                <h6 className="fw-medium">
+                                  <Link to="invoice-details.html">
+                                    Redesign Website
+                                  </Link>
+                                </h6>
+                                <span className="fs-13 d-inline-flex align-items-center">
+                                  #INVOO2
+                                  <i className="ti ti-circle-filled fs-4 mx-1 text-primary" />
+                                  Logistics
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <p className="fs-13 mb-1">Payment</p>
+                            <h6 className="fw-medium">$3560</h6>
+                          </td>
+                          <td className="px-0 text-end">
+                            <span className="badge badge-danger-transparent badge-xs d-inline-flex align-items-center">
+                              <i className="ti ti-circle-filled fs-5 me-1" />
+                              Unpaid
+                            </span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-0">
+                            <div className="d-flex align-items-center">
+                              <Link to="invoice-details.html" className="avatar">
+                                <ImageWithBasePath
+                                  src="assets/img/users/user-40.jpg"
+                                  className="img-fluid rounded-circle"
+                                  alt="img"
+                                />
+                              </Link>
+                              <div className="ms-2">
+                                <h6 className="fw-medium">
+                                  <Link to="invoice-details.html">
+                                    Module Completion
+                                  </Link>
+                                </h6>
+                                <span className="fs-13 d-inline-flex align-items-center">
+                                  #INVOO5
+                                  <i className="ti ti-circle-filled fs-4 mx-1 text-primary" />
+                                  Yip Corp
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <p className="fs-13 mb-1">Payment</p>
+                            <h6 className="fw-medium">$4175</h6>
+                          </td>
+                          <td className="px-0 text-end">
+                            <span className="badge badge-danger-transparent badge-xs d-inline-flex align-items-center">
+                              <i className="ti ti-circle-filled fs-5 me-1" />
+                              Unpaid
+                            </span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-0">
+                            <div className="d-flex align-items-center">
+                              <Link to="invoice-details.html" className="avatar">
+                                <ImageWithBasePath
+                                  src="assets/img/users/user-55.jpg"
+                                  className="img-fluid rounded-circle"
+                                  alt="img"
+                                />
+                              </Link>
+                              <div className="ms-2">
+                                <h6 className="fw-medium">
+                                  <Link to="invoice-details.html">
+                                    Change on Emp Module
+                                  </Link>
+                                </h6>
+                                <span className="fs-13 d-inline-flex align-items-center">
+                                  #INVOO3
+                                  <i className="ti ti-circle-filled fs-4 mx-1 text-primary" />
+                                  Ignis LLP
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <p className="fs-13 mb-1">Payment</p>
+                            <h6 className="fw-medium">$6985</h6>
+                          </td>
+                          <td className="px-0 text-end">
+                            <span className="badge badge-danger-transparent badge-xs d-inline-flex align-items-center">
+                              <i className="ti ti-circle-filled fs-5 me-1" />
+                              Unpaid
+                            </span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-0">
+                            <div className="d-flex align-items-center">
+                              <Link to="invoice-details.html" className="avatar">
+                                <ImageWithBasePath
+                                  src="assets/img/users/user-42.jpg"
+                                  className="img-fluid rounded-circle"
+                                  alt="img"
+                                />
+                              </Link>
+                              <div className="ms-2">
+                                <h6 className="fw-medium">
+                                  <Link to="invoice-details.html">
+                                    Changes on the Board
+                                  </Link>
+                                </h6>
+                                <span className="fs-13 d-inline-flex align-items-center">
+                                  #INVOO2
+                                  <i className="ti ti-circle-filled fs-4 mx-1 text-primary" />
+                                  Ignis LLP
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <p className="fs-13 mb-1">Payment</p>
+                            <h6 className="fw-medium">$1457</h6>
+                          </td>
+                          <td className="px-0 text-end">
+                            <span className="badge badge-danger-transparent badge-xs d-inline-flex align-items-center">
+                              <i className="ti ti-circle-filled fs-5 me-1" />
+                              Unpaid
+                            </span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-0">
+                            <div className="d-flex align-items-center">
+                              <Link to="invoice-details.html" className="avatar">
+                                <ImageWithBasePath
+                                  src="assets/img/users/user-44.jpg"
+                                  className="img-fluid rounded-circle"
+                                  alt="img"
+                                />
+                              </Link>
+                              <div className="ms-2">
+                                <h6 className="fw-medium">
+                                  <Link to="invoice-details.html">
+                                    Hospital Management
+                                  </Link>
+                                </h6>
+                                <span className="fs-13 d-inline-flex align-items-center">
+                                  #INVOO6
+                                  <i className="ti ti-circle-filled fs-4 mx-1 text-primary" />
+                                  HCL Corp
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <p className="fs-13 mb-1">Payment</p>
+                            <h6 className="fw-medium">$6458</h6>
+                          </td>
+                          <td className="px-0 text-end">
+                            <span className="badge badge-success-transparent badge-xs d-inline-flex align-items-center">
+                              <i className="ti ti-circle-filled fs-5 me-1" />
+                              Paid
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <Link to="invoice.html"
+                    className="btn btn-light btn-md w-100 mt-2"
+                  >
+                    View All
+                  </Link>
+                </div>
+              </div>
+            </div>
+                         {/* /Invoices */}
+           </div>
+           <div className="row">
+             {/* Projects */}
+             <div className="col-xxl-8 col-xl-7 d-flex">
+               <div className="card flex-fill">
+                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
+                   <h5 className="mb-2">Projects</h5>
+                   <div className="d-flex align-items-center">
+                     <div className="dropdown mb-2">
+                       <Link
+                         to="#"
+                         className="btn btn-white border btn-sm d-inline-flex align-items-center"
+                         data-bs-toggle="dropdown"
+                       >
+                         <i className="ti ti-calendar me-1" />
+                         This Week
+                       </Link>
+                       <ul className="dropdown-menu  dropdown-menu-end p-3">
+                         <li>
+                           <Link to="#"
+                             className="dropdown-item rounded-1"
+                           >
+                             This Month
+                           </Link>
+                         </li>
+                         <li>
+                           <Link to="#"
+                             className="dropdown-item rounded-1"
+                           >
+                             This Week
+                           </Link>
+                         </li>
+                         <li>
+                           <Link to="#"
+                             className="dropdown-item rounded-1"
+                           >
+                             Today
+                           </Link>
+                         </li>
+                       </ul>
+                     </div>
+                   </div>
+                 </div>
+                 <div className="card-body p-0">
+                   <div className="table-responsive">
+                     <table className="table table-nowrap mb-0">
+                       <thead>
+                         <tr>
+                           <th>ID</th>
+                           <th>Name</th>
+                           <th>Team</th>
+                           <th>Hours</th>
+                           <th>Deadline</th>
+                           <th>Priority</th>
+                         </tr>
+                       </thead>
+                       <tbody>
+                         <tr>
+                           <td>
+                             <Link to="project-details.html" className="link-default">
+                               PRO-001
+                             </Link>
+                           </td>
+                           <td>
+                             <h6 className="fw-medium">
+                               <Link to="project-details.html">
+                                 Office Management App
+                               </Link>
+                             </h6>
+                           </td>
+                           <td>
+                             <div className="avatar-list-stacked avatar-group-sm">
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-02.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-03.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-05.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                             </div>
+                           </td>
+                           <td>
+                             <p className="mb-1">15/255 Hrs</p>
+                             <div
+                               className="progress progress-xs w-100"
+                               role="progressbar"
+                               aria-valuenow={40}
+                               aria-valuemin={0}
+                               aria-valuemax={100}
+                             >
+                               <div
+                                 className="progress-bar bg-primary"
+                                 style={{ width: "40%" }}
+                               />
+                             </div>
+                           </td>
+                           <td>12/09/2024</td>
+                           <td>
+                             <span className="badge badge-danger d-inline-flex align-items-center badge-xs">
+                               <i className="ti ti-point-filled me-1" />
+                               High
+                             </span>
+                           </td>
+                         </tr>
+                         <tr>
+                           <td>
+                             <Link to="project-details.html" className="link-default">
+                               PRO-002
+                             </Link>
+                           </td>
+                           <td>
+                             <h6 className="fw-medium">
+                               <Link to="project-details.html">Clinic Management </Link>
+                             </h6>
+                           </td>
+                           <td>
+                             <div className="avatar-list-stacked avatar-group-sm">
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-06.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-07.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-08.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                               <Link
+                                 className="avatar bg-primary avatar-rounded text-fixed-white fs-10 fw-medium"
+                                 to="#"
+                               >
+                                 +1
+                               </Link>
+                             </div>
+                           </td>
+                           <td>
+                             <p className="mb-1">15/255 Hrs</p>
+                             <div
+                               className="progress progress-xs w-100"
+                               role="progressbar"
+                               aria-valuenow={40}
+                               aria-valuemin={0}
+                               aria-valuemax={100}
+                             >
+                               <div
+                                 className="progress-bar bg-primary"
+                                 style={{ width: "40%" }}
+                               />
+                             </div>
+                           </td>
+                           <td>24/10/2024</td>
+                           <td>
+                             <span className="badge badge-success d-inline-flex align-items-center badge-xs">
+                               <i className="ti ti-point-filled me-1" />
+                               Low
+                             </span>
+                           </td>
+                         </tr>
+                         <tr>
+                           <td>
+                             <Link to="project-details.html" className="link-default">
+                               PRO-003
+                             </Link>
+                           </td>
+                           <td>
+                             <h6 className="fw-medium">
+                               <Link to="project-details.html">
+                                 Educational Platform
+                               </Link>
+                             </h6>
+                           </td>
+                           <td>
+                             <div className="avatar-list-stacked avatar-group-sm">
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-06.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-08.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-09.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                             </div>
+                           </td>
+                           <td>
+                             <p className="mb-1">40/255 Hrs</p>
+                             <div
+                               className="progress progress-xs w-100"
+                               role="progressbar"
+                               aria-valuenow={50}
+                               aria-valuemin={0}
+                               aria-valuemax={100}
+                             >
+                               <div
+                                 className="progress-bar bg-primary"
+                                 style={{ width: "50%" }}
+                               />
+                             </div>
+                           </td>
+                           <td>18/02/2024</td>
+                           <td>
+                             <span className="badge badge-pink d-inline-flex align-items-center badge-xs">
+                               <i className="ti ti-point-filled me-1" />
+                               Medium
+                             </span>
+                           </td>
+                         </tr>
+                         <tr>
+                           <td>
+                             <Link to="project-details.html" className="link-default">
+                               PRO-004
+                             </Link>
+                           </td>
+                           <td>
+                             <h6 className="fw-medium">
+                               <Link to="project-details.html">
+                                 Chat &amp; Call Mobile App
+                               </Link>
+                             </h6>
+                           </td>
+                           <td>
+                             <div className="avatar-list-stacked avatar-group-sm">
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-11.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-12.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-13.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                             </div>
+                           </td>
+                           <td>
+                             <p className="mb-1">35/155 Hrs</p>
+                             <div
+                               className="progress progress-xs w-100"
+                               role="progressbar"
+                               aria-valuenow={50}
+                               aria-valuemin={0}
+                               aria-valuemax={100}
+                             >
+                               <div
+                                 className="progress-bar bg-primary"
+                                 style={{ width: "50%" }}
+                               />
+                             </div>
+                           </td>
+                           <td>19/02/2024</td>
+                           <td>
+                             <span className="badge badge-danger d-inline-flex align-items-center badge-xs">
+                               <i className="ti ti-point-filled me-1" />
+                               High
+                             </span>
+                           </td>
+                         </tr>
+                         <tr>
+                           <td>
+                             <Link to="project-details.html" className="link-default">
+                               PRO-005
+                             </Link>
+                           </td>
+                           <td>
+                             <h6 className="fw-medium">
+                               <Link to="project-details.html">
+                                 Travel Planning Website
+                               </Link>
+                             </h6>
+                           </td>
+                           <td>
+                             <div className="avatar-list-stacked avatar-group-sm">
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-17.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-18.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-19.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                             </div>
+                           </td>
+                           <td>
+                             <p className="mb-1">50/235 Hrs</p>
+                             <div
+                               className="progress progress-xs w-100"
+                               role="progressbar"
+                               aria-valuenow={50}
+                               aria-valuemin={0}
+                               aria-valuemax={100}
+                             >
+                               <div
+                                 className="progress-bar bg-primary"
+                                 style={{ width: "50%" }}
+                               />
+                             </div>
+                           </td>
+                           <td>18/02/2024</td>
+                           <td>
+                             <span className="badge badge-pink d-inline-flex align-items-center badge-xs">
+                               <i className="ti ti-point-filled me-1" />
+                               Medium
+                             </span>
+                           </td>
+                         </tr>
+                         <tr>
+                           <td>
+                             <Link to="project-details.html" className="link-default">
+                               PRO-006
+                             </Link>
+                           </td>
+                           <td>
+                             <h6 className="fw-medium">
+                               <Link to="project-details.html">
+                                 Service Booking Software
+                               </Link>
+                             </h6>
+                           </td>
+                           <td>
+                             <div className="avatar-list-stacked avatar-group-sm">
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-06.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-08.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-09.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                             </div>
+                           </td>
+                           <td>
+                             <p className="mb-1">40/255 Hrs</p>
+                             <div
+                               className="progress progress-xs w-100"
+                               role="progressbar"
+                               aria-valuenow={50}
+                               aria-valuemin={0}
+                               aria-valuemax={100}
+                             >
+                               <div
+                                 className="progress-bar bg-primary"
+                                 style={{ width: "50%" }}
+                               />
+                             </div>
+                           </td>
+                           <td>20/02/2024</td>
+                           <td>
+                             <span className="badge badge-success d-inline-flex align-items-center badge-xs">
+                               <i className="ti ti-point-filled me-1" />
+                               Low
+                             </span>
+                           </td>
+                         </tr>
+                         <tr>
+                           <td className="border-0">
+                             <Link to="project-details.html" className="link-default">
+                               PRO-008
+                             </Link>
+                           </td>
+                           <td className="border-0">
+                             <h6 className="fw-medium">
+                               <Link to="project-details.html">
+                                 Travel Planning Website
+                               </Link>
+                             </h6>
+                           </td>
+                           <td className="border-0">
+                             <div className="avatar-list-stacked avatar-group-sm">
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-15.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-16.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                               <span className="avatar avatar-rounded">
+                                 <ImageWithBasePath
+                                   className="border border-white"
+                                   src="assets/img/profiles/avatar-17.jpg"
+                                   alt="img"
+                                 />
+                               </span>
+                               <Link
+                                 className="avatar bg-primary avatar-rounded text-fixed-white fs-10 fw-medium"
+                                 to="#"
+                               >
+                                 +2
+                               </Link>
+                             </div>
+                           </td>
+                           <td className="border-0">
+                             <p className="mb-1">15/255 Hrs</p>
+                             <div
+                               className="progress progress-xs w-100"
+                               role="progressbar"
+                               aria-valuenow={45}
+                               aria-valuemin={0}
+                               aria-valuemax={100}
+                             >
+                               <div
+                                 className="progress-bar bg-primary"
+                                 style={{ width: "45%" }}
+                               />
+                             </div>
+                           </td>
+                           <td className="border-0">17/10/2024</td>
+                           <td className="border-0">
+                             <span className="badge badge-pink d-inline-flex align-items-center badge-xs">
+                               <i className="ti ti-point-filled me-1" />
+                               Medium
+                             </span>
+                           </td>
+                         </tr>
+                       </tbody>
+                     </table>
+                   </div>
+                 </div>
+               </div>
+             </div>
+             {/* /Projects */}
+             {/* Tasks Statistics */}
+             <div className="col-xxl-4 col-xl-5 d-flex">
+               <div className="card flex-fill">
+                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
+                   <h5 className="mb-2">Tasks Statistics</h5>
+                   <div className="d-flex align-items-center">
+                     <div className="dropdown mb-2">
+                       <Link
+                         to="#"
+                         className="btn btn-white border btn-sm d-inline-flex align-items-center"
+                         data-bs-toggle="dropdown"
+                       >
+                         <i className="ti ti-calendar me-1" />
+                         This Week
+                       </Link>
+                       <ul className="dropdown-menu  dropdown-menu-end p-3">
+                         <li>
+                           <Link to="#"
+                             className="dropdown-item rounded-1"
+                           >
+                             This Month
+                           </Link>
+                         </li>
+                         <li>
+                           <Link to="#"
+                             className="dropdown-item rounded-1"
+                           >
+                             This Week
+                           </Link>
+                         </li>
+                         <li>
+                           <Link to="#"
+                             className="dropdown-item rounded-1"
+                           >
+                             Today
+                           </Link>
+                         </li>
+                       </ul>
+                     </div>
+                   </div>
+                 </div>
+                 <div className="card-body">
+                   <div className="chartjs-wrapper-demo position-relative mb-4">
+                     <Chart type="doughnut" data={semidonutData} options={semidonutOptions} className="w-full md:w-30rem semi-donut-chart" />
+                     <div className="position-absolute text-center attendance-canvas">
+                       <p className="fs-13 mb-1">Total Tasks</p>
+                       <h3>124/165</h3>
+                     </div>
+                   </div>
+                   <div className="d-flex align-items-center flex-wrap">
+                     <div className="border-end text-center me-2 pe-2 mb-3">
+                       <p className="fs-13 d-inline-flex align-items-center mb-1">
+                         <i className="ti ti-circle-filled fs-10 me-1 text-warning" />
+                         Ongoing
+                       </p>
+                       <h5>24%</h5>
+                     </div>
+                     <div className="border-end text-center me-2 pe-2 mb-3">
+                       <p className="fs-13 d-inline-flex align-items-center mb-1">
+                         <i className="ti ti-circle-filled fs-10 me-1 text-info" />
+                         On Hold{" "}
+                       </p>
+                       <h5>10%</h5>
+                     </div>
+                     <div className="border-end text-center me-2 pe-2 mb-3">
+                       <p className="fs-13 d-inline-flex align-items-center mb-1">
+                         <i className="ti ti-circle-filled fs-10 me-1 text-danger" />
+                         Overdue
+                       </p>
+                       <h5>16%</h5>
+                     </div>
+                     <div className="text-center me-2 pe-2 mb-3">
+                       <p className="fs-13 d-inline-flex align-items-center mb-1">
+                         <i className="ti ti-circle-filled fs-10 me-1 text-success" />
+                         Ongoing
+                       </p>
+                       <h5>40%</h5>
+                     </div>
+                   </div>
+                   <div className="bg-dark br-5 p-3 pb-0 d-flex align-items-center justify-content-between">
+                     <div className="mb-2">
+                       <h4 className="text-success">389/689 hrs</h4>
+                       <p className="fs-13 mb-0">Spent on Overall Tasks This Week</p>
+                     </div>
+                     <Link to="tasks.html"
+                       className="btn btn-sm btn-light mb-2 text-nowrap"
+                     >
+                       View All
+                     </Link>
+                   </div>
+                 </div>
+               </div>
+             </div>
+             {/* /Tasks Statistics */}
+           </div>
+           <div className="row">
+             {/* Schedules */}
+             <div className="col-xxl-4 d-flex">
+               <div className="card flex-fill">
+                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
+                   <h5 className="mb-2">Schedules</h5>
+                   <Link to="candidates.html" className="btn btn-light btn-md mb-2">
+                     View All
+                   </Link>
+                 </div>
+                 <div className="card-body">
+                   <div className="bg-light p-3 br-5 mb-4">
+                     <span className="badge badge-secondary badge-xs mb-1">
+                       UI/ UX Designer
+                     </span>
+                     <h6 className="mb-2 text-truncate">
+                       Interview Candidates - UI/UX Designer
+                     </h6>
+                     <div className="d-flex align-items-center flex-wrap">
+                       <p className="fs-13 mb-1 me-2">
+                         <i className="ti ti-calendar-event me-2" />
+                         Thu, 15 Feb 2025
+                       </p>
+                       <p className="fs-13 mb-1">
+                         <i className="ti ti-clock-hour-11 me-2" />
+                         01:00 PM - 02:20 PM
+                       </p>
+                     </div>
+                     <div className="d-flex align-items-center justify-content-between border-top mt-2 pt-3">
+                       <div className="avatar-list-stacked avatar-group-sm">
+                         <span className="avatar avatar-rounded">
+                           <ImageWithBasePath
+                             className="border border-white"
+                             src="assets/img/users/user-49.jpg"
+                             alt="img"
+                           />
+                         </span>
+                         <span className="avatar avatar-rounded">
+                           <ImageWithBasePath
+                             className="border border-white"
+                             src="assets/img/users/user-13.jpg"
+                             alt="img"
+                           />
+                         </span>
+                         <span className="avatar avatar-rounded">
+                           <ImageWithBasePath
+                             className="border border-white"
+                             src="assets/img/users/user-11.jpg"
+                             alt="img"
+                           />
+                         </span>
+                         <span className="avatar avatar-rounded">
+                           <ImageWithBasePath
+                             className="border border-white"
+                             src="assets/img/users/user-22.jpg"
+                             alt="img"
+                           />
+                         </span>
+                         <span className="avatar avatar-rounded">
+                           <ImageWithBasePath
+                             className="border border-white"
+                             src="assets/img/users/user-58.jpg"
+                             alt="img"
+                           />
+                         </span>
+                         <Link
+                           className="avatar bg-primary avatar-rounded text-fixed-white fs-10 fw-medium"
+                           to="#"
+                         >
+                           +3
+                         </Link>
+                       </div>
+                       <Link to="#" className="btn btn-primary btn-xs">
+                         Join Meeting
+                       </Link>
+                     </div>
+                   </div>
+                   <div className="bg-light p-3 br-5 mb-0">
+                     <span className="badge badge-dark badge-xs mb-1">
+                       IOS Developer
+                     </span>
+                     <h6 className="mb-2 text-truncate">
+                       Interview Candidates - IOS Developer
+                     </h6>
+                     <div className="d-flex align-items-center flex-wrap">
+                       <p className="fs-13 mb-1 me-2">
+                         <i className="ti ti-calendar-event me-2" />
+                         Thu, 15 Feb 2025
+                       </p>
+                       <p className="fs-13 mb-1">
+                         <i className="ti ti-clock-hour-11 me-2" />
+                         02:00 PM - 04:20 PM
+                       </p>
+                     </div>
+                     <div className="d-flex align-items-center justify-content-between border-top mt-2 pt-3">
+                       <div className="avatar-list-stacked avatar-group-sm">
+                         <span className="avatar avatar-rounded">
+                           <ImageWithBasePath
+                             className="border border-white"
+                             src="assets/img/users/user-49.jpg"
+                             alt="img"
+                           />
+                         </span>
+                         <span className="avatar avatar-rounded">
+                           <ImageWithBasePath
+                             className="border border-white"
+                             src="assets/img/users/user-13.jpg"
+                             alt="img"
+                           />
+                         </span>
+                         <span className="avatar avatar-rounded">
+                           <ImageWithBasePath
+                             className="border border-white"
+                             src="assets/img/users/user-11.jpg"
+                             alt="img"
+                           />
+                         </span>
+                         <span className="avatar avatar-rounded">
+                           <ImageWithBasePath
+                             className="border border-white"
+                             src="assets/img/users/user-22.jpg"
+                             alt="img"
+                           />
+                         </span>
+                         <span className="avatar avatar-rounded">
+                           <ImageWithBasePath
+                             className="border border-white"
+                             src="assets/img/users/user-58.jpg"
+                             alt="img"
+                           />
+                         </span>
+                         <Link
+                           className="avatar bg-primary avatar-rounded text-fixed-white fs-10 fw-medium"
+                           to="#"
+                         >
+                           +3
+                         </Link>
+                       </div>
+                       <Link to="#" className="btn btn-primary btn-xs">
+                         Join Meeting
+                       </Link>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             </div>
+             {/* /Schedules */}
+             {/* Recent Activities */}
+             <div className="col-xxl-4 col-xl-6 d-flex">
+               <div className="card flex-fill">
+                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
+                   <h5 className="mb-2">Recent Activities</h5>
+                   <Link to="activity.html" className="btn btn-light btn-md mb-2">
+                     View All
+                   </Link>
+                 </div>
+                 <div className="card-body">
+                   <div className="recent-item">
+                     <div className="d-flex justify-content-between">
+                       <div className="d-flex align-items-center w-100">
+                         <Link to="#"
+                           className="avatar  flex-shrink-0"
+                         >
+                           <ImageWithBasePath
+                             src="assets/img/users/user-38.jpg"
+                             className="rounded-circle"
+                             alt="img"
+                           />
+                         </Link>
+                         <div className="ms-2 flex-fill">
+                           <div className="d-flex align-items-center justify-content-between">
+                             <h6 className="fs-medium text-truncate">
+                               <Link to="#">Matt Morgan</Link>
+                             </h6>
+                             <p className="fs-13">05:30 PM</p>
+                           </div>
+                           <p className="fs-13">
+                             Added New Project{" "}
+                             <span className="text-primary">HRMS Dashboard</span>
+                           </p>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                   <div className="recent-item">
+                     <div className="d-flex justify-content-between">
+                       <div className="d-flex align-items-center w-100">
+                         <Link to="#"
+                           className="avatar  flex-shrink-0"
+                         >
+                           <ImageWithBasePath
+                             src="assets/img/users/user-01.jpg"
+                             className="rounded-circle"
+                             alt="img"
+                           />
+                         </Link>
+                         <div className="ms-2 flex-fill">
+                           <div className="d-flex align-items-center justify-content-between">
+                             <h6 className="fs-medium text-truncate">
+                               <Link to="#">Jay Ze</Link>
+                             </h6>
+                             <p className="fs-13">05:00 PM</p>
+                           </div>
+                           <p className="fs-13">Commented on Uploaded Document</p>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                   <div className="recent-item">
+                     <div className="d-flex justify-content-between">
+                       <div className="d-flex align-items-center w-100">
+                         <Link to="#"
+                           className="avatar  flex-shrink-0"
+                         >
+                           <ImageWithBasePath
+                             src="assets/img/users/user-19.jpg"
+                             className="rounded-circle"
+                             alt="img"
+                           />
+                         </Link>
+                         <div className="ms-2 flex-fill">
+                           <div className="d-flex align-items-center justify-content-between">
+                             <h6 className="fs-medium text-truncate">
+                               <Link to="#">Mary Donald</Link>
+                             </h6>
+                             <p className="fs-13">05:30 PM</p>
+                           </div>
+                           <p className="fs-13">Approved Task Projects</p>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                   <div className="recent-item">
+                     <div className="d-flex justify-content-between">
+                       <div className="d-flex align-items-center w-100">
+                         <Link to="#"
+                           className="avatar  flex-shrink-0"
+                         >
+                           <ImageWithBasePath
+                             src="assets/img/users/user-11.jpg"
+                             className="rounded-circle"
+                             alt="img"
+                           />
+                         </Link>
+                         <div className="ms-2 flex-fill">
+                           <div className="d-flex align-items-center justify-content-between">
+                             <h6 className="fs-medium text-truncate">
+                               <Link to="#">George David</Link>
+                             </h6>
+                             <p className="fs-13">06:00 PM</p>
+                           </div>
+                           <p className="fs-13">
+                             Requesting Access to Module Tickets
+                           </p>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                   <div className="recent-item">
+                     <div className="d-flex justify-content-between">
+                       <div className="d-flex align-items-center w-100">
+                         <Link to="#"
+                           className="avatar  flex-shrink-0"
+                         >
+                           <ImageWithBasePath
+                             src="assets/img/users/user-20.jpg"
+                             className="rounded-circle"
+                             alt="img"
+                           />
+                         </Link>
+                         <div className="ms-2 flex-fill">
+                           <div className="d-flex align-items-center justify-content-between">
+                             <h6 className="fs-medium text-truncate">
+                               <Link to="#">Aaron Zeen</Link>
+                             </h6>
+                             <p className="fs-13">06:30 PM</p>
+                           </div>
+                           <p className="fs-13">Downloaded App Reportss</p>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                   <div className="recent-item">
+                     <div className="d-flex justify-content-between">
+                       <div className="d-flex align-items-center w-100">
+                         <Link to="#"
+                           className="avatar  flex-shrink-0"
+                         >
+                           <ImageWithBasePath
+                             src="assets/img/users/user-08.jpg"
+                             className="rounded-circle"
+                             alt="img"
+                           />
+                         </Link>
+                         <div className="ms-2 flex-fill">
+                           <div className="d-flex align-items-center justify-content-between">
+                             <h6 className="fs-medium text-truncate">
+                               <Link to="#">Hendry Daniel</Link>
+                             </h6>
+                             <p className="fs-13">05:30 PM</p>
+                           </div>
+                           <p className="fs-13">
+                             Completed New Project <span>HMS</span>
+                           </p>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             </div>
+             {/* /Recent Activities */}
+             {/* Birthdays */}
+             <div className="col-xxl-4 col-xl-6 d-flex">
+               <div className="card flex-fill">
+                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
+                   <h5 className="mb-2">Birthdays</h5>
+                   <Link to="#"
+                     className="btn btn-light btn-md mb-2"
+                   >
+                     View All
+                   </Link>
+                 </div>
+                 <div className="card-body pb-1">
+                   <h6 className="mb-2">Today</h6>
+                   <div className="bg-light p-2 border border-dashed rounded-top mb-3">
+                     <div className="d-flex align-items-center justify-content-between">
+                       <div className="d-flex align-items-center">
+                         <Link to="#" className="avatar">
+                           <ImageWithBasePath
+                             src="assets/img/users/user-38.jpg"
+                             className="rounded-circle"
+                             alt="img"
+                           />
+                         </Link>
+                         <div className="ms-2 overflow-hidden">
+                           <h6 className="fs-medium ">Andrew Jermia</h6>
+                           <p className="fs-13">IOS Developer</p>
+                         </div>
+                       </div>
+                       <Link
+                         to="#"
+                         className="btn btn-secondary btn-xs"
+                       >
+                         <i className="ti ti-cake me-1" />
+                         Send
+                       </Link>
+                     </div>
+                   </div>
+                   <h6 className="mb-2">Tomorow</h6>
+                   <div className="bg-light p-2 border border-dashed rounded-top mb-3">
+                     <div className="d-flex align-items-center justify-content-between">
+                       <div className="d-flex align-items-center">
+                         <Link to="#" className="avatar">
+                           <ImageWithBasePath
+                             src="assets/img/users/user-10.jpg"
+                             className="rounded-circle"
+                             alt="img"
+                           />
+                         </Link>
+                         <div className="ms-2 overflow-hidden">
+                           <h6 className="fs-medium">
+                             <Link to="#">Mary Zeen</Link>
+                           </h6>
+                           <p className="fs-13">UI/UX Designer</p>
+                         </div>
+                       </div>
+                       <Link
+                         to="#"
+                         className="btn btn-secondary btn-xs"
+                       >
+                         <i className="ti ti-cake me-1" />
+                         Send
+                       </Link>
+                     </div>
+                   </div>
+                   <div className="bg-light p-2 border border-dashed rounded-top mb-3">
+                     <div className="d-flex align-items-center justify-content-between">
+                       <div className="d-flex align-items-center">
+                         <Link to="#" className="avatar">
+                           <ImageWithBasePath
+                             src="assets/img/users/user-09.jpg"
+                             className="rounded-circle"
+                             alt="img"
+                           />
+                         </Link>
+                         <div className="ms-2 overflow-hidden">
+                           <h6 className="fs-medium ">
+                             <Link to="#">Antony Lewis</Link>
+                           </h6>
+                           <p className="fs-13">Android Developer</p>
+                         </div>
+                       </div>
+                       <Link
+                         to="#"
+                         className="btn btn-secondary btn-xs"
+                       >
+                         <i className="ti ti-cake me-1" />
+                         Send
+                       </Link>
+                     </div>
+                   </div>
+                   <h6 className="mb-2">25 Jan 2025</h6>
+                   <div className="bg-light p-2 border border-dashed rounded-top mb-3">
+                     <div className="d-flex align-items-center justify-content-between">
+                       <div className="d-flex align-items-center">
+                         <span className="avatar">
+                           <ImageWithBasePath
+                             src="assets/img/users/user-12.jpg"
+                             className="rounded-circle"
+                             alt="img"
+                           />
+                         </span>
+                         <div className="ms-2 overflow-hidden">
+                           <h6 className="fs-medium ">Doglas Martini</h6>
+                           <p className="fs-13">.Net Developer</p>
+                         </div>
+                       </div>
+                       <Link
+                         to="#"
+                         className="btn btn-secondary btn-xs"
+                       >
+                         <i className="ti ti-cake me-1" />
+                         Send
+                       </Link>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             </div>
+             {/* /Birthdays */}
+           </div>
         </div>
       </div>
       {/* /Page Wrapper */}
