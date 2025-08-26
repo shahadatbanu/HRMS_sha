@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import ImageWithBasePath from "../../../core/common/imageWithBasePath";
 import { all_routes } from "../../router/all_routes";
@@ -11,12 +11,120 @@ import { Calendar } from 'primereact/calendar';
 import { DatePicker } from "antd";
 import CommonSelect from "../../../core/common/commonSelect";
 import CollapseHeader from "../../../core/common/collapse-header/collapse-header";
+import { useUser } from '../../../core/context/UserContext';
+import { 
+  getTodayAttendance, 
+  checkIn, 
+  checkOut,
+  type AttendanceRecord
+} from '../../../core/services/attendanceService';
 
 
 const EmployeeDashboard = () => {
   const routes = all_routes;
+  const { user } = useUser();
 
   const [date, setDate] = useState(new Date('2024'));
+  const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord | null>(null);
+  const [checkInLoading, setCheckInLoading] = useState(false);
+  const [checkOutLoading, setCheckOutLoading] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [locationName, setLocationName] = useState<string | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+
+  // Get employee ID from current user context
+  const employeeId = user?._id;
+
+  // Reverse geocoding function to get location name from coordinates
+  const getLocationName = async (latitude: number, longitude: number): Promise<string> => {
+    try {
+      setLocationLoading(true);
+      
+      // Using OpenStreetMap Nominatim API with higher zoom for more detail
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=16&addressdetails=1`,
+        {
+          headers: {
+            'Accept-Language': 'en-US,en;q=0.9',
+            'User-Agent': 'HRMS-App/1.0'
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch location name');
+      }
+      
+      const data = await response.json();
+      
+      if (data.display_name) {
+        // Try to get more specific location details
+        let locationName = '';
+        
+        // Check for specific address components
+        if (data.address) {
+          // Try to build a more specific address
+          const address = data.address;
+          
+          // Start with the most specific location
+          if (address.road) {
+            locationName = address.road;
+            if (address.house_number) {
+              locationName = `${address.house_number} ${locationName}`;
+            }
+          } else if (address.suburb) {
+            locationName = address.suburb;
+          } else if (address.neighbourhood) {
+            locationName = address.neighbourhood;
+          } else if (address.quarter) {
+            locationName = address.quarter;
+          }
+          
+          // Add city/district if we have a specific location
+          if (locationName && address.city) {
+            locationName += `, ${address.city}`;
+          } else if (locationName && address.town) {
+            locationName += `, ${address.town}`;
+          } else if (locationName && address.district) {
+            locationName += `, ${address.district}`;
+          }
+          
+          // Add state if we have location details
+          if (locationName && address.state) {
+            locationName += `, ${address.state}`;
+          }
+        }
+        
+        // If we couldn't build a specific address, use a smarter parsing of display_name
+        if (!locationName) {
+          const addressParts = data.display_name.split(', ');
+          
+          // Look for more specific parts (avoid repetitive names)
+          const specificParts = [];
+          const seenNames = new Set();
+          
+          for (const part of addressParts) {
+            if (!seenNames.has(part.toLowerCase()) && part.trim()) {
+              specificParts.push(part);
+              seenNames.add(part.toLowerCase());
+            }
+          }
+          
+          // Take first 4 parts for more detail, but avoid repetition
+          locationName = specificParts.slice(0, 4).join(', ');
+        }
+        
+        return locationName || 'Unknown Location';
+      } else {
+        return 'Unknown Location';
+      }
+    } catch (error) {
+      console.error('Error getting location name:', error);
+      return 'Location Unavailable';
+    } finally {
+      setLocationLoading(false);
+    }
+  };
 
   //New Chart
   const [leavesChart] = useState<any>({
@@ -96,6 +204,154 @@ const EmployeeDashboard = () => {
       horizontalAlign: 'left'
     }
   })
+
+  // Update current time every minute
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Fetch today's attendance
+  const fetchTodayAttendance = async () => {
+    if (!employeeId) return;
+    
+    try {
+      const response = await getTodayAttendance(employeeId);
+      setTodayAttendance(response.data);
+    } catch (error) {
+      console.error('Error fetching today\'s attendance:', error);
+    }
+  };
+
+  // Handle check-in
+  const handleCheckIn = async () => {
+    if (!employeeId) return;
+    
+    try {
+      setCheckInLoading(true);
+      
+      let geolocation = null;
+      let locationNameResult = '';
+      
+      // Try to get current location if geolocation is supported
+      if ('geolocation' in navigator) {
+        try {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 60000
+            });
+          });
+          
+          geolocation = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          };
+          
+          // Get location name
+          try {
+            const nameResult = await getLocationName(geolocation.latitude, geolocation.longitude);
+            setLocationName(nameResult);
+            locationNameResult = nameResult;
+          } catch (error) {
+            console.warn('Could not get location name:', error);
+          }
+        } catch (error) {
+          console.warn('Could not get location for check-in:', error);
+          // Continue with check-in even if location fails
+        }
+      }
+      
+      await checkIn(employeeId, '', locationNameResult, geolocation);
+      await fetchTodayAttendance();
+    } catch (error) {
+      console.error('Error during check-in:', error);
+    } finally {
+      setCheckInLoading(false);
+    }
+  };
+
+  // Handle check-out
+  const handleCheckOut = async () => {
+    if (!employeeId) return;
+    
+    try {
+      setCheckOutLoading(true);
+      
+      let geolocation = null;
+      let locationNameResult = '';
+      
+      // Try to get current location if geolocation is supported
+      if ('geolocation' in navigator) {
+        try {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 60000
+            });
+          });
+          
+          geolocation = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          };
+          
+          // Get location name
+          try {
+            const nameResult = await getLocationName(geolocation.latitude, geolocation.longitude);
+            setLocationName(nameResult);
+            locationNameResult = nameResult;
+          } catch (error) {
+            console.warn('Could not get location name:', error);
+          }
+        } catch (error) {
+          console.warn('Could not get location for check-out:', error);
+          // Continue with check-out even if location fails
+        }
+      }
+      
+      await checkOut(employeeId, '', locationNameResult, geolocation);
+      await fetchTodayAttendance();
+    } catch (error) {
+      console.error('Error during check-out:', error);
+    } finally {
+      setCheckOutLoading(false);
+    }
+  };
+
+  // Load attendance data when component mounts or employeeId changes
+  useEffect(() => {
+    if (employeeId) {
+      fetchTodayAttendance();
+    }
+  }, [employeeId]);
+
+  // Calculate current production hours
+  const getCurrentProductionHours = () => {
+    if (!todayAttendance || !todayAttendance.checkIn || todayAttendance.status === 'Absent') return 0;
+    
+    try {
+      const checkInTime = new Date(todayAttendance.checkIn.time);
+      const now = new Date();
+      
+      // Check if checkInTime is valid
+      if (isNaN(checkInTime.getTime())) return 0;
+      
+      const diffHours = (now.getTime() - checkInTime.getTime()) / (1000 * 60 * 60);
+      const breakHours = (todayAttendance.totalBreakTime || 0) / 60;
+      
+      const productionHours = Math.max(0, diffHours - breakHours);
+      return isNaN(productionHours) ? 0 : productionHours;
+    } catch (error) {
+      console.error('Error calculating production hours:', error);
+      return 0;
+    }
+  };
 
   const employeename = [
     { value: "Select", label: "Select" },
@@ -187,7 +443,7 @@ const EmployeeDashboard = () => {
           </div>
           {/* /Breadcrumb */}
           <div className="alert bg-secondary-transparent alert-dismissible fade show mb-4">
-            Your Leave Request on“24th April 2024”has been Approved!!!
+            Your Leave Request on"24th April 2024"has been Approved!!!
             <button
               type="button"
               className="btn-close fs-14"
@@ -203,13 +459,29 @@ const EmployeeDashboard = () => {
                 <div className="card-header bg-dark">
                   <div className="d-flex align-items-center">
                     <span className="avatar avatar-lg avatar-rounded border border-white border-2 flex-shrink-0 me-2">
-                      <ImageWithBasePath src="assets/img/users/user-01.jpg" alt="Img" />
+                      {user?.profileImage ? (
+                        <img
+                          src={user.profileImage.startsWith('http') ? 
+                            user.profileImage : 
+                            `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'}/uploads/${user.profileImage}`
+                          }
+                          alt="Employee Profile"
+                          className="img-fluid rounded-circle"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = "/assets/img/users/user-01.jpg";
+                          }}
+                        />
+                      ) : (
+                        <ImageWithBasePath src="assets/img/users/user-01.jpg" alt="Img" />
+                      )}
                     </span>
                     <div>
-                      <h5 className="text-white mb-1">Stephan Peralt</h5>
+                      <h5 className="text-white mb-1">{user?.firstName} {user?.lastName}</h5>
                       <div className="d-flex align-items-center">
                         <p className="text-white fs-12 mb-0">
-                          Senior Product Designer
+                          {user?.designation || 'Employee'}
                         </p>
                         <span className="mx-1">
                           <i className="ti ti-point-filled text-primary" />
@@ -465,20 +737,74 @@ const EmployeeDashboard = () => {
                 <div className="card-body">
                   <div className="mb-4 text-center">
                     <h6 className="fw-medium text-gray-5 mb-1">Attendance</h6>
-                    <h4>08:35 AM, 11 Mar 2025</h4>
+                    <h4>{currentTime.toLocaleTimeString('en-US', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    })}, {currentTime.toLocaleDateString('en-US', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric'
+                    })}</h4>
                   </div>
                   <CircleProgress value={65} />
                   <div className="text-center">
                     <div className="badge badge-dark badge-md mb-3">
-                      Production : 3.45 hrs
+                      Production : {getCurrentProductionHours().toFixed(2)} hrs
                     </div>
                     <h6 className="fw-medium d-flex align-items-center justify-content-center mb-4">
                       <i className="ti ti-fingerprint text-primary me-1" />
-                      Punch In at 10.00 AM
+                      {todayAttendance?.checkIn 
+                        ? `Punch In at ${todayAttendance.formattedCheckIn}`
+                        : 'Not checked in today'
+                      }
                     </h6>
-                    <Link to="#" className="btn btn-primary w-100">
-                      Punch Out
-                    </Link>
+                    {!todayAttendance?.checkIn ? (
+                      <button 
+                        className="btn btn-primary w-100"
+                        onClick={handleCheckIn}
+                        disabled={checkInLoading}
+                      >
+                        {checkInLoading ? 'Checking In...' : 'Punch In'}
+                      </button>
+                    ) : todayAttendance?.checkIn && !todayAttendance?.checkOut?.time && todayAttendance?.status !== 'Absent' ? (
+                      <button 
+                        className="btn btn-dark w-100"
+                        onClick={handleCheckOut}
+                        disabled={checkOutLoading}
+                      >
+                        {checkOutLoading ? 'Checking Out...' : 'Punch Out'}
+                      </button>
+                    ) : todayAttendance?.checkOut?.time ? (
+                      <div className="text-success">
+                        <i className="ti ti-check-circle me-1" />
+                        Checked out for today
+                      </div>
+                    ) : todayAttendance?.status === 'Absent' ? (
+                      <div className="text-danger">
+                        <i className="ti ti-user-x me-1" />
+                        Marked as absent today
+                      </div>
+                    ) : null}
+                    
+                    {/* Location Display */}
+                    {locationName && (
+                      <div className="mt-3 p-2 bg-light rounded">
+                        <div className="d-flex align-items-center justify-content-center">
+                          <i className="ti ti-map-pin text-info me-2" />
+                          {locationLoading ? (
+                            <span className="fs-12 text-muted">
+                              <i className="ti ti-loader ti-spin me-1" />
+                              Getting location...
+                            </span>
+                          ) : (
+                            <span className="fs-12 text-muted">
+                              {locationName}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

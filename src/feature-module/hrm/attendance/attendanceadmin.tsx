@@ -1,34 +1,162 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { attendance_admin_details } from '../../../core/data/json/attendanceadmin';
 import { all_routes } from '../../router/all_routes';
 import PredefinedDateRanges from '../../../core/common/datePicker';
-import Table from "../../../core/common/dataTable/index";
 import ImageWithBasePath from '../../../core/common/imageWithBasePath';
+import Table from "../../../core/common/dataTable/index";
 import CommonSelect from '../../../core/common/commonSelect';
 import { DatePicker, TimePicker } from 'antd';
 import CollapseHeader from '../../../core/common/collapse-header/collapse-header';
+import { useUser } from '../../../core/context/UserContext';
+import { 
+  getAttendanceRecords, 
+  formatAttendanceForTable,
+  type AttendanceRecord,
+  type AttendanceFilters
+} from '../../../core/services/attendanceService';
+import moment from 'moment';
 
 const AttendanceAdmin = () => {
+  const { user } = useUser();
+  const [attendanceData, setAttendanceData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalRecords: 0,
+    limit: 10
+  });
+  
+  // Filter states
+  const [filters, setFilters] = useState<AttendanceFilters>({
+    page: 1,
+    limit: 10,
+    startDate: '',
+    endDate: '',
+    status: '',
+    sortBy: 'date',
+    sortOrder: 'desc'
+  });
 
-  const data = attendance_admin_details;
+  // Filter options
+  const statusOptions = [
+    { value: '', label: 'All Status' },
+    { value: 'Present', label: 'Present' },
+    { value: 'Absent', label: 'Absent' },
+    { value: 'Late', label: 'Late' },
+    { value: 'Half Day', label: 'Half Day' }
+  ];
+
+  const sortByOptions = [
+    { value: 'date', label: 'Date' },
+    { value: 'checkIn.time', label: 'Check In Time' },
+    { value: 'checkOut.time', label: 'Check Out Time' },
+    { value: 'status', label: 'Status' },
+    { value: 'productionHours', label: 'Production Hours' }
+  ];
+
+  const sortOrderOptions = [
+    { value: 'desc', label: 'Descending' },
+    { value: 'asc', label: 'Ascending' }
+  ];
+
+  // Get backend URL for profile images
+  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+
+  // Fetch attendance data
+  const fetchAttendanceData = async () => {
+    try {
+      setLoading(true);
+      const response = await getAttendanceRecords(filters);
+      const formattedData = response.data.map(formatAttendanceForTable);
+      setAttendanceData(formattedData);
+      if (response.pagination) {
+        setPagination(response.pagination);
+      }
+    } catch (error) {
+      console.error('Error fetching attendance data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle filter changes
+  const handleFilterChange = (key: string, value: any) => {
+    setFilters(prev => ({
+      ...prev,
+      [key]: value,
+      page: 1 // Reset to first page when filters change
+    }));
+  };
+
+  // Handle date range change from PredefinedDateRanges
+  const handleDateRangeChange = (start: moment.Moment, end: moment.Moment) => {
+    setFilters(prev => ({
+      ...prev,
+      startDate: start.format('YYYY-MM-DD'),
+      endDate: end.format('YYYY-MM-DD'),
+      page: 1
+    }));
+  };
+
+  // Handle pagination
+  const handlePageChange = (page: number) => {
+    setFilters(prev => ({
+      ...prev,
+      page
+    }));
+  };
+
+  // Load data on component mount and when filters change
+  useEffect(() => {
+    fetchAttendanceData();
+  }, [filters]);
+
+  // Check if user has access - Admin only
+  if (!user || user.role !== 'admin') {
+    return (
+      <div className="page-wrapper">
+        <div className="content">
+          <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
+            <div className="text-center">
+              <i className="ti ti-shield-x fs-1 text-muted mb-3"></i>
+              <h4>Access Denied</h4>
+              <p className="text-muted">This page is accessible to administrators only.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const columns = [
     {
       title: "Employee",
       dataIndex: "Employee",
-      render: (text: String, record: any) => (
-        <div className="d-flex align-items-center file-name-icon">
-          <Link to="#" className="avatar avatar-md border avatar-rounded">
-            <ImageWithBasePath src={`assets/img/users/${record.Image}`} className="img-fluid" alt="img" />
-          </Link>
-          <div className="ms-2">
-            <h6 className="fw-medium">
-              <Link to="#">{record.Employee}</Link>
-            </h6>
-            <span className="fs-12 fw-normal ">{record.Role}</span>
+      render: (text: String, record: any) => {
+        let imgSrc = '';
+        if (record.Image) {
+          // Always use backend URL for uploads
+          imgSrc = `${BACKEND_URL}/uploads/${record.Image.replace(/^uploads[\\/]/, '')}`;
+        }
+        return (
+          <div className="d-flex align-items-center file-name-icon">
+            <span className="avatar avatar-md border avatar-rounded">
+              {imgSrc ? (
+                <img src={imgSrc} className="img-fluid" alt="img" style={{ borderRadius: '50%', objectFit: 'cover', aspectRatio: '1/1', width: 40, height: 40 }} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = '/react/template/assets/img/users/default.png'; }} />
+              ) : (
+                <i className="ti ti-user fs-24 text-muted" />
+              )}
+            </span>
+            <div className="ms-2">
+              <h6 className="fw-medium">
+                {record.Employee}
+              </h6>
+              <span className="fs-12 fw-normal ">{record.Role}</span>
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
       sorter: (a: any, b: any) => a.Employee.length - b.Employee.length,
     },
     {
@@ -39,7 +167,6 @@ const AttendanceAdmin = () => {
           <i className="ti ti-point-filled me-1" />
           {record.Status}
         </span>
-
       ),
       sorter: (a: any, b: any) => a.Status.length - b.Status.length,
     },
@@ -49,14 +176,44 @@ const AttendanceAdmin = () => {
       sorter: (a: any, b: any) => a.CheckIn.length - b.CheckIn.length,
     },
     {
+      title: "Location",
+      dataIndex: "Location",
+      render: (text: String, record: any) => {
+        // Check if we have geolocation data
+        const hasGeolocation = record.geolocation && 
+          record.geolocation.latitude && 
+          record.geolocation.longitude;
+        
+        if (hasGeolocation) {
+          const mapUrl = `https://www.google.com/maps?q=${record.geolocation.latitude},${record.geolocation.longitude}`;
+          return (
+            <a 
+              href={mapUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary text-decoration-none"
+              title="Click to open in Google Maps"
+            >
+              <i className="ti ti-map-pin me-1" />
+              {record.Location}
+              <i className="ti ti-external-link ms-1 fs-12" />
+            </a>
+          );
+        } else {
+          return (
+            <span className="text-muted">
+              <i className="ti ti-map-pin me-1" />
+              {record.Location}
+            </span>
+          );
+        }
+      },
+      sorter: (a: any, b: any) => a.Location.length - b.Location.length,
+    },
+    {
       title: "Check Out",
       dataIndex: "CheckOut",
       sorter: (a: any, b: any) => a.CheckOut.length - b.CheckOut.length,
-    },
-    {
-      title: "Break",
-      dataIndex: "Break",
-      sorter: (a: any, b: any) => a.Break.length - b.Break.length,
     },
     {
       title: "Late",
@@ -79,38 +236,43 @@ const AttendanceAdmin = () => {
       ),
       sorter: (a: any, b: any) => a.ProductionHours.length - b.ProductionHours.length,
     },
-    {
-      title: "",
-      dataIndex: "actions",
-      render: () => (
-        <div className="action-icon d-inline-flex">
-          <Link
-            to="#"
-            className="me-2"
-            data-bs-toggle="modal" data-inert={true}
-            data-bs-target="#edit_attendance"
-          >
-            <i className="ti ti-edit" />
-          </Link>
-        </div>
-
-      ),
-    },
-  ]
-  const statusChoose = [
-    { value: "Select", label: "Select" },
-    { value: "Present", label: "Present" },
-    { value: "Absent", label: "Absent" },
   ];
 
   const getModalContainer = () => {
     const modalElement = document.getElementById('modal-datepicker');
-    return modalElement ? modalElement : document.body; // Fallback to document.body if modalElement is null
+    return modalElement ? modalElement : document.body;
   };
+
   const getModalContainer2 = () => {
     const modalElement = document.getElementById('modal_datepicker');
-    return modalElement ? modalElement : document.body; // Fallback to document.body if modalElement is null
+    return modalElement ? modalElement : document.body;
   };
+
+  // Helper to calculate percentage change
+  const calculatePercentageChange = (current: number, previous: number) => {
+    if (previous === 0) {
+      return current > 0 ? '+100%' : '0%';
+    }
+    const change = ((current - previous) / previous) * 100;
+    const sign = change >= 0 ? '+' : '';
+    return `${sign}${change.toFixed(0)}%`;
+  };
+
+  // Simulate previous period data (replace with real data if available)
+  const previousStats = {
+    Present: 0,
+    Late: 0,
+    'Half Day': 0,
+    Leave: 0,
+    Absent: 0,
+  };
+
+  // Current period counts
+  const presentCount = attendanceData.filter(item => item.Status === 'Present').length;
+  const lateCount = attendanceData.filter(item => item.Status === 'Late').length;
+  const halfDayCount = attendanceData.filter(item => item.Status === 'Half Day').length;
+  const leaveCount = attendanceData.filter(item => item.Status === 'Leave').length;
+  const absentCount = attendanceData.filter(item => item.Status === 'Absent').length;
 
   return (
     <>
@@ -207,54 +369,34 @@ const AttendanceAdmin = () => {
                 <div className="col-md-5">
                   <div className="mb-3 mb-md-0">
                     <h4 className="mb-1">Attendance Details Today</h4>
-                    <p>Data from the 800+ total no of employees</p>
+                    <p>Data from {pagination.totalRecords} total attendance records</p>
                   </div>
                 </div>
                 <div className="col-md-7">
                   <div className="d-flex align-items-center justify-content-md-end">
-                    <h6>Total Absenties today</h6>
+                    <h6>Total Records: {pagination.totalRecords}</h6>
+                    {/* Replace static avatars with dynamic ones */}
                     <div className="avatar-list-stacked avatar-group-sm ms-4">
-                      <span className="avatar avatar-rounded">
-                        <ImageWithBasePath
-                          className="border border-white"
-                          src="assets/img/profiles/avatar-02.jpg"
-                          alt="img"
-                        />
-                      </span>
-                      <span className="avatar avatar-rounded">
-                        <ImageWithBasePath
-                          className="border border-white"
-                          src="assets/img/profiles/avatar-03.jpg"
-                          alt="img"
-                        />
-                      </span>
-                      <span className="avatar avatar-rounded">
-                        <ImageWithBasePath
-                          className="border border-white"
-                          src="assets/img/profiles/avatar-05.jpg"
-                          alt="img"
-                        />
-                      </span>
-                      <span className="avatar avatar-rounded">
-                        <ImageWithBasePath
-                          className="border border-white"
-                          src="assets/img/profiles/avatar-06.jpg"
-                          alt="img"
-                        />
-                      </span>
-                      <span className="avatar avatar-rounded">
-                        <ImageWithBasePath
-                          className="border border-white"
-                          src="assets/img/profiles/avatar-07.jpg"
-                          alt="img"
-                        />
-                      </span>
-                      <Link
-                        className="avatar bg-primary avatar-rounded text-fixed-white fs-12"
-                        to="#"
-                      >
-                        +1
-                      </Link>
+                      {attendanceData.slice(0, 5).map((item, idx) => {
+                        let imgSrc = '';
+                        if (item.Image) {
+                          imgSrc = `${BACKEND_URL}/uploads/${item.Image.replace(/^uploads[\\/]/, '')}`;
+                        }
+                        return (
+                          <span className="avatar avatar-rounded" key={item._id || idx}>
+                            {imgSrc ? (
+                              <img src={imgSrc} className="border border-white" alt={item.Employee} style={{ borderRadius: '50%', objectFit: 'cover', aspectRatio: '1/1', width: 32, height: 32 }} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = '/react/template/assets/img/users/default.png'; }} />
+                            ) : (
+                              <i className="ti ti-user fs-18 text-muted" />
+                            )}
+                          </span>
+                        );
+                      })}
+                      {attendanceData.length > 5 && (
+                        <span className="avatar bg-primary avatar-rounded text-fixed-white fs-12">
+                          +{attendanceData.length - 5}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -265,10 +407,10 @@ const AttendanceAdmin = () => {
                     <div className="p-3">
                       <span className="fw-medium mb-1 d-block">Present</span>
                       <div className="d-flex align-items-center justify-content-between">
-                        <h5>250</h5>
+                        <h5>{presentCount}</h5>
                         <span className="badge badge-success d-inline-flex align-items-center">
                           <i className="ti ti-arrow-wave-right-down me-1" />
-                          +1%
+                          {calculatePercentageChange(presentCount, previousStats.Present)}
                         </span>
                       </div>
                     </div>
@@ -277,34 +419,34 @@ const AttendanceAdmin = () => {
                     <div className="p-3">
                       <span className="fw-medium mb-1 d-block">Late Login</span>
                       <div className="d-flex align-items-center justify-content-between">
-                        <h5>45</h5>
+                        <h5>{lateCount}</h5>
                         <span className="badge badge-danger d-inline-flex align-items-center">
                           <i className="ti ti-arrow-wave-right-down me-1" />
-                          -1%
+                          {calculatePercentageChange(lateCount, previousStats.Late)}
                         </span>
                       </div>
                     </div>
                   </div>
                   <div className="col-md col-sm-4 border-end">
                     <div className="p-3">
-                      <span className="fw-medium mb-1 d-block">Uninformed</span>
+                      <span className="fw-medium mb-1 d-block">Half Day</span>
                       <div className="d-flex align-items-center justify-content-between">
-                        <h5>15</h5>
-                        <span className="badge badge-danger d-inline-flex align-items-center">
+                        <h5>{halfDayCount}</h5>
+                        <span className="badge badge-warning d-inline-flex align-items-center">
                           <i className="ti ti-arrow-wave-right-down me-1" />
-                          -12%
+                          {calculatePercentageChange(halfDayCount, previousStats['Half Day'])}
                         </span>
                       </div>
                     </div>
                   </div>
                   <div className="col-md col-sm-4 border-end">
                     <div className="p-3">
-                      <span className="fw-medium mb-1 d-block">Permisson</span>
+                      <span className="fw-medium mb-1 d-block">Leave</span>
                       <div className="d-flex align-items-center justify-content-between">
-                        <h5>03</h5>
+                        <h5>{leaveCount}</h5>
                         <span className="badge badge-success d-inline-flex align-items-center">
                           <i className="ti ti-arrow-wave-right-down me-1" />
-                          +1%
+                          {calculatePercentageChange(leaveCount, previousStats.Leave)}
                         </span>
                       </div>
                     </div>
@@ -313,10 +455,10 @@ const AttendanceAdmin = () => {
                     <div className="p-3">
                       <span className="fw-medium mb-1 d-block">Absent</span>
                       <div className="d-flex align-items-center justify-content-between">
-                        <h5>12</h5>
+                        <h5>{absentCount}</h5>
                         <span className="badge badge-danger d-inline-flex align-items-center">
                           <i className="ti ti-arrow-wave-right-down me-1" />
-                          -19%
+                          {calculatePercentageChange(absentCount, previousStats.Absent)}
                         </span>
                       </div>
                     </div>
@@ -331,73 +473,32 @@ const AttendanceAdmin = () => {
               <div className="d-flex my-xl-auto right-content align-items-center flex-wrap row-gap-3">
                 <div className="me-3">
                   <div className="input-icon-end position-relative">
-                    <PredefinedDateRanges />
+                    <PredefinedDateRanges 
+                      onDateRangeChange={(start, end) => {
+                        handleFilterChange('startDate', start.format('YYYY-MM-DD'));
+                        handleFilterChange('endDate', end.format('YYYY-MM-DD'));
+                      }}
+                    />
                     <span className="input-icon-addon">
                       <i className="ti ti-chevron-down" />
                     </span>
                   </div>
                 </div>
-                <div className="dropdown me-3">
-                  <Link
-                    to="#"
-                    className="dropdown-toggle btn btn-white d-inline-flex align-items-center"
-                    data-bs-toggle="dropdown"
-                  >
-                    Department
-                  </Link>
-                  <ul className="dropdown-menu  dropdown-menu-end p-3">
-                    <li>
-                      <Link
-                        to="#"
-                        className="dropdown-item rounded-1"
-                      >
-                        Finance
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        to="#"
-                        className="dropdown-item rounded-1"
-                      >
-                        Application Development
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        to="#"
-                        className="dropdown-item rounded-1"
-                      >
-                        IT Management
-                      </Link>
-                    </li>
-                  </ul>
+                <div className="me-3">
+                  <CommonSelect
+                    className="select"
+                    options={statusOptions}
+                    value={statusOptions.find(option => option.value === filters.status) || statusOptions[0]}
+                    onChange={(option) => handleFilterChange('status', option?.value || '')}
+                  />
                 </div>
-                <div className="dropdown me-3">
-                  <Link
-                    to="#"
-                    className="dropdown-toggle btn btn-white d-inline-flex align-items-center"
-                    data-bs-toggle="dropdown"
-                  >
-                    Select Status
-                  </Link>
-                  <ul className="dropdown-menu  dropdown-menu-end p-3">
-                    <li>
-                      <Link
-                        to="#"
-                        className="dropdown-item rounded-1"
-                      >
-                        Present
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        to="#"
-                        className="dropdown-item rounded-1"
-                      >
-                        Absent
-                      </Link>
-                    </li>
-                  </ul>
+                <div className="me-3">
+                  <CommonSelect
+                    className="select"
+                    options={sortByOptions}
+                    value={sortByOptions.find(option => option.value === filters.sortBy) || sortByOptions[0]}
+                    onChange={(option) => handleFilterChange('sortBy', option?.value || 'date')}
+                  />
                 </div>
                 <div className="dropdown">
                   <Link
@@ -405,47 +506,25 @@ const AttendanceAdmin = () => {
                     className="dropdown-toggle btn btn-white d-inline-flex align-items-center"
                     data-bs-toggle="dropdown"
                   >
-                    Sort By : Last 7 Days
+                    Sort Order: {filters.sortOrder === 'desc' ? 'Descending' : 'Ascending'}
                   </Link>
-                  <ul className="dropdown-menu  dropdown-menu-end p-3">
+                  <ul className="dropdown-menu dropdown-menu-end p-3">
                     <li>
                       <Link
                         to="#"
                         className="dropdown-item rounded-1"
+                        onClick={() => handleFilterChange('sortOrder', 'desc')}
                       >
-                        Recently Added
+                        Descending
                       </Link>
                     </li>
                     <li>
                       <Link
                         to="#"
                         className="dropdown-item rounded-1"
+                        onClick={() => handleFilterChange('sortOrder', 'asc')}
                       >
                         Ascending
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        to="#"
-                        className="dropdown-item rounded-1"
-                      >
-                        Desending
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        to="#"
-                        className="dropdown-item rounded-1"
-                      >
-                        Last Month
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        to="#"
-                        className="dropdown-item rounded-1"
-                      >
-                        Last 7 Days
                       </Link>
                     </li>
                   </ul>
@@ -453,7 +532,74 @@ const AttendanceAdmin = () => {
               </div>
             </div>
             <div className="card-body p-0">
-              <Table dataSource={data} columns={columns} Selection={true} />
+              {loading ? (
+                <div className="text-center p-4">
+                  <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <Table dataSource={attendanceData} columns={columns} Selection={true} />
+                  {/* Pagination */}
+                  {pagination.totalPages > 1 && (
+                    <div className="d-flex justify-content-between align-items-center p-3 border-top">
+                      <div className="text-muted">
+                        Showing {((pagination.currentPage - 1) * pagination.limit) + 1} to {Math.min(pagination.currentPage * pagination.limit, pagination.totalRecords)} of {pagination.totalRecords} entries
+                      </div>
+                      <nav>
+                        <ul className="pagination pagination-sm mb-0">
+                          <li className={`page-item ${pagination.currentPage === 1 ? 'disabled' : ''}`}>
+                            <Link
+                              className="page-link"
+                              to="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                if (pagination.currentPage > 1) {
+                                  handlePageChange(pagination.currentPage - 1);
+                                }
+                              }}
+                            >
+                              Previous
+                            </Link>
+                          </li>
+                          {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                            const page = i + 1;
+                            return (
+                              <li key={page} className={`page-item ${pagination.currentPage === page ? 'active' : ''}`}>
+                                <Link
+                                  className="page-link"
+                                  to="#"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handlePageChange(page);
+                                  }}
+                                >
+                                  {page}
+                                </Link>
+                              </li>
+                            );
+                          })}
+                          <li className={`page-item ${pagination.currentPage === pagination.totalPages ? 'disabled' : ''}`}>
+                            <Link
+                              className="page-link"
+                              to="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                if (pagination.currentPage < pagination.totalPages) {
+                                  handlePageChange(pagination.currentPage + 1);
+                                }
+                              }}
+                            >
+                              Next
+                            </Link>
+                          </li>
+                        </ul>
+                      </nav>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -563,8 +709,8 @@ const AttendanceAdmin = () => {
                       <label className="form-label">Status</label>
                       <CommonSelect
                         className='select'
-                        options={statusChoose}
-                        defaultValue={statusChoose[1]}
+                        options={statusOptions.filter(option => option.value !== '')}
+                        defaultValue={statusOptions[1]}
                       />
                     </div>
                   </div>
@@ -592,7 +738,7 @@ const AttendanceAdmin = () => {
         <div className="modal-dialog modal-dialog-centered modal-lg">
           <div className="modal-content">
             <div className="modal-header">
-              <h4 className="modal-title">Attendance</h4>
+              <h4 className="modal-title">Attendance Report</h4>
               <button
                 type="button"
                 className="btn-close custom-btn-close"
@@ -605,157 +751,29 @@ const AttendanceAdmin = () => {
             <div className="modal-body">
               <div className="card shadow-none bg-transparent-light">
                 <div className="card-body pb-1">
-                  <div className="row align-items-center">
-                    <div className="col-lg-4">
-                      <div className="d-flex align-items-center mb-3">
-                        <span className="avatar avatar-sm avatar-rounded flex-shrink-0 me-2">
-                          <ImageWithBasePath src="assets/img/profiles/avatar-02.jpg" alt="Img" />
-                        </span>
-                        <div>
-                          <h6 className="fw-medium">Anthony Lewis</h6>
-                          <span>UI/UX Team</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="col-lg-8">
-                      <div className="row">
-                        <div className="col-sm-3">
-                          <div className="mb-3 text-sm-end">
-                            <span>Date</span>
-                            <p className="text-gray-9 fw-medium">15 Apr 2025</p>
-                          </div>
-                        </div>
-                        <div className="col-sm-3">
-                          <div className="mb-3 text-sm-end">
-                            <span>Punch in at</span>
-                            <p className="text-gray-9 fw-medium">09:00 AM</p>
-                          </div>
-                        </div>
-                        <div className="col-sm-3">
-                          <div className="mb-3 text-sm-end">
-                            <span>Punch out at</span>
-                            <p className="text-gray-9 fw-medium">06:45 PM</p>
-                          </div>
-                        </div>
-                        <div className="col-sm-3">
-                          <div className="mb-3 text-sm-end">
-                            <span>Status</span>
-                            <p className="text-gray-9 fw-medium">Present</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="card shadow-none border mb-0">
-                <div className="card-body">
                   <div className="row">
-                    <div className="col-xl-3">
-                      <div className="mb-4">
-                        <p className="d-flex align-items-center mb-1">
-                          <i className="ti ti-point-filled text-dark-transparent me-1" />
-                          Total Working hours
-                        </p>
-                        <h3>12h 36m</h3>
+                    <div className="col-sm-3">
+                      <div className="mb-3">
+                        <span>Total Records</span>
+                        <p className="text-gray-9 fw-medium">{pagination.totalRecords}</p>
                       </div>
                     </div>
-                    <div className="col-xl-3">
-                      <div className="mb-4">
-                        <p className="d-flex align-items-center mb-1">
-                          <i className="ti ti-point-filled text-success me-1" />
-                          Productive Hours
-                        </p>
-                        <h3>08h 36m</h3>
+                    <div className="col-sm-3">
+                      <div className="mb-3">
+                        <span>Present</span>
+                        <p className="text-gray-9 fw-medium">{attendanceData.filter(item => item.Status === 'Present').length}</p>
                       </div>
                     </div>
-                    <div className="col-xl-3">
-                      <div className="mb-4">
-                        <p className="d-flex align-items-center mb-1">
-                          <i className="ti ti-point-filled text-warning me-1" />
-                          Break hours
-                        </p>
-                        <h3>22m 15s</h3>
+                    <div className="col-sm-3">
+                      <div className="mb-3">
+                        <span>Absent</span>
+                        <p className="text-gray-9 fw-medium">{attendanceData.filter(item => item.Status === 'Absent').length}</p>
                       </div>
                     </div>
-                    <div className="col-xl-3">
-                      <div className="mb-4">
-                        <p className="d-flex align-items-center mb-1">
-                          <i className="ti ti-point-filled text-info me-1" />
-                          Overtime
-                        </p>
-                        <h3>02h 15m</h3>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="row">
-                    <div className="col-md-8 mx-auto">
-                      <div
-                        className="progress bg-transparent-dark mb-3"
-                        style={{ height: 24 }}
-                      >
-                        <div
-                          className="progress-bar bg-success rounded me-2"
-                          role="progressbar"
-                          style={{ width: "18%" }}
-                        />
-                        <div
-                          className="progress-bar bg-warning rounded me-2"
-                          role="progressbar"
-                          style={{ width: "5%" }}
-                        />
-                        <div
-                          className="progress-bar bg-success rounded me-2"
-                          role="progressbar"
-                          style={{ width: "28%" }}
-                        />
-                        <div
-                          className="progress-bar bg-warning rounded me-2"
-                          role="progressbar"
-                          style={{ width: "17%" }}
-                        />
-                        <div
-                          className="progress-bar bg-success rounded me-2"
-                          role="progressbar"
-                          style={{ width: "22%" }}
-                        />
-                        <div
-                          className="progress-bar bg-warning rounded me-2"
-                          role="progressbar"
-                          style={{ width: "5%" }}
-                        />
-                        <div
-                          className="progress-bar bg-info rounded me-2"
-                          role="progressbar"
-                          style={{ width: "3%" }}
-                        />
-                        <div
-                          className="progress-bar bg-info rounded"
-                          role="progressbar"
-                          style={{ width: "2%" }}
-                        />
-                      </div>
-                    </div>
-                    <div className="co-md-12">
-                      <div className="d-flex align-items-center justify-content-between">
-                        <span className="fs-10">06:00</span>
-                        <span className="fs-10">07:00</span>
-                        <span className="fs-10">08:00</span>
-                        <span className="fs-10">09:00</span>
-                        <span className="fs-10">10:00</span>
-                        <span className="fs-10">11:00</span>
-                        <span className="fs-10">12:00</span>
-                        <span className="fs-10">01:00</span>
-                        <span className="fs-10">02:00</span>
-                        <span className="fs-10">03:00</span>
-                        <span className="fs-10">04:00</span>
-                        <span className="fs-10">05:00</span>
-                        <span className="fs-10">06:00</span>
-                        <span className="fs-10">07:00</span>
-                        <span className="fs-10">08:00</span>
-                        <span className="fs-10">09:00</span>
-                        <span className="fs-10">10:00</span>
-                        <span className="fs-10">11:00</span>
+                    <div className="col-sm-3">
+                      <div className="mb-3">
+                        <span>Late</span>
+                        <p className="text-gray-9 fw-medium">{attendanceData.filter(item => item.Status === 'Late').length}</p>
                       </div>
                     </div>
                   </div>
@@ -767,10 +785,6 @@ const AttendanceAdmin = () => {
       </div>
       {/* /Attendance Report */}
     </>
-
-
-
-
   )
 }
 

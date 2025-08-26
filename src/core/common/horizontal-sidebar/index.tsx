@@ -2,11 +2,21 @@ import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { HorizontalSidebarData } from '../../data/json/horizontalSidebar'
 import ImageWithBasePath from '../imageWithBasePath';
+import { useUser } from "../../context/UserContext";
 
 const HorizontalSidebar = () => {
     const Location = useLocation();
+    const { user } = useUser();
 
     const [subOpen, setSubopen] = useState<any>("");
+
+    // Function to check if user has required role for menu item
+    const hasRequiredRole = (item: any) => {
+        if (!item.roles || !user) {
+            return true; // If no roles specified or no user, show the item
+        }
+        return item.roles.includes(user.role);
+    };
     const [subsidebar, setSubsidebar] = useState("");
   
     const toggleSidebar = (title: any) => {

@@ -203,6 +203,7 @@ export const all_routes = {
   salarySettings: "/app-settings/salary-settings",
   approvalSettings: "/app-settings/approval-settings",
   leaveType: "/app-settings/leave-type",
+  attendanceSettings: "/app-settings/attendance-settings",
 
   banIpAddress: "/other-settings/ban-ip-address",
   customCss: "/other-settings/custom-css",
@@ -348,6 +349,7 @@ export const all_routes = {
   //HRM
   employeeList: "/employees",
   employeeGrid: "/employees-grid",
+  employeeBirthdays: "/employee-birthdays",
   departments: "/departments",
   designations: "/designations",
   policy: "/policy",
@@ -388,7 +390,7 @@ export const all_routes = {
   payrollDeduction: "/payroll-deduction",
   //ADMINISTRATION
   knowledgebase: "/knowledgebase",
-  activity: "/activity",
+  activity: "/activities",
   users: "/users",
   rolePermission: "/roles-permissions",
   permissionpage: "/permission",

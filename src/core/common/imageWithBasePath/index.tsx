@@ -1,5 +1,5 @@
 import React from 'react';
-import { img_path} from '../../../environment';
+import { img_path } from '../../../environment';
 
 interface Image {
   className?: string;
@@ -7,12 +7,15 @@ interface Image {
   alt?: string;
   height?: number;
   width?: number;
-  id?:string;
+  id?: string;
+  style?: React.CSSProperties;
 }
 
 const ImageWithBasePath = (props: Image) => {
-  // Combine the base path and the provided src to create the full image source URL
-  const fullSrc = `${img_path}${props.src}`;
+  // If src starts with '/' or 'http', use as is. Otherwise, prepend img_path.
+  const fullSrc = props.src.startsWith('/') || props.src.startsWith('http')
+    ? props.src
+    : `${img_path}${props.src}`;
   return (
     <img
       className={props.className}
@@ -21,6 +24,7 @@ const ImageWithBasePath = (props: Image) => {
       alt={props.alt}
       width={props.width}
       id={props.id}
+      style={props.style}
     />
   );
 };

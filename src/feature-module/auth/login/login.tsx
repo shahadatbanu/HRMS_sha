@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import ImageWithBasePath from "../../../core/common/imageWithBasePath";
 import { Link, useNavigate } from "react-router-dom";
 import { all_routes } from "../../router/all_routes";
+import { backend_url } from "../../../environment";
+
 type PasswordField = "password";
 
 const Login = () => {
@@ -26,7 +28,7 @@ const Login = () => {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch(`${backend_url}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -139,7 +141,7 @@ const Login = () => {
                       </div>
                       <div className="d-flex align-items-center justify-content-between mb-3">
                         <div className="d-flex align-items-center">
-                          <div className="form-check form-check-md mb-0">
+                          {/* <div className="form-check form-check-md mb-0">
                             <input
                               className="form-check-input"
                               id="remember_me"
@@ -151,13 +153,13 @@ const Login = () => {
                             >
                               Remember Me
                             </label>
-                          </div>
+                          </div> */}
                         </div>
-                        <div className="text-end">
+                        {/* <div className="text-end">
                           <Link to={all_routes.forgotPassword} className="link-danger">
                             Forgot Password?
                           </Link>
-                        </div>
+                        </div> */}
                       </div>
                       <div className="mb-3">
                         <button
@@ -168,7 +170,7 @@ const Login = () => {
                           {loading ? "Signing In..." : "Sign In"}
                         </button>
                       </div>
-                      <div className="text-center">
+                      {/* <div className="text-center">
                         <h6 className="fw-normal text-dark mb-0">
                           Don't have an account?
                           <Link to={all_routes.register} className="hover-a">
@@ -179,47 +181,49 @@ const Login = () => {
                       </div>
                       <div className="login-or">
                         <span className="span-or">Or</span>
-                      </div>
-                      <div className="mt-2">
-                        <div className="d-flex align-items-center justify-content-center flex-wrap">
-                          <div className="text-center me-2 flex-fill">
-                            <Link
-                              to="#"
-                              className="br-10 p-2 btn btn-info d-flex align-items-center justify-content-center"
-                            >
-                              <ImageWithBasePath
-                                className="img-fluid m-1"
-                                src="assets/img/icons/facebook-logo.svg"
-                                alt="Facebook"
-                              />
-                            </Link>
-                          </div>
-                          <div className="text-center me-2 flex-fill">
-                            <Link
-                              to="#"
-                              className="br-10 p-2 btn btn-outline-light border d-flex align-items-center justify-content-center"
-                            >
-                              <ImageWithBasePath
-                                className="img-fluid m-1"
-                                src="assets/img/icons/google-logo.svg"
-                                alt="Facebook"
-                              />
-                            </Link>
-                          </div>
-                          <div className="text-center flex-fill">
-                            <Link
-                              to="#"
-                              className="bg-dark br-10 p-2 btn btn-dark d-flex align-items-center justify-content-center"
-                            >
-                              <ImageWithBasePath
-                                className="img-fluid m-1"
-                                src="assets/img/icons/apple-logo.svg"
-                                alt="Apple"
-                              />
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
+                      </div> */}
+                      {/*
+<div className="mt-2">
+  <div className="d-flex align-items-center justify-content-center flex-wrap">
+    <div className="text-center me-2 flex-fill">
+      <Link
+        to="#"
+        className="br-10 p-2 btn btn-info d-flex align-items-center justify-content-center"
+      >
+        <ImageWithBasePath
+          className="img-fluid m-1"
+          src="assets/img/icons/facebook-logo.svg"
+          alt="Facebook"
+        />
+      </Link>
+    </div>
+    <div className="text-center me-2 flex-fill">
+      <Link
+        to="#"
+        className="br-10 p-2 btn btn-outline-light border d-flex align-items-center justify-content-center"
+      >
+        <ImageWithBasePath
+          className="img-fluid m-1"
+          src="assets/img/icons/google-logo.svg"
+          alt="Facebook"
+        />
+      </Link>
+    </div>
+    <div className="text-center flex-fill">
+      <Link
+        to="#"
+        className="bg-dark br-10 p-2 btn btn-dark d-flex align-items-center justify-content-center"
+      >
+        <ImageWithBasePath
+          className="img-fluid m-1"
+          src="assets/img/icons/apple-logo.svg"
+          alt="Apple"
+        />
+      </Link>
+    </div>
+  </div>
+</div>
+*/}
                     </div>
                     <div className="mt-5 pb-4 text-center">
                       <p className="mb-0 text-gray-9">Copyright © 2024 - Smarthr</p>

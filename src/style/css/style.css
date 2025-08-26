@@ -18331,6 +18331,108 @@ input[type=range]::-webkit-slider-runnable-track {
 .todo-wrapper-list .todo-strike-content p {
   text-decoration-line: line-through;
 }
+
+/* Admin Dashboard Todo Styles */
+.todo-strike .form-check-label {
+  text-decoration: line-through !important;
+  color: #6c757d !important;
+  opacity: 0.7 !important;
+}
+
+.todo-strike .form-check-label.fw-medium {
+  text-decoration: line-through !important;
+  color: #6c757d !important;
+  opacity: 0.7 !important;
+}
+
+/* More specific rules to ensure strike-through works */
+.todo-item.todo-strike .form-check-label {
+  text-decoration: line-through !important;
+  color: #6c757d !important;
+  opacity: 0.7 !important;
+}
+
+.todo-item.todo-strike .form-check-label.fw-medium {
+  text-decoration: line-through !important;
+  color: #6c757d !important;
+  opacity: 0.7 !important;
+}
+
+.todo-strike {
+  background-color: #f8f9fa !important;
+  border-color: #dee2e6 !important;
+}
+
+.todo-item {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.todo-item:hover {
+  background-color: #f8f9fa;
+}
+
+.todo-item .ti-grid-dots {
+  cursor: grab;
+}
+
+.todo-item .ti-grid-dots:active {
+  cursor: grabbing;
+}
+
+.todo-item.dragging {
+  opacity: 0.5;
+  transform: rotate(5deg);
+}
+
+.todo-item.drag-over {
+  border-top: 2px solid #007bff;
+}
+
+/* Todo delete button styles */
+.todo-item .btn-link.text-danger {
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.todo-item .btn-link.text-danger:hover {
+  opacity: 1;
+  color: #dc3545 !important;
+}
+
+/* Todo pagination styles */
+.todo-pagination .btn-outline-secondary {
+  border-color: #dee2e6;
+  color: #6c757d;
+}
+
+.todo-pagination .btn-outline-secondary:hover:not(:disabled) {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  color: white;
+}
+
+.todo-pagination .btn-outline-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Todo item expansion styles */
+.todo-item {
+  transition: all 0.2s ease;
+}
+.todo-item:hover {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.todo-item .d-flex.align-items-center {
+  transition: background-color 0.2s ease;
+}
+.todo-item .d-flex.align-items-center:hover {
+  background-color: rgba(0,0,0,0.02);
+}
+.todo-item .border-top {
+  border-top-color: #e9ecef !important;
+}
 .todo-wrapper-list .todo-profile {
   width: 20%;
   justify-content: end;

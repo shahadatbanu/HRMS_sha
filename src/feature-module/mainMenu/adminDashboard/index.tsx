@@ -1,23 +1,811 @@
 import React, { useEffect, useState } from "react";
-import ReactApexChart from "react-apexcharts";
 import { Link } from "react-router-dom";
+import { backend_url } from "../../../environment";
+import { all_routes } from "../../../feature-module/router/all_routes";
+import { getAbsenceStats } from "../../../core/services/attendanceSettingsService";
+import leaveService from "../../../core/services/leaveService";
+import todoService, { Todo } from "../../../core/services/todoService";
+import TodoModal from "./TodoModal";
 import ImageWithBasePath from "../../../core/common/imageWithBasePath";
-import { all_routes } from "../../router/all_routes";
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
-import { Chart } from "primereact/chart";
-import { Calendar } from 'primereact/calendar';
+import { Chart } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  DoughnutController,
+} from "chart.js";
+import ReactApexChart from "react-apexcharts";
 import ProjectModals from "../../../core/modals/projectModal";
 import RequestModals from "../../../core/modals/requestModal";
-import TodoModal from "../../../core/modals/todoModal";
-import CollapseHeader from "../../../core/common/collapse-header/collapse-header";
+import { useUser } from '../../../core/context/UserContext';
+import activityService, { Activity } from '../../../core/services/activityService';
+import Swal from 'sweetalert2';
+
+// TypeScript interfaces for dashboard interviews
+interface DashboardInterview {
+  _id: string;
+  candidateId: string;
+  candidateName: string;
+  scheduledDate: string;
+  interviewLevel: string;
+  interviewer: string;
+  position: string;
+  status: string;
+  appliedRole: string;
+  candidateProfileImage?: string;
+  recruiter?: {
+    firstName: string;
+    lastName: string;
+    profileImage?: string;
+  };
+  interviewLink?: string;
+}
+
+interface DashboardInterviewsResponse {
+  success: boolean;
+  data: DashboardInterview[];
+  total: number;
+  message?: string;
+}
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  DoughnutController
+);
+
+// Add CSS styles for todo strike-through effect
+
 
 const AdminDashboard = () => {
   const routes = all_routes;
+  const { user, isLoading } = useUser();
 
   const [isTodo, setIsTodo] = useState([false, false, false]);
 
   const [date, setDate] = useState(new Date());
+
+  const [attendanceStats, setAttendanceStats] = useState<{ present: number; totalEmployees: number } | null>(null);
+  const [attendanceLoading, setAttendanceLoading] = useState(true);
+  
+  // Add state for leave requests
+  const [leaveRequestsCount, setLeaveRequestsCount] = useState(0);
+  const [leaveRequestsLoading, setLeaveRequestsLoading] = useState(true);
+  
+  // Add state for late employees
+  const [lateEmployeesCount, setLateEmployeesCount] = useState(0);
+  const [lateEmployeesLoading, setLateEmployeesLoading] = useState(true);
+  
+  // Add state for absent employees
+  const [absentEmployeesCount, setAbsentEmployeesCount] = useState(0);
+  const [absentEmployeesLoading, setAbsentEmployeesLoading] = useState(true);
+  
+  // Add state for new hires
+  const [newHiresCount, setNewHiresCount] = useState(0);
+  const [newHiresLoading, setNewHiresLoading] = useState(true);
+  
+  // Add state for attendance overview
+  const [attendanceOverview, setAttendanceOverview] = useState({
+    total: 0,
+    present: 0,
+    late: 0,
+    onLeave: 0,
+    absent: 0
+  });
+  const [attendanceOverviewLoading, setAttendanceOverviewLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  
+  // Add state for clock-in/out data
+  const [clockInOutData, setClockInOutData] = useState({
+    present: [] as any[],
+    late: [] as any[],
+    absent: [] as any[]
+  });
+  const [clockInOutLoading, setClockInOutLoading] = useState(true);
+  const [selectedDesignation, setSelectedDesignation] = useState('All Designations');
+  const [selectedClockDate, setSelectedClockDate] = useState('Today');
+  const [employeeDesignations, setEmployeeDesignations] = useState<string[]>([]);
+  
+  // Add state for absent employees (for avatar placeholders)
+  const [absentEmployees, setAbsentEmployees] = useState<any[]>([]);
+  
+  // Add state for employees (for Employees card)
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [employeesLoading, setEmployeesLoading] = useState(true);
+  
+  // Add state for todos (for Todo card)
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [todosLoading, setTodosLoading] = useState(true);
+  const [todoModalOpen, setTodoModalOpen] = useState(false);
+  const [currentTodoPage, setCurrentTodoPage] = useState(1);
+  const [totalTodoPages, setTotalTodoPages] = useState(1);
+  const [totalTodos, setTotalTodos] = useState(0);
+  
+  // Add state for drag and drop
+  const [draggedTodo, setDraggedTodo] = useState<string | null>(null);
+  const [dragOverTodo, setDragOverTodo] = useState<string | null>(null);
+  
+  // Add state for todo description expansion
+  const [expandedTodoId, setExpandedTodoId] = useState<string | null>(null);
+
+  // Add state for activities (for Recent Activities card)
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
+  const [lastActivitiesUpdate, setLastActivitiesUpdate] = useState<Date | null>(null);
+
+  //Attendance ChartJs
+  const [chartData, setChartData] = useState({
+    labels: ['Late', 'Present', 'On Leave', 'Absent'],
+    datasets: [
+      {
+        label: 'Semi Donut',
+        data: [0, 0, 0, 0],
+        backgroundColor: ['#0C4B5E', '#03C95A', '#FFC107', '#E70D0D'],
+        borderWidth: 5,
+        borderRadius: 10,
+        borderColor: '#fff',
+        hoverBorderWidth: 0,
+        cutout: '60%',
+      }
+    ]
+  });
+  const [chartOptions, setChartOptions] = useState({
+    rotation: -100,
+    circumference: 200,
+    layout: {
+      padding: {
+        top: -20,
+        bottom: -20,
+      }
+    },
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false
+      }
+    },
+  });
+
+  // Add state for submissions overview
+  const [submissionsData, setSubmissionsData] = useState<any[]>([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState(true);
+  const [selectedSubmissionEmployee, setSelectedSubmissionEmployee] = useState('All Employees');
+  const [submissionEmployees, setSubmissionEmployees] = useState<any[]>([]);
+
+  // Add state for birthdays
+  const [birthdays, setBirthdays] = useState({
+    today: [] as any[],
+    tomorrow: [] as any[],
+    upcoming: [] as any[]
+  });
+  const [birthdaysLoading, setBirthdaysLoading] = useState(true);
+
+  // Add state for interviews/schedules
+  const [interviews, setInterviews] = useState<DashboardInterview[]>([]);
+  const [interviewsLoading, setInterviewsLoading] = useState(true);
+
+  // Add state for submissions chart
+  const [submissionsChartData, setSubmissionsChartData] = useState<any>({
+    chart: {
+      height: 290,
+      type: 'bar',
+      stacked: false,
+      toolbar: {
+        show: false,
+      }
+    },
+    colors: ['#FF6F28'],
+    responsive: [{
+      breakpoint: 480,
+      options: {
+        legend: {
+          position: 'bottom',
+          offsetX: -10,
+          offsetY: 0
+        }
+      }
+    }],
+    plotOptions: {
+      bar: {
+        borderRadius: 5,
+        horizontal: false,
+        endingShape: 'rounded'
+      },
+    },
+    series: [{
+      name: 'Monthly Submissions',
+      data: []
+    }],
+    xaxis: {
+      categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      labels: {
+        style: {
+          colors: '#6B7280',
+          fontSize: '13px',
+        }
+      }
+    },
+    yaxis: {
+      labels: {
+        offsetX: -15,
+        style: {
+          colors: '#6B7280',
+          fontSize: '13px',
+        }
+      }
+    },
+    grid: {
+      borderColor: '#E5E7EB',
+      strokeDashArray: 5,
+      padding: {
+        left: -8,
+      },
+    },
+    legend: {
+      show: false
+    },
+    dataLabels: {
+      enabled: false
+    },
+    fill: {
+      opacity: 1
+    },
+  });
+
+  useEffect(() => {
+    setAttendanceLoading(true);
+    getAbsenceStats()
+      .then((stats) => {
+        // Backend now provides present as onTime + late, so use it directly
+        setAttendanceStats({ present: stats.present, totalEmployees: stats.totalEmployees });
+      })
+      .catch(() => {
+        setAttendanceStats(null);
+      })
+      .finally(() => setAttendanceLoading(false));
+    
+    fetchLateEmployeesCount();
+    fetchAbsentEmployeesCount();
+    fetchNewHiresCount(); // Fetch new hires count on component mount
+    fetchAttendanceOverview(); // Fetch attendance overview data
+    fetchClockInOutData(); // Fetch clock-in/out data on component mount
+    fetchEmployeeDesignations(); // Fetch employee designations on component mount
+    // fetchEmployees(); // Fetch employees data on component mount - moved to user effect
+  }, []);
+
+  // Fetch employees when user is loaded
+  useEffect(() => {
+    if (user && !isLoading) {
+      fetchEmployees();
+      fetchTodos(1);
+    }
+  }, [user, isLoading]);
+
+  // Update chart data when attendance overview changes
+  useEffect(() => {
+    setChartData({
+      labels: ['Late', 'On Time', 'On Leave', 'Absent'],
+      datasets: [
+        {
+          label: 'Semi Donut',
+          data: [
+            attendanceOverview.late,
+            attendanceOverview.present - attendanceOverview.late, // onTime = present - late
+            attendanceOverview.onLeave,
+            attendanceOverview.absent
+          ],
+          backgroundColor: ['#0C4B5E', '#03C95A', '#FFC107', '#E70D0D'],
+          borderWidth: 5,
+          borderRadius: 10,
+          borderColor: '#fff',
+          hoverBorderWidth: 0,
+          cutout: '60%',
+        }
+      ]
+    });
+  }, [attendanceOverview]);
+
+  // Function to fetch pending leave requests count
+  const fetchPendingLeaveRequests = async () => {
+    try {
+      setLeaveRequestsLoading(true);
+      
+      const response = await leaveService.getAllLeaveRequests({ 
+        page: 1, 
+        limit: 1000, // Get all to count pending ones
+      });
+      
+      // Count only pending leave requests
+      const pendingLeaves = response.data.filter((leave: any) => leave.status === 'New');
+      const pendingCount = pendingLeaves.length;
+      
+      console.log('Leave requests count:', pendingCount);
+      setLeaveRequestsCount(pendingCount);
+    } catch (error) {
+      console.error('Error fetching leave requests:', error);
+      setLeaveRequestsCount(0);
+    } finally {
+      setLeaveRequestsLoading(false);
+    }
+  };
+
+  // Function to fetch late employees count
+  const fetchLateEmployeesCount = async () => {
+    try {
+      setLateEmployeesLoading(true);
+      
+      // Get today's date in YYYY-MM-DD format
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Fetch attendance data for today using the correct endpoint
+      const response = await fetch(`${backend_url}/api/attendance?startDate=${today}&endDate=${today}&limit=1000`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        const data = result.data || [];
+        // Count employees with 'Late' status
+        const lateCount = data.filter((attendance: any) => attendance.status === 'Late').length;
+        const totalCount = data.length;
+        
+        console.log('Late employees count:', lateCount, 'Total:', totalCount);
+        setLateEmployeesCount(lateCount);
+      } else {
+        console.error('Error fetching attendance data');
+        setLateEmployeesCount(0);
+      }
+    } catch (error) {
+      console.error('Error fetching late employees:', error);
+      setLateEmployeesCount(0);
+    } finally {
+      setLateEmployeesLoading(false);
+    }
+  };
+
+  // Function to fetch absent employees count
+  const fetchAbsentEmployeesCount = async () => {
+    try {
+      setAbsentEmployeesLoading(true);
+      
+      // Get today's date in YYYY-MM-DD format
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Fetch attendance data for today using the correct endpoint
+      const response = await fetch(`${backend_url}/api/attendance?startDate=${today}&endDate=${today}&limit=1000`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        const data = result.data || [];
+        // Count employees with 'Absent' status
+        const absentCount = data.filter((attendance: any) => attendance.status === 'Absent').length;
+        const totalCount = data.length;
+        
+        console.log('Absent employees count:', absentCount, 'Total:', totalCount);
+        setAbsentEmployeesCount(absentCount);
+      } else {
+        console.error('Error fetching attendance data');
+        setAbsentEmployeesCount(0);
+      }
+    } catch (error) {
+      console.error('Error fetching absent employees:', error);
+      setAbsentEmployeesCount(0);
+    } finally {
+      setAbsentEmployeesLoading(false);
+    }
+  };
+
+  // Function to fetch new hires count for current month
+  const fetchNewHiresCount = async () => {
+    try {
+      setNewHiresLoading(true);
+      
+      // Get current month's start and end dates
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      
+      const startDate = startOfMonth.toISOString().split('T')[0];
+      const endDate = endOfMonth.toISOString().split('T')[0];
+      
+      // Fetch employees who joined in current month
+      const response = await fetch(`${backend_url}/api/employees?startDate=${startDate}&endDate=${endDate}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Count employees who joined in current month
+        const newHires = data.filter((employee: any) => {
+          const joinDate = new Date(employee.joinDate);
+          return joinDate >= startOfMonth && joinDate <= endOfMonth;
+        });
+        
+        console.log('New hires count for current month:', newHires.length);
+        setNewHiresCount(newHires.length);
+      } else {
+        console.error('Error fetching new hires data');
+        setNewHiresCount(0);
+      }
+    } catch (error) {
+      console.error('Error fetching new hires:', error);
+      setNewHiresCount(0);
+    } finally {
+      setNewHiresLoading(false);
+    }
+  };
+
+  // Function to fetch attendance overview data
+  const fetchAttendanceOverview = async (date: string = selectedDate) => {
+    try {
+      setAttendanceOverviewLoading(true);
+      
+      // Fetch attendance data for the selected date using the correct endpoint
+      const response = await fetch(`${backend_url}/api/attendance?startDate=${date}&endDate=${date}&limit=1000`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        const data = result.data || [];
+        
+        console.log('Raw attendance data:', data);
+        
+        // Count attendance by status
+        const onTime = data.filter((attendance: any) => attendance.status === 'Present').length;
+        const late = data.filter((attendance: any) => attendance.status === 'Late').length;
+        const onLeave = data.filter((attendance: any) => attendance.status === 'On Leave').length;
+        const absent = data.filter((attendance: any) => attendance.status === 'Absent').length;
+        const total = data.length;
+        
+        // Calculate present as onTime + late (same as backend logic)
+        const present = onTime + late;
+        
+        // Store absent employees for avatar placeholders
+        const absentEmployeesData = data.filter((attendance: any) => attendance.status === 'Absent');
+        setAbsentEmployees(absentEmployeesData);
+        
+        setAttendanceOverview({
+          total,
+          present,
+          late,
+          onLeave,
+          absent
+        });
+        
+        console.log('Attendance overview:', { total, present, late, onLeave, absent });
+        console.log('Absent employees:', absentEmployeesData);
+      } else {
+        console.error('Error fetching attendance overview data');
+        setAttendanceOverview({ total: 0, present: 0, late: 0, onLeave: 0, absent: 0 });
+        setAbsentEmployees([]);
+      }
+    } catch (error) {
+      console.error('Error fetching attendance overview:', error);
+      setAttendanceOverview({ total: 0, present: 0, late: 0, onLeave: 0, absent: 0 });
+      setAbsentEmployees([]);
+    } finally {
+      setAttendanceOverviewLoading(false);
+    }
+  };
+
+  // Function to fetch clock-in/out data
+  const fetchClockInOutData = async (date: string = 'today', designation: string = 'All Designations') => {
+    try {
+      setClockInOutLoading(true);
+      
+      let targetDate = new Date().toISOString().split('T')[0];
+      if (date === 'yesterday') {
+        targetDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      } else if (date === 'week') {
+        targetDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      }
+      
+      // Fetch attendance data for the selected date
+      const response = await fetch(`${backend_url}/api/attendance?startDate=${targetDate}&endDate=${targetDate}&limit=1000`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        const data = result.data || [];
+        
+        // Filter by designation if not "All Designations"
+        let filteredData = data;
+        if (designation !== 'All Designations') {
+          filteredData = data.filter((attendance: any) => 
+            attendance.employeeId?.designation === designation
+          );
+        }
+        
+        // Categorize attendance data
+        const present = filteredData.filter((attendance: any) => attendance.status === 'Present');
+        const late = filteredData.filter((attendance: any) => attendance.status === 'Late');
+        const absent = filteredData.filter((attendance: any) => attendance.status === 'Absent');
+        
+        setClockInOutData({
+          present,
+          late,
+          absent
+        });
+        
+        console.log('Clock-in/out data:', { present: present.length, late: late.length, absent: absent.length });
+      } else {
+        console.error('Error fetching clock-in/out data');
+        setClockInOutData({ present: [], late: [], absent: [] });
+      }
+    } catch (error) {
+      console.error('Error fetching clock-in/out data:', error);
+      setClockInOutData({ present: [], late: [], absent: [] });
+    } finally {
+      setClockInOutLoading(false);
+    }
+  };
+
+  // Function to fetch employee designations
+  const fetchEmployeeDesignations = async () => {
+    try {
+      // Fetch all employees to get unique designations
+      const response = await fetch(`${backend_url}/api/employees?limit=1000`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        const data = result.data || [];
+        
+        // Extract unique designations
+        const designations = data
+          .map((employee: any) => employee.designation)
+          .filter((designation: string, index: number, arr: string[]) => 
+            designation && arr.indexOf(designation) === index
+          );
+        
+        setEmployeeDesignations(designations);
+        console.log('Employee designations:', designations);
+      } else {
+        console.error('Error fetching employee designations');
+        setEmployeeDesignations([]);
+      }
+    } catch (error) {
+      console.error('Error fetching employee designations:', error);
+      setEmployeeDesignations([]);
+    }
+  };
+
+  // Function to get badge color based on department/designation
+  const getDepartmentBadgeColor = (department: string): string => {
+    if (!department) return 'secondary';
+    
+    const departmentLower = department.toLowerCase();
+    
+    if (departmentLower.includes('development') || departmentLower.includes('developer') || departmentLower.includes('programmer')) {
+      return 'danger';
+    } else if (departmentLower.includes('design') || departmentLower.includes('ui') || departmentLower.includes('ux')) {
+      return 'pink';
+    } else if (departmentLower.includes('marketing') || departmentLower.includes('sales')) {
+      return 'info';
+    } else if (departmentLower.includes('finance') || departmentLower.includes('accounting')) {
+      return 'secondary';
+    } else if (departmentLower.includes('hr') || departmentLower.includes('human')) {
+      return 'primary';
+    } else if (departmentLower.includes('manager') || departmentLower.includes('lead')) {
+      return 'purple';
+    } else if (departmentLower.includes('admin') || departmentLower.includes('executive')) {
+      return 'warning';
+    } else {
+      return 'secondary';
+    }
+  };
+
+  // Function to fetch employees for the Employees card
+  const fetchEmployees = async () => {
+    try {
+      setEmployeesLoading(true);
+      
+      // Only fetch if user is authenticated and has admin/HR role
+      if (!user || (user.role !== 'admin' && user.role !== 'hr')) {
+        console.log('User not authenticated or not admin/HR role:', user);
+        setEmployees([]);
+        return;
+      }
+      
+      console.log('Fetching employees with token:', localStorage.getItem('token'));
+      
+      // Fetch employees data
+      const response = await fetch(`${backend_url}/api/employees?limit=5`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('Employees API response status:', response.status);
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Employees API result:', result);
+        
+        // The API returns the array directly, not wrapped in a data property
+        const data = Array.isArray(result) ? result : (result.data || []);
+        console.log('Employees data array:', data);
+        
+        setEmployees(data);
+        console.log('Employees data set successfully:', data);
+      } else {
+        const errorText = await response.text();
+        console.error('Error fetching employees data. Status:', response.status, 'Response:', errorText);
+        setEmployees([]);
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      setEmployees([]);
+    } finally {
+      setEmployeesLoading(false);
+    }
+  };
+
+  // Function to fetch todos for the Todo card
+  const fetchTodos = async (page: number = 1) => {
+    try {
+      setTodosLoading(true);
+      
+      const result = await todoService.getDashboardTodos({ page });
+      setTodos(result.data);
+      setCurrentTodoPage(result.page);
+      setTotalTodoPages(result.totalPages);
+      setTotalTodos(result.total);
+      console.log('Todos fetched:', result.data);
+    } catch (error) {
+      console.error('Error fetching todos:', error);
+      setTodos([]);
+    } finally {
+      setTodosLoading(false);
+    }
+  };
+
+  // Function to toggle todo completion
+  const toggleTodoCompletion = async (todoId: string) => {
+    try {
+      const updatedTodo = await todoService.toggleTodo(todoId);
+      setTodos(prev => prev.map(todo => 
+        todo._id === todoId ? updatedTodo : todo
+      ));
+    } catch (error) {
+      console.error('Error toggling todo:', error);
+    }
+  };
+
+  // Function to handle todo creation
+  const handleTodoCreated = () => {
+    fetchTodos(1); // Reset to first page when new todo is created
+  };
+
+  // Function to handle todo deletion
+  const handleTodoDelete = async (todoId: string) => {
+    try {
+      await todoService.deleteTodo(todoId);
+      // Refresh current page
+      fetchTodos(currentTodoPage);
+    } catch (error) {
+      console.error('Error deleting todo:', error);
+    }
+  };
+
+  // Function to handle todo item click for description expansion
+  const handleTodoClick = (todoId: string) => {
+    setExpandedTodoId(expandedTodoId === todoId ? null : todoId);
+  };
+
+  // Drag and drop handlers for todos
+  const handleDragStart = (e: React.DragEvent, todoId: string) => {
+    setDraggedTodo(todoId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, todoId: string) => {
+    e.preventDefault();
+    if (draggedTodo && draggedTodo !== todoId) {
+      setDragOverTodo(todoId);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverTodo(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetTodoId: string) => {
+    e.preventDefault();
+    if (!draggedTodo || draggedTodo === targetTodoId) {
+      setDraggedTodo(null);
+      setDragOverTodo(null);
+      return;
+    }
+
+    try {
+      // Get current todos
+      const currentTodos = [...todos];
+      const draggedIndex = currentTodos.findIndex(todo => todo._id === draggedTodo);
+      const targetIndex = currentTodos.findIndex(todo => todo._id === targetTodoId);
+      
+      if (draggedIndex === -1 || targetIndex === -1) {
+        setDraggedTodo(null);
+        setDragOverTodo(null);
+        return;
+      }
+
+      // Reorder todos
+      const [draggedTodoItem] = currentTodos.splice(draggedIndex, 1);
+      currentTodos.splice(targetIndex, 0, draggedTodoItem);
+      
+      // Update state
+      setTodos(currentTodos);
+      
+      // TODO: Update backend to persist the new order
+      // For now, we'll just update the frontend state
+      
+    } catch (error) {
+      console.error('Error reordering todos:', error);
+    } finally {
+      setDraggedTodo(null);
+      setDragOverTodo(null);
+    }
+  };
+
+  // Handle click on leave requests link
+  const handleLeaveRequestsClick = () => {
+    // Refresh the count before navigating
+    fetchPendingLeaveRequests();
+  };
+
+  // Fetch pending leave requests count on component mount and refresh periodically
+  useEffect(() => {
+    // Only fetch if user is authenticated and has admin/HR role
+    if (user && (user.role === 'admin' || user.role === 'hr')) {
+      fetchPendingLeaveRequests();
+      
+      // Refresh leave count every 30 seconds
+      const interval = setInterval(() => {
+        fetchPendingLeaveRequests();
+      }, 30000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   //New Chart
   const [empDepartment] = useState<any>({
@@ -146,61 +934,8 @@ const AdminDashboard = () => {
     },
   })
 
-  //Attendance ChartJs
-  const [chartData, setChartData] = useState({});
-  const [chartOptions, setChartOptions] = useState({});
-  useEffect(() => {
-    const data = {
-      labels: ['Late', 'Present', 'Permission', 'Absent'],
-      datasets: [
-
-        {
-          label: 'Semi Donut',
-          data: [40, 20, 30, 10],
-          backgroundColor: ['#0C4B5E', '#03C95A', '#FFC107', '#E70D0D'],
-          borderWidth: 5,
-          borderRadius: 10,
-          borderColor: '#fff', // Border between segments
-          hoverBorderWidth: 0,   // Border radius for curved edges
-          cutout: '60%',
-        }
-      ]
-    };
-    const options = {
-      rotation: -100,
-      circumference: 200,
-      layout: {
-        padding: {
-          top: -20,    // Set to 0 to remove top padding
-          bottom: -20, // Set to 0 to remove bottom padding
-        }
-      },
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false // Hide the legend
-        }
-      },
-    };
-
-    setChartData(data);
-    setChartOptions(options);
-  }, []);
-
   //Semi Donut ChartJs
-  const [semidonutData, setSemidonutData] = useState({});
-  const [semidonutOptions, setSemidonutOptions] = useState({});
-  const toggleTodo = (index: number) => {
-    setIsTodo((prevIsTodo) => {
-      const newIsTodo = [...prevIsTodo];
-      newIsTodo[index] = !newIsTodo[index];
-      return newIsTodo;
-    });
-  };
-  useEffect(() => {
-
-    const data = {
+  const [semidonutData, setSemidonutData] = useState({
       labels: ["Ongoing", "Onhold", "Completed", "Overdue"],
       datasets: [
         {
@@ -208,43 +943,269 @@ const AdminDashboard = () => {
           data: [20, 40, 20, 10],
           backgroundColor: ['#FFC107', '#1B84FF', '#03C95A', '#E70D0D'],
           borderWidth: -10,
-          borderColor: 'transparent', // Border between segments
-          hoverBorderWidth: 0,   // Border radius for curved edges
+        borderColor: 'transparent',
+        hoverBorderWidth: 0,
           cutout: '75%',
           spacing: -30,
         },
       ],
-    };
-
-    const options = {
+  });
+  const [semidonutOptions, setSemidonutOptions] = useState({
       rotation: -100,
       circumference: 185,
       layout: {
         padding: {
-          top: -20,    // Set to 0 to remove top padding
-          bottom: 20, // Set to 0 to remove bottom padding
+        top: -20,
+        bottom: 20,
         }
       },
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          display: false // Hide the legend
+        display: false
+      }
+    }
+  });
+  const toggleTodo = (index: number) => {
+    setIsTodo((prevIsTodo) => {
+      const newIsTodo = [...prevIsTodo];
+      newIsTodo[index] = !newIsTodo[index];
+      return newIsTodo;
+    });
+  };
+
+  const profileImg = user && user.profileImage ? `${backend_url}/uploads/${user.profileImage}` : 'assets/img/profiles/avatar-31.jpg';
+
+  // Function to fetch submissions data from backend
+  const fetchSubmissionsData = async (selectedEmployee: string = 'All Employees') => {
+    try {
+      setSubmissionsLoading(true);
+      
+      // Get employee ID from selected employee name
+      let employeeId = 'all';
+      if (selectedEmployee !== 'All Employees') {
+        const employee = submissionEmployees.find(emp => emp.name === selectedEmployee);
+        if (employee) {
+          employeeId = employee.id;
         }
-      }, elements: {
-        arc: {
-          borderWidth: -30, // Ensure consistent overlap
-          borderRadius: 30, // Add some rounding
+      }
+      
+      const response = await fetch(`${backend_url}/api/candidates/submissions/dashboard?employeeId=${employeeId}`, {
+        headers: { 
+          'Authorization': `Bearer ${localStorage.getItem('token')}`, 
+          'Content-Type': 'application/json' 
         }
-      },
-    };
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        const { months, submissions } = result.data;
+        
+        setSubmissionsData(submissions);
+        
+        // Update chart data
+        const chartData = {
+          ...submissionsChartData,
+          series: [{
+            name: 'Monthly Submissions',
+            data: submissions
+          }],
+          xaxis: {
+            ...submissionsChartData.xaxis,
+            categories: months
+          }
+        };
+        
+        setSubmissionsChartData(chartData);
+      } else {
+        console.error('Error fetching submissions data:', response.statusText);
+        setSubmissionsData([]);
+      }
+    } catch (error) {
+      console.error('Error fetching submissions data:', error);
+      setSubmissionsData([]);
+    } finally {
+      setSubmissionsLoading(false);
+    }
+  };
 
-    setSemidonutData(data);
-    setSemidonutOptions(options);
-  }, []);
+  // Function to fetch employees for submissions filter
+  const fetchSubmissionEmployees = async () => {
+    try {
+      const response = await fetch(`${backend_url}/api/employees?limit=1000`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const employees = await response.json();
+        
+        // Format employees for dropdown
+        const formattedEmployees = employees.map((employee: any) => ({
+          id: employee._id,
+          name: `${employee.firstName} ${employee.lastName}`,
+          designation: employee.designation
+        }));
+        
+        setSubmissionEmployees(formattedEmployees);
+      } else {
+        console.error('Error fetching employees for submissions');
+        setSubmissionEmployees([]);
+      }
+    } catch (error) {
+      console.error('Error fetching submission employees:', error);
+      setSubmissionEmployees([]);
+    }
+  };
 
+  // Function to fetch birthdays data
+  const fetchBirthdays = async () => {
+    try {
+      setBirthdaysLoading(true);
+      const response = await fetch(`${backend_url}/api/employees/birthdays/dashboard`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setBirthdays(result.data);
+        } else {
+          console.error('Error fetching birthdays:', result.message);
+          setBirthdays({ today: [], tomorrow: [], upcoming: [] });
+        }
+      } else {
+        console.error('Error fetching birthdays:', response.statusText);
+        setBirthdays({ today: [], tomorrow: [], upcoming: [] });
+      }
+    } catch (error) {
+      console.error('Error fetching birthdays:', error);
+      setBirthdays({ today: [], tomorrow: [], upcoming: [] });
+    } finally {
+      setBirthdaysLoading(false);
+    }
+  };
 
+  // Function to get badge color based on interview level
+  const getInterviewBadgeColor = (level: string): string => {
+    switch (level) {
+      case 'L1': return 'secondary';
+      case 'L2': return 'info';
+      case 'L3': return 'warning';
+      default: return 'secondary';
+    }
+  };
 
+  // Function to format interview time
+  const formatInterviewTime = (date: string) => {
+    const interviewDate = new Date(date);
+    return interviewDate.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  // Function to format interview date
+  const formatInterviewDate = (date: string) => {
+    const interviewDate = new Date(date);
+    return interviewDate.toLocaleDateString('en-US', { 
+      weekday: 'short',
+      day: 'numeric', 
+      month: 'short', 
+      year: 'numeric' 
+    });
+  };
+
+  // Function to fetch interviews data
+  const fetchInterviews = async () => {
+    try {
+      setInterviewsLoading(true);
+      const response = await fetch(`${backend_url}/api/candidates/interviews/dashboard`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const result: DashboardInterviewsResponse = await response.json();
+        if (result.success) {
+          setInterviews(result.data);
+        } else {
+          console.error('Error fetching interviews:', result.message);
+          setInterviews([]);
+        }
+      } else {
+        console.error('Error fetching interviews:', response.statusText);
+        setInterviews([]);
+      }
+    } catch (error) {
+      console.error('Error fetching interviews:', error);
+      setInterviews([]);
+    } finally {
+      setInterviewsLoading(false);
+    }
+  };
+
+  // Function to fetch activities data
+  const fetchActivities = async () => {
+    try {
+      setActivitiesLoading(true);
+      const result = await activityService.getRecentActivities(10);
+      if (result.success) {
+        setActivities(result.data);
+        setLastActivitiesUpdate(new Date());
+      } else {
+        console.error('Error fetching activities:', result.message);
+        setActivities([]);
+      }
+    } catch (error) {
+      console.error('Error fetching activities:', error);
+      setActivities([]);
+    } finally {
+      setActivitiesLoading(false);
+    }
+  };
+
+  // Fetch submissions data on component mount and when user is loaded
+  useEffect(() => {
+    if (user && !isLoading) {
+      fetchSubmissionEmployees();
+      fetchSubmissionsData();
+      fetchBirthdays();
+      fetchInterviews();
+    }
+  }, [user, isLoading]);
+
+  // Update submissions data when employee filter changes
+  useEffect(() => {
+    if (user && !isLoading) {
+      fetchSubmissionsData(selectedSubmissionEmployee);
+    }
+  }, [selectedSubmissionEmployee, user, isLoading]);
+
+  // Auto-refresh activities every 30 seconds
+  useEffect(() => {
+    if (user && !isLoading) {
+      // Initial fetch
+      fetchActivities();
+      
+      // Set up interval for auto-refresh
+      const interval = setInterval(() => {
+        fetchActivities();
+      }, 30000); // 30 seconds
+      
+      // Cleanup interval on unmount
+      return () => clearInterval(interval);
+    }
+  }, [user, isLoading]);
 
   return (
     <>
@@ -269,7 +1230,7 @@ const AdminDashboard = () => {
                 </ol>
               </nav>
             </div>
-            <div className="d-flex my-xl-auto right-content align-items-center flex-wrap ">
+            {/* <div className="d-flex my-xl-auto right-content align-items-center flex-wrap ">
               <div className="me-2 mb-2">
                 <div className="dropdown">
                   <Link to="#"
@@ -312,7 +1273,7 @@ const AdminDashboard = () => {
               <div className="ms-2 head-icons">
                 <CollapseHeader />
               </div>
-            </div>
+            </div> */}
           </div>
           {/* /Breadcrumb */}
           {/* Welcome Wrap */}
@@ -320,34 +1281,73 @@ const AdminDashboard = () => {
             <div className="card-body d-flex align-items-center justify-content-between flex-wrap pb-1">
               <div className="d-flex align-items-center mb-3">
                 <span className="avatar avatar-xl flex-shrink-0">
-                  <ImageWithBasePath
-                    src="assets/img/profiles/avatar-31.jpg"
-                    className="rounded-circle"
-                    alt="img"
-                  />
+                  {user && user.profileImage ? (
+                    <img
+                      src={profileImg}
+                      className="rounded-circle"
+                      alt="img"
+                    />
+                  ) : (
+                    <ImageWithBasePath
+                      src="assets/img/profiles/avatar-31.jpg"
+                      className="rounded-circle"
+                      alt="img"
+                    />
+                  )}
                 </span>
                 <div className="ms-3">
                   <h3 className="mb-2">
-                    Welcome Back, Adrian{" "}
-                    <Link to="#" className="edit-icon">
+                    Welcome Back, {isLoading ? '...' : (user ? `${user.firstName} ${user.lastName}` : 'Admin')}{" "}
+                    {/* <Link to="#" className="edit-icon">
                       <i className="ti ti-edit fs-14" />
-                    </Link>
+                    </Link> */}
                   </h3>
                   <p>
                     You have{" "}
-                    <span className="text-primary text-decoration-underline">
-                      21
-                    </span>{" "}
-                    Pending Approvals &amp;{" "}
-                    <span className="text-primary text-decoration-underline">
-                      14
-                    </span>{" "}
+                    <Link 
+                      to={routes.leaveadmin} 
+                      className={`text-decoration-underline cursor-pointer position-relative ${
+                        leaveRequestsCount > 0 ? 'text-danger fw-bold' : 'text-primary'
+                      }`}
+                      style={{ cursor: 'pointer' }}
+                      title={leaveRequestsCount > 0 ? `Click to view ${leaveRequestsCount} new leave requests` : 'No new leave requests'}
+                      onClick={handleLeaveRequestsClick}
+                    >
+                      {leaveRequestsLoading ? (
+                        <span className="spinner-border spinner-border-sm text-primary" role="status" />
+                      ) : (
+                        <>
+                          <span className="d-inline-flex align-items-center">
+                            <span className="me-1">{leaveRequestsCount}</span>
+                            {leaveRequestsCount > 0 && (
+                              <span 
+                                className="badge rounded-pill bg-danger" 
+                                style={{ 
+                                  fontSize: '0.5em',
+                                  padding: '2px 4px',
+                                  minWidth: '12px',
+                                  height: '12px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                              >
+                                !
+                              </span>
+                            )}
+                          </span>
+                        </>
+                      )}
+                    </Link>{" "}
                     Leave Requests
+                    {leaveRequestsCount > 0 && (
+                      <span className="text-danger ms-1">(New)</span>
+                    )}
                   </p>
                 </div>
               </div>
               <div className="d-flex align-items-center flex-wrap mb-1">
-                <Link
+                {/* <Link
                   to="#"
                   className="btn btn-secondary btn-md me-2 mb-2"
                   data-bs-toggle="modal" data-inert={true}
@@ -364,7 +1364,7 @@ const AdminDashboard = () => {
                 >
                   <i className="ti ti-square-rounded-plus me-1" />
                   Add Requests
-                </Link>
+                </Link> */}
               </div>
             </div>
           </div>
@@ -380,14 +1380,21 @@ const AdminDashboard = () => {
                         <i className="ti ti-calendar-share fs-16" />
                       </span>
                       <h6 className="fs-13 fw-medium text-default mb-1">
-                        Attendance
+                        Total Present
                       </h6>
                       <h3 className="mb-3">
-                        92/99{" "}
-                        <span className="fs-12 fw-medium text-success">
+                        {attendanceLoading ? (
+                          <span className="spinner-border spinner-border-sm text-primary" role="status" />
+                        ) : attendanceStats ? (
+                          `${attendanceStats.present}/${attendanceStats.totalEmployees}`
+                        ) : (
+                          '0/0'
+                        )}
+                        {" "}
+                        {/* <span className="fs-12 fw-medium text-success">
                           <i className="fa-solid fa-caret-up me-1" />
                           +2.1%
-                        </span>
+                        </span> */}
                       </h3>
                       <Link to="attendance-employee.html" className="link-default">
                         View Details
@@ -398,20 +1405,27 @@ const AdminDashboard = () => {
                 <div className="col-md-3 d-flex">
                   <div className="card flex-fill">
                     <div className="card-body">
-                      <span className="avatar rounded-circle bg-secondary mb-2">
-                        <i className="ti ti-browser fs-16" />
+                      <span className="avatar rounded-circle bg-warning mb-2">
+                        <i className="ti ti-clock-exclamation fs-16" />
                       </span>
                       <h6 className="fs-13 fw-medium text-default mb-1">
-                        Total Project's
+                        Total Late
                       </h6>
                       <h3 className="mb-3">
-                        90/94{" "}
-                        <span className="fs-12 fw-medium text-danger">
-                          <i className="fa-solid fa-caret-down me-1" />
-                          -2.1%
+                        {lateEmployeesLoading ? (
+                          <span className="spinner-border spinner-border-sm text-primary" role="status" />
+                        ) : lateEmployeesCount > 0 ? (
+                          `${lateEmployeesCount}`
+                        ) : (
+                          '0'
+                        )}
+                        {" "}
+                        <span className="fs-12 fw-medium text-warning">
+                          <i className="fa-solid fa-clock me-1" />
+                          Today
                         </span>
                       </h3>
-                      <Link to="projects.html" className="link-default">
+                      <Link to="attendance-report.html" className="link-default">
                         View All
                       </Link>
                     </div>
@@ -420,20 +1434,27 @@ const AdminDashboard = () => {
                 <div className="col-md-3 d-flex">
                   <div className="card flex-fill">
                     <div className="card-body">
-                      <span className="avatar rounded-circle bg-info mb-2">
-                        <i className="ti ti-users-group fs-16" />
+                      <span className="avatar rounded-circle bg-danger mb-2">
+                        <i className="ti ti-user-x fs-16" />
                       </span>
                       <h6 className="fs-13 fw-medium text-default mb-1">
-                        Total Clients
+                        Total Absent
                       </h6>
                       <h3 className="mb-3">
-                        69/86{" "}
+                        {absentEmployeesLoading ? (
+                          <span className="spinner-border spinner-border-sm text-primary" role="status" />
+                        ) : absentEmployeesCount > 0 ? (
+                          `${absentEmployeesCount}`
+                        ) : (
+                          '0'
+                        )}
+                        {" "}
                         <span className="fs-12 fw-medium text-danger">
-                          <i className="fa-solid fa-caret-down me-1" />
-                          -11.2%
+                          <i className="fa-solid fa-user-slash me-1" />
+                          Today
                         </span>
                       </h3>
-                      <Link to="clients.html" className="link-default">
+                      <Link to="attendance-report.html" className="link-default">
                         View All
                       </Link>
                     </div>
@@ -442,20 +1463,27 @@ const AdminDashboard = () => {
                 <div className="col-md-3 d-flex">
                   <div className="card flex-fill">
                     <div className="card-body">
-                      <span className="avatar rounded-circle bg-pink mb-2">
-                        <i className="ti ti-checklist fs-16" />
+                      <span className="avatar rounded-circle bg-dark mb-2">
+                        <i className="ti ti-user-star fs-16" />
                       </span>
                       <h6 className="fs-13 fw-medium text-default mb-1">
-                        Total Tasks
+                        New Hire
                       </h6>
                       <h3 className="mb-3">
-                        25/28{" "}
+                        {newHiresLoading ? (
+                          <span className="spinner-border spinner-border-sm text-primary" role="status" />
+                        ) : newHiresCount > 0 ? (
+                          `${newHiresCount}`
+                        ) : (
+                          '0'
+                        )}
+                        {" "}
                         <span className="fs-12 fw-medium text-success">
-                          <i className="fa-solid fa-caret-down me-1" />
-                          +11.2%
+                          <i className="fa-solid fa-calendar me-1" />
+                          This Month
                         </span>
                       </h3>
-                      <Link to="tasks.html" className="link-default">
+                      <Link to="employees.html" className="link-default">
                         View All
                       </Link>
                     </div>
@@ -530,20 +1558,20 @@ const AdminDashboard = () => {
                 <div className="col-md-3 d-flex">
                   <div className="card flex-fill">
                     <div className="card-body">
-                      <span className="avatar rounded-circle bg-dark mb-2">
-                        <i className="ti ti-user-star fs-16" />
+                      <span className="avatar rounded-circle bg-pink mb-2">
+                        <i className="ti ti-checklist fs-16" />
                       </span>
                       <h6 className="fs-13 fw-medium text-default mb-1">
-                        New Hire
+                        Total Tasks
                       </h6>
                       <h3 className="mb-3">
-                        45/48{" "}
-                        <span className="fs-12 fw-medium text-danger">
+                        25/28{" "}
+                        <span className="fs-12 fw-medium text-success">
                           <i className="fa-solid fa-caret-down me-1" />
-                          -11.2%
+                          +11.2%
                         </span>
                       </h3>
-                      <Link to="candidates.html" className="link-default">
+                      <Link to="tasks.html" className="link-default">
                         View All
                       </Link>
                     </div>
@@ -785,28 +1813,43 @@ const AdminDashboard = () => {
                       data-bs-toggle="dropdown"
                     >
                       <i className="ti ti-calendar me-1" />
-                      Today
+                      {selectedDate === new Date().toISOString().split('T')[0] ? 'Today' : selectedDate}
                     </Link>
-                    <ul className="dropdown-menu  dropdown-menu-end p-3">
+                    <ul className="dropdown-menu dropdown-menu-end p-3">
                       <li>
                         <Link to="#"
                           className="dropdown-item rounded-1"
-                        >
-                          This Month
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="#"
-                          className="dropdown-item rounded-1"
-                        >
-                          This Week
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="#"
-                          className="dropdown-item rounded-1"
+                          onClick={() => {
+                            const today = new Date().toISOString().split('T')[0];
+                            setSelectedDate(today);
+                            fetchAttendanceOverview(today);
+                          }}
                         >
                           Today
+                        </Link>
+                      </li>
+                      <li>
+                        <Link to="#"
+                          className="dropdown-item rounded-1"
+                          onClick={() => {
+                            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                            setSelectedDate(yesterday);
+                            fetchAttendanceOverview(yesterday);
+                          }}
+                        >
+                          Yesterday
+                        </Link>
+                      </li>
+                      <li>
+                        <Link to="#"
+                          className="dropdown-item rounded-1"
+                          onClick={() => {
+                            const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                            setSelectedDate(weekAgo);
+                            fetchAttendanceOverview(weekAgo);
+                          }}
+                        >
+                          Last Week
                         </Link>
                       </li>
                     </ul>
@@ -814,10 +1857,17 @@ const AdminDashboard = () => {
                 </div>
                 <div className="card-body">
                   <div className="chartjs-wrapper-demo position-relative mb-4">
-                    <Chart type="doughnut" data={chartData} options={chartOptions} className="w-full attendence-chart md:w-30rem" />
+                    <Chart 
+                      key={`attendance-chart-${attendanceOverview.total}`}
+                      id="attendance-chart"
+                      type="doughnut" 
+                      data={chartData} 
+                      options={chartOptions} 
+                      className="w-full attendence-chart md:w-30rem" 
+                    />
                     <div className="position-absolute text-center attendance-canvas">
                       <p className="fs-13 mb-1">Total Attendance</p>
-                      <h3>120</h3>
+                      <h3>{attendanceOverviewLoading ? '...' : attendanceOverview.total}</h3>
                     </div>
                   </div>
                   <h6 className="mb-3">Status</h6>
@@ -826,62 +1876,70 @@ const AdminDashboard = () => {
                       <i className="ti ti-circle-filled text-success me-1" />
                       Present
                     </p>
-                    <p className="f-13 fw-medium text-gray-9 mb-2">59%</p>
+                    <p className="f-13 fw-medium text-gray-9 mb-2">
+                      {attendanceOverviewLoading ? '...' : attendanceOverview.total > 0 ? 
+                        `${Math.round((attendanceOverview.present / attendanceOverview.total) * 100)}%` : '0%'}
+                    </p>
                   </div>
                   <div className="d-flex align-items-center justify-content-between">
                     <p className="f-13 mb-2">
                       <i className="ti ti-circle-filled text-secondary me-1" />
                       Late
                     </p>
-                    <p className="f-13 fw-medium text-gray-9 mb-2">21%</p>
+                    <p className="f-13 fw-medium text-gray-9 mb-2">
+                      {attendanceOverviewLoading ? '...' : attendanceOverview.total > 0 ? 
+                        `${Math.round((attendanceOverview.late / attendanceOverview.total) * 100)}%` : '0%'}
+                    </p>
                   </div>
                   <div className="d-flex align-items-center justify-content-between">
                     <p className="f-13 mb-2">
                       <i className="ti ti-circle-filled text-warning me-1" />
-                      Permission
+                      On Leave
                     </p>
-                    <p className="f-13 fw-medium text-gray-9 mb-2">2%</p>
+                    <p className="f-13 fw-medium text-gray-9 mb-2">
+                      {attendanceOverviewLoading ? '...' : attendanceOverview.total > 0 ? 
+                        `${Math.round((attendanceOverview.onLeave / attendanceOverview.total) * 100)}%` : '0%'}
+                    </p>
                   </div>
                   <div className="d-flex align-items-center justify-content-between mb-2">
                     <p className="f-13 mb-2">
                       <i className="ti ti-circle-filled text-danger me-1" />
                       Absent
                     </p>
-                    <p className="f-13 fw-medium text-gray-9 mb-2">15%</p>
+                    <p className="f-13 fw-medium text-gray-9 mb-2">
+                      {attendanceOverviewLoading ? '...' : attendanceOverview.total > 0 ? 
+                        `${Math.round((attendanceOverview.absent / attendanceOverview.total) * 100)}%` : '0%'}
+                    </p>
                   </div>
                   <div className="bg-light br-5 box-shadow-xs p-2 pb-0 d-flex align-items-center justify-content-between flex-wrap">
                     <div className="d-flex align-items-center">
-                      <p className="mb-2 me-2">Total Absenties</p>
+                      <p className="mb-2 me-2">Total Absenties: {attendanceOverviewLoading ? '...' : attendanceOverview.absent}</p>
                       <div className="avatar-list-stacked avatar-group-sm mb-2">
-                        <span className="avatar avatar-rounded">
+                        {/* Dynamic avatar placeholders - only show when there are absent employees */}
+                        {!attendanceOverviewLoading && absentEmployees.length > 0 && (
+                          <>
+                            {absentEmployees.slice(0, 4).map((attendance: any, index: number) => (
+                              <span key={index} className="avatar avatar-rounded">
                           <ImageWithBasePath
                             className="border border-white"
-                            src="assets/img/profiles/avatar-27.jpg"
-                            alt="img"
+                                  src={attendance.employeeId?.profileImage || `assets/img/profiles/avatar-${27 + index}.jpg`}
+                                  alt={`${attendance.employeeId?.firstName || 'Employee'} ${attendance.employeeId?.lastName || ''}`}
                           />
                         </span>
-                        <span className="avatar avatar-rounded">
-                          <ImageWithBasePath
-                            className="border border-white"
-                            src="assets/img/profiles/avatar-30.jpg"
-                            alt="img"
-                          />
-                        </span>
-                        <span className="avatar avatar-rounded">
-                          <ImageWithBasePath src="assets/img/profiles/avatar-14.jpg" alt="img" />
-                        </span>
-                        <span className="avatar avatar-rounded">
-                          <ImageWithBasePath src="assets/img/profiles/avatar-29.jpg" alt="img" />
-                        </span>
+                            ))}
+                            {attendanceOverview.absent > 4 && (
                         <Link
                           className="avatar bg-primary avatar-rounded text-fixed-white fs-10"
                           to="#"
                         >
-                          +1
+                                +{attendanceOverview.absent - 4}
                         </Link>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
-                    <Link to="leaves.html"
+                    <Link to={routes.attendanceadmin}
                       className="fs-13 link-primary text-decoration-underline mb-2"
                     >
                       View Details
@@ -897,38 +1955,43 @@ const AdminDashboard = () => {
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Clock-In/Out</h5>
                   <div className="d-flex align-items-center">
+                    {/* Commented out designation dropdown for simplicity
                     <div className="dropdown mb-2">
                       <Link
                         to="#"
                         className="dropdown-toggle btn btn-white btn-sm d-inline-flex align-items-center border-0 fs-13 me-2"
                         data-bs-toggle="dropdown"
                       >
-                        All Departments
+                        {selectedDesignation}
                       </Link>
-                      <ul className="dropdown-menu  dropdown-menu-end p-3">
+                      <ul className="dropdown-menu dropdown-menu-end p-3">
                         <li>
                           <Link to="#"
                             className="dropdown-item rounded-1"
+                            onClick={() => {
+                              setSelectedDesignation('All Designations');
+                              fetchClockInOutData(selectedClockDate === 'Today' ? 'today' : selectedClockDate === 'Yesterday' ? 'yesterday' : 'week', 'All Designations');
+                            }}
                           >
-                            Finance
+                            All Designations
                           </Link>
                         </li>
-                        <li>
+                        {employeeDesignations.map((designation: string, index: number) => (
+                          <li key={index}>
                           <Link to="#"
                             className="dropdown-item rounded-1"
+                              onClick={() => {
+                                setSelectedDesignation(designation);
+                                fetchClockInOutData(selectedClockDate === 'Today' ? 'today' : selectedClockDate === 'Yesterday' ? 'yesterday' : 'week', designation);
+                              }}
                           >
-                            Development
+                              {designation}
                           </Link>
                         </li>
-                        <li>
-                          <Link to="#"
-                            className="dropdown-item rounded-1"
-                          >
-                            Marketing
-                          </Link>
-                        </li>
+                        ))}
                       </ul>
                     </div>
+                    */}
                     <div className="dropdown mb-2">
                       <Link
                         to="#"
@@ -936,28 +1999,40 @@ const AdminDashboard = () => {
                         data-bs-toggle="dropdown"
                       >
                         <i className="ti ti-calendar me-1" />
-                        Today
+                        {selectedClockDate}
                       </Link>
-                      <ul className="dropdown-menu  dropdown-menu-end p-3">
+                      <ul className="dropdown-menu dropdown-menu-end p-3">
                         <li>
                           <Link to="#"
                             className="dropdown-item rounded-1"
-                          >
-                            This Month
-                          </Link>
-                        </li>
-                        <li>
-                          <Link to="#"
-                            className="dropdown-item rounded-1"
-                          >
-                            This Week
-                          </Link>
-                        </li>
-                        <li>
-                          <Link to="#"
-                            className="dropdown-item rounded-1"
+                            onClick={() => {
+                              setSelectedClockDate('Today');
+                              fetchClockInOutData('today', selectedDesignation);
+                            }}
                           >
                             Today
+                          </Link>
+                        </li>
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                            onClick={() => {
+                              setSelectedClockDate('Yesterday');
+                              fetchClockInOutData('yesterday', selectedDesignation);
+                            }}
+                          >
+                            Yesterday
+                          </Link>
+                        </li>
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                            onClick={() => {
+                              setSelectedClockDate('This Week');
+                              fetchClockInOutData('week', selectedDesignation);
+                            }}
+                          >
+                            This Week
                           </Link>
                         </li>
                       </ul>
@@ -965,23 +2040,31 @@ const AdminDashboard = () => {
                   </div>
                 </div>
                 <div className="card-body">
+                  {clockInOutLoading ? (
+                    <div className="text-center py-4">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                      <p className="mt-2 text-muted">Loading attendance data...</p>
+                    </div>
+                  ) : (
                   <div>
-                    <div className="d-flex align-items-center justify-content-between mb-3 p-2 border border-dashed br-5">
+                      {/* Present Employees */}
+                      {clockInOutData.present.map((attendance: any, index: number) => (
+                        <div key={index} className="d-flex align-items-center justify-content-between mb-3 p-2 border border-dashed br-5">
                       <div className="d-flex align-items-center">
-                        <Link to="#"
-                          className="avatar flex-shrink-0"
-                        >
+                            <Link to="#" className="avatar flex-shrink-0">
                           <ImageWithBasePath
-                            src="assets/img/profiles/avatar-24.jpg"
+                                src={attendance.employeeId?.profileImage || "assets/img/profiles/avatar-24.jpg"}
                             className="rounded-circle border border-2"
                             alt="img"
                           />
                         </Link>
                         <div className="ms-2">
                           <h6 className="fs-14 fw-medium text-truncate">
-                            Daniel Esbella
+                                {attendance.employeeId?.firstName} {attendance.employeeId?.lastName}
                           </h6>
-                          <p className="fs-13">UI/UX Designer</p>
+                              <p className="fs-13">{attendance.employeeId?.designation || 'Employee'}</p>
                         </div>
                       </div>
                       <div className="d-flex align-items-center">
@@ -990,111 +2073,41 @@ const AdminDashboard = () => {
                         </Link>
                         <span className="fs-10 fw-medium d-inline-flex align-items-center badge badge-success">
                           <i className="ti ti-circle-filled fs-5 me-1" />
-                          09:15
+                              {attendance.checkIn?.time ? 
+                                new Date(attendance.checkIn.time).toLocaleTimeString('en-US', { 
+                                  hour: '2-digit', 
+                                  minute: '2-digit',
+                                  hour12: false 
+                                }) : '--:--'
+                              }
                         </span>
                       </div>
                     </div>
-                    <div className="d-flex align-items-center justify-content-between mb-3 p-2 border br-5">
-                      <div className="d-flex align-items-center">
-                        <Link to="#"
-                          className="avatar flex-shrink-0"
-                        >
-                          <ImageWithBasePath
-                            src="assets/img/profiles/avatar-23.jpg"
-                            className="rounded-circle border border-2"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="ms-2">
-                          <h6 className="fs-14 fw-medium">Doglas Martini</h6>
-                          <p className="fs-13">Project Manager</p>
-                        </div>
-                      </div>
-                      <div className="d-flex align-items-center">
-                        <Link to="#" className="link-default me-2">
-                          <i className="ti ti-clock-share" />
-                        </Link>
-                        <span className="fs-10 fw-medium d-inline-flex align-items-center badge badge-success">
-                          <i className="ti ti-circle-filled fs-5 me-1" />
-                          09:36
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mb-3 p-2 border br-5">
-                      <div className="d-flex align-items-center justify-content-between">
-                        <div className="d-flex align-items-center">
-                          <Link to="#"
-                            className="avatar flex-shrink-0"
-                          >
-                            <ImageWithBasePath
-                              src="assets/img/profiles/avatar-27.jpg"
-                              className="rounded-circle border border-2"
-                              alt="img"
-                            />
-                          </Link>
-                          <div className="ms-2">
-                            <h6 className="fs-14 fw-medium text-truncate">
-                              Brian Villalobos
-                            </h6>
-                            <p className="fs-13">PHP Developer</p>
-                          </div>
-                        </div>
-                        <div className="d-flex align-items-center">
-                          <Link to="#"
-                            className="link-default me-2"
-                          >
-                            <i className="ti ti-clock-share" />
-                          </Link>
-                          <span className="fs-10 fw-medium d-inline-flex align-items-center badge badge-success">
-                            <i className="ti ti-circle-filled fs-5 me-1" />
-                            09:15
-                          </span>
-                        </div>
-                      </div>
-                      <div className="d-flex align-items-center justify-content-between flex-wrap mt-2 border br-5 p-2 pb-0">
-                        <div>
-                          <p className="mb-1 d-inline-flex align-items-center">
-                            <i className="ti ti-circle-filled text-success fs-5 me-1" />
-                            Clock in
-                          </p>
-                          <h6 className="fs-13 fw-normal mb-2">10:30 AM</h6>
-                        </div>
-                        <div>
-                          <p className="mb-1 d-inline-flex align-items-center">
-                            <i className="ti ti-circle-filled text-danger fs-5 me-1" />
-                            Clock Out
-                          </p>
-                          <h6 className="fs-13 fw-normal mb-2">09:45 AM</h6>
-                        </div>
-                        <div>
-                          <p className="mb-1 d-inline-flex align-items-center">
-                            <i className="ti ti-circle-filled text-warning fs-5 me-1" />
-                            Production
-                          </p>
-                          <h6 className="fs-13 fw-normal mb-2">09:21 Hrs</h6>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                      ))}
+                      
+                      {/* Late Employees */}
+                      {clockInOutData.late.length > 0 && (
+                        <>
                   <h6 className="mb-2">Late</h6>
-                  <div className="d-flex align-items-center justify-content-between mb-3 p-2 border border-dashed br-5">
+                          {clockInOutData.late.map((attendance: any, index: number) => (
+                            <div key={index} className="d-flex align-items-center justify-content-between mb-3 p-2 border border-dashed br-5">
                     <div className="d-flex align-items-center">
                       <span className="avatar flex-shrink-0">
                         <ImageWithBasePath
-                          src="assets/img/profiles/avatar-29.jpg"
+                                    src={attendance.employeeId?.profileImage || "assets/img/profiles/avatar-29.jpg"}
                           className="rounded-circle border border-2"
                           alt="img"
                         />
                       </span>
                       <div className="ms-2">
                         <h6 className="fs-14 fw-medium text-truncate">
-                          Anthony Lewis{" "}
+                                    {attendance.employeeId?.firstName} {attendance.employeeId?.lastName}{" "}
                           <span className="fs-10 fw-medium d-inline-flex align-items-center badge badge-success">
                             <i className="ti ti-clock-hour-11 me-1" />
-                            30 Min
+                                      {attendance.lateMinutes || 0} Min
                           </span>
                         </h6>
-                        <p className="fs-13">Marketing Head</p>
+                                  <p className="fs-13">{attendance.employeeId?.designation || 'Employee'}</p>
                       </div>
                     </div>
                     <div className="d-flex align-items-center">
@@ -1103,11 +2116,34 @@ const AdminDashboard = () => {
                       </Link>
                       <span className="fs-10 fw-medium d-inline-flex align-items-center badge badge-danger">
                         <i className="ti ti-circle-filled fs-5 me-1" />
-                        08:35
+                                  {attendance.checkIn?.time ? 
+                                    new Date(attendance.checkIn.time).toLocaleTimeString('en-US', { 
+                                      hour: '2-digit', 
+                                      minute: '2-digit',
+                                      hour12: false 
+                                    }) : '--:--'
+                                  }
                       </span>
                     </div>
                   </div>
-                  <Link to="attendance-report.html"
+                          ))}
+                        </>
+                      )}
+                      
+                      {/* No Data Message */}
+                      {clockInOutData.present.length === 0 && clockInOutData.late.length === 0 && (
+                        <div className="text-center py-4">
+                          <i className="ti ti-clock-off fs-1 text-muted mb-3"></i>
+                          <p className="text-muted">No attendance data available for the selected date and department.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* View All Attendance Button - At the very bottom of the card */}
+                <div className="card-footer">
+                  <Link to={routes.attendanceadmin}
                     className="btn btn-light btn-md w-100"
                   >
                     View All Attendance
@@ -1383,138 +2419,60 @@ const AdminDashboard = () => {
                   </Link>
                 </div>
                 <div className="card-body p-0">
+                  {employeesLoading ? (
+                    <div className="text-center py-4">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                      <p className="mt-2 text-muted">Loading employees...</p>
+                    </div>
+                  ) : employees.length > 0 ? (
                   <div className="table-responsive">
                     <table className="table table-nowrap mb-0">
                       <thead>
                         <tr>
                           <th>Name</th>
-                          <th>Department</th>
+                            <th>Designation</th>
                         </tr>
                       </thead>
                       <tbody>
-                        <tr>
-                          <td>
+                          {employees.slice(0, 5).map((employee: any, index: number) => (
+                            <tr key={employee._id || index}>
+                              <td className={index === Math.min(4, employees.length - 1) ? 'border-0' : ''}>
                             <div className="d-flex align-items-center">
                               <Link to="#" className="avatar">
                                 <ImageWithBasePath
-                                  src="assets/img/users/user-32.jpg"
+                                      src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "assets/img/users/user-32.jpg"}
                                   className="img-fluid rounded-circle"
-                                  alt="img"
+                                      alt={`${employee.firstName} ${employee.lastName}`}
                                 />
                               </Link>
                               <div className="ms-2">
                                 <h6 className="fw-medium">
-                                  <Link to="#">Anthony Lewis</Link>
-                                </h6>
-                                <span className="fs-12">Finance</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            <span className="badge badge-secondary-transparent badge-xs">
-                              Finance
-                            </span>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <div className="d-flex align-items-center">
-                              <Link to="#" className="avatar">
-                                <ImageWithBasePath
-                                  src="assets/img/users/user-09.jpg"
-                                  className="img-fluid rounded-circle"
-                                  alt="img"
-                                />
+                                      <Link to={`${routes.employeedetailsWithId.replace(':id', employee._id)}`}>
+                                        {employee.firstName} {employee.lastName}
                               </Link>
-                              <div className="ms-2">
-                                <h6 className="fw-medium">
-                                  <Link to="#">Brian Villalobos</Link>
                                 </h6>
-                                <span className="fs-12">PHP Developer</span>
+                                    <span className="fs-12">{employee.designation || 'Employee'}</span>
                               </div>
                             </div>
                           </td>
-                          <td>
-                            <span className="badge badge-danger-transparent badge-xs">
-                              Development
+                              <td className={index === Math.min(4, employees.length - 1) ? 'border-0' : ''}>
+                                <span className={`badge badge-${getDepartmentBadgeColor(employee.designation)}-transparent badge-xs`}>
+                                  {employee.designation || 'General'}
                             </span>
                           </td>
                         </tr>
-                        <tr>
-                          <td>
-                            <div className="d-flex align-items-center">
-                              <Link to="#" className="avatar">
-                                <ImageWithBasePath
-                                  src="assets/img/users/user-01.jpg"
-                                  className="img-fluid rounded-circle"
-                                  alt="img"
-                                />
-                              </Link>
-                              <div className="ms-2">
-                                <h6 className="fw-medium">
-                                  <Link to="#">Stephan Peralt</Link>
-                                </h6>
-                                <span className="fs-12">Executive</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            <span className="badge badge-info-transparent badge-xs">
-                              Marketing
-                            </span>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <div className="d-flex align-items-center">
-                              <Link to="#" className="avatar">
-                                <ImageWithBasePath
-                                  src="assets/img/users/user-34.jpg"
-                                  className="img-fluid rounded-circle"
-                                  alt="img"
-                                />
-                              </Link>
-                              <div className="ms-2">
-                                <h6 className="fw-medium">
-                                  <Link to="#">Doglas Martini</Link>
-                                </h6>
-                                <span className="fs-12">Project Manager</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            <span className="badge badge-purple-transparent badge-xs">
-                              Manager
-                            </span>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="border-0">
-                            <div className="d-flex align-items-center">
-                              <Link to="#" className="avatar">
-                                <ImageWithBasePath
-                                  src="assets/img/users/user-37.jpg"
-                                  className="img-fluid rounded-circle"
-                                  alt="img"
-                                />
-                              </Link>
-                              <div className="ms-2">
-                                <h6 className="fw-medium">
-                                  <Link to="#">Anthony Lewis</Link>
-                                </h6>
-                                <span className="fs-12">UI/UX Designer</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="border-0">
-                            <span className="badge badge-pink-transparent badge-xs">
-                              UI/UX Design
-                            </span>
-                          </td>
-                        </tr>
+                          ))}
                       </tbody>
                     </table>
                   </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <i className="ti ti-users-off fs-1 text-muted mb-3"></i>
+                      <p className="text-muted">No employees found.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1523,7 +2481,25 @@ const AdminDashboard = () => {
             <div className="col-xxl-4 col-xl-6 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
-                  <h5 className="mb-2">Todo</h5>
+                  <div className="d-flex align-items-center">
+                    <h5 className="mb-2">Todo</h5>
+                    {totalTodos >= 8 && totalTodos < 10 && (
+                      <div className="ms-2">
+                        <span className="badge badge-warning badge-xs">
+                          <i className="ti ti-alert-triangle me-1"></i>
+                          Warning: {totalTodos}/10 todos
+                        </span>
+                      </div>
+                    )}
+                    {totalTodos >= 10 && (
+                      <div className="ms-2">
+                        <span className="badge badge-danger badge-xs">
+                          <i className="ti ti-alert-circle me-1"></i>
+                          Limit reached: {totalTodos}/10
+                        </span>
+                      </div>
+                    )}
+                  </div>
                   <div className="d-flex align-items-center">
                     <div className="dropdown mb-2 me-2">
                       <Link
@@ -1558,111 +2534,165 @@ const AdminDashboard = () => {
                         </li>
                       </ul>
                     </div>
-                    <Link to="#"
+                    <button
+                      type="button"
                       className="btn btn-primary btn-icon btn-xs rounded-circle d-flex align-items-center justify-content-center p-0 mb-2"
-                      data-bs-toggle="modal" data-inert={true}
-                      data-bs-target="#add_todo"
+                      onClick={async () => {
+                        if (totalTodos >= 8 && totalTodos < 10) {
+                          const result = await Swal.fire({
+                            title: 'Approaching Todo Limit',
+                            text: `You have ${totalTodos}/10 todos. Adding one more will trigger auto-deletion of the oldest todo.`,
+                            icon: 'info',
+                            showCancelButton: true,
+                            confirmButtonColor: '#3085d6',
+                            cancelButtonColor: '#6c757d',
+                            confirmButtonText: 'Continue',
+                            cancelButtonText: 'Cancel'
+                          });
+                          
+                          if (result.isConfirmed) {
+                            setTodoModalOpen(true);
+                          }
+                        } else {
+                          setTodoModalOpen(true);
+                        }
+                      }}
                     >
                       <i className="ti ti-plus fs-16" />
-                    </Link>
+                    </button>
                   </div>
                 </div>
                 <div className="card-body">
-                  <div className={`d-flex align-items-center todo-item border p-2 br-5 mb-2 ${isTodo[0] ? 'todo-strike' : ''}`}>
-                    <i className="ti ti-grid-dots me-2" />
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="todo1"
-                        onChange={() => toggleTodo(0)}
-                      />
-                      <label className="form-check-label fw-medium" htmlFor="todo1">
-                        Add Holidays
-                      </label>
+                  {todosLoading ? (
+                    <div className="text-center py-4">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
                     </div>
+                      <p className="mt-2 text-muted">Loading todos...</p>
                   </div>
-                  <div className={`d-flex align-items-center todo-item border p-2 br-5 mb-2 ${isTodo[1] ? 'todo-strike' : ''}`}>
-                    <i className="ti ti-grid-dots me-2" />
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="todo2"
-                        onChange={() => toggleTodo(1)}
-                      />
-                      <label className="form-check-label fw-medium" htmlFor="todo2">
-                        Add Meeting to Client
-                      </label>
+                  ) : todos.length > 0 ? (
+                    todos.map((todo, index) => (
+                        <div 
+                          key={todo._id} 
+                          className={`todo-item border br-5 mb-2 ${
+                            draggedTodo === todo._id ? 'dragging' : ''
+                          } ${
+                            dragOverTodo === todo._id ? 'drag-over' : ''
+                          }`}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, todo._id)}
+                          onDragOver={(e) => handleDragOver(e, todo._id)}
+                          onDragLeave={handleDragLeave}
+                          onDrop={(e) => handleDrop(e, todo._id)}
+                        >
+                          <div 
+                            className="d-flex align-items-center p-2"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => handleTodoClick(todo._id)}
+                          >
+                            <i 
+                              className="ti ti-grid-dots me-2" 
+                              style={{ cursor: 'grab' }}
+                            />
+                            <div className="form-check flex-grow-1">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                id={`todo${todo._id}`}
+                                checked={todo.completed}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  toggleTodoCompletion(todo._id);
+                                }}
+                              />
+                              <label 
+                                className="form-check-label fw-medium" 
+                                htmlFor={`todo${todo._id}`}
+                                style={{
+                                  textDecoration: todo.completed ? 'line-through' : 'none',
+                                  color: todo.completed ? '#6c757d' : 'inherit',
+                                  opacity: todo.completed ? 0.7 : 1
+                                }}
+                              >
+                                {todo.title}
+                              </label>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn-link btn-sm text-danger p-0 ms-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTodoDelete(todo._id);
+                              }}
+                              title="Delete todo"
+                            >
+                              <i className="ti ti-trash fs-14" />
+                            </button>
+                          </div>
+                          
+                          {/* Description section */}
+                          {expandedTodoId === todo._id && todo.description && (
+                            <div className="px-3 pb-2 border-top">
+                              <div className="mt-2">
+                                <small className="text-muted d-block mb-1">
+                                  <i className="ti ti-file-text me-1"></i>
+                                  Description:
+                                </small>
+                                <p className="mb-0 text-muted small" style={{ lineHeight: '1.4' }}>
+                                  {todo.description}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4">
+                      <i className="ti ti-checklist-off fs-1 text-muted mb-3"></i>
+                      <p className="text-muted">No todos found.</p>
                     </div>
-                  </div>
-                  <div className={`d-flex align-items-center todo-item border p-2 br-5 mb-2 ${isTodo[2] ? 'todo-strike' : ''}`}>
-                    <i className="ti ti-grid-dots me-2" />
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="todo3"
-                        onChange={() => toggleTodo(2)}
-                      />
-                      <label className="form-check-label fw-medium" htmlFor="todo3">
-                        Chat with Adrian
-                      </label>
+                  )}
+                  
+                  {/* Pagination */}
+                  {totalTodoPages > 1 && (
+                    <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top todo-pagination">
+                      <div className="text-muted small">
+                        Showing {((currentTodoPage - 1) * 5) + 1} - {Math.min(currentTodoPage * 5, totalTodos)} of {totalTodos} todos
+                      </div>
+                      <div className="d-flex gap-1">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={() => fetchTodos(currentTodoPage - 1)}
+                          disabled={currentTodoPage === 1}
+                        >
+                          <i className="ti ti-chevron-left" />
+                        </button>
+                        <span className="btn btn-sm btn-outline-secondary disabled">
+                          {currentTodoPage} / {totalTodoPages}
+                        </span>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={() => fetchTodos(currentTodoPage + 1)}
+                          disabled={currentTodoPage === totalTodoPages}
+                        >
+                          <i className="ti ti-chevron-right" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div className={`d-flex align-items-center todo-item border p-2 br-5 mb-2 ${isTodo[3] ? 'todo-strike' : ''}`}>
-                    <i className="ti ti-grid-dots me-2" />
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="todo4"
-                        onChange={() => toggleTodo(3)}
-                      />
-                      <label className="form-check-label fw-medium" htmlFor="todo4">
-                        Management Call
-                      </label>
-                    </div>
-                  </div>
-                  <div className={`d-flex align-items-center todo-item border p-2 br-5 mb-2 ${isTodo[4] ? 'todo-strike' : ''}`}>
-                    <i className="ti ti-grid-dots me-2" />
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="todo5"
-                        onChange={() => toggleTodo(4)}
-                      />
-                      <label className="form-check-label fw-medium" htmlFor="todo5">
-                        Add Payroll
-                      </label>
-                    </div>
-                  </div>
-                  <div className={`d-flex align-items-center todo-item border p-2 br-5 mb-2 ${isTodo[5] ? 'todo-strike' : ''}`}>
-                    <i className="ti ti-grid-dots me-2" />
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="todo6"
-                        onChange={() => toggleTodo(5)}
-                      />
-                      <label className="form-check-label fw-medium" htmlFor="todo6">
-                        Add Policy for Increment{" "}
-                      </label>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
             {/* /Todo */}
           </div>
           <div className="row">
-            {/* Sales Overview */}
+            {/* Submissions Overview */}
             <div className="col-xl-7 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
-                  <h5 className="mb-2">Sales Overview</h5>
+                  <h5 className="mb-2">Submissions Overview</h5>
                   <div className="d-flex align-items-center">
                     <div className="dropdown mb-2">
                       <Link
@@ -1670,59 +2700,68 @@ const AdminDashboard = () => {
                         className="dropdown-toggle btn btn-white border-0 btn-sm d-inline-flex align-items-center fs-13 me-2"
                         data-bs-toggle="dropdown"
                       >
-                        All Departments
+                        {selectedSubmissionEmployee}
                       </Link>
-                      <ul className="dropdown-menu  dropdown-menu-end p-3">
+                      <ul className="dropdown-menu dropdown-menu-end p-3">
                         <li>
                           <Link to="#"
                             className="dropdown-item rounded-1"
+                            onClick={() => setSelectedSubmissionEmployee('All Employees')}
                           >
-                            UI/UX Designer
+                            All Employees
                           </Link>
                         </li>
-                        <li>
+                        {submissionEmployees.map((employee: any, index: number) => (
+                          <li key={index}>
                           <Link to="#"
                             className="dropdown-item rounded-1"
+                              onClick={() => setSelectedSubmissionEmployee(employee.name)}
                           >
-                            HR Manager
+                              {employee.name} ({employee.designation})
                           </Link>
                         </li>
-                        <li>
-                          <Link to="#"
-                            className="dropdown-item rounded-1"
-                          >
-                            Junior Tester
-                          </Link>
-                        </li>
+                        ))}
                       </ul>
                     </div>
                   </div>
                 </div>
                 <div className="card-body pb-0">
+                  {submissionsLoading ? (
+                    <div className="text-center py-4">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                      <p className="mt-2 text-muted">Loading submissions data...</p>
+                    </div>
+                  ) : submissionsData.length > 0 ? (
+                    <>
                   <div className="d-flex align-items-center justify-content-between flex-wrap">
                     <div className="d-flex align-items-center mb-1">
                       <p className="fs-13 text-gray-9 me-3 mb-0">
                         <i className="ti ti-square-filled me-2 text-primary" />
-                        Income
-                      </p>
-                      <p className="fs-13 text-gray-9 mb-0">
-                        <i className="ti ti-square-filled me-2 text-gray-2" />
-                        Expenses
+                            Monthly Submissions
                       </p>
                     </div>
-                    <p className="fs-13 mb-1">Last Updated at 11:30PM</p>
+                        <p className="fs-13 mb-1">Last Updated at {new Date().toLocaleTimeString()}</p>
                   </div>
                   <ReactApexChart
-                    id="sales-income"
-                    options={salesIncome}
-                    series={salesIncome.series}
+                        id="submissions-chart"
+                        options={submissionsChartData}
+                        series={submissionsChartData.series}
                     type="bar"
                     height={270}
                   />
+                    </>
+                  ) : (
+                    <div className="text-center py-4">
+                      <i className="ti ti-file-off fs-1 text-muted mb-3"></i>
+                      <p className="text-muted">No submissions data available.</p>
                 </div>
+                  )}
               </div>
             </div>
-            {/* /Sales Overview */}
+            </div>
+            {/* /Submissions Overview */}
             {/* Invoices */}
             <div className="col-xl-5 d-flex">
               <div className="card flex-fill">
@@ -2589,143 +3628,80 @@ const AdminDashboard = () => {
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Schedules</h5>
-                  <Link to="candidates.html" className="btn btn-light btn-md mb-2">
+                  <Link to={routes.candidatesGrid} className="btn btn-light btn-md mb-2">
                     View All
                   </Link>
                 </div>
                 <div className="card-body">
-                  <div className="bg-light p-3 br-5 mb-4">
-                    <span className="badge badge-secondary badge-xs mb-1">
-                      UI/ UX Designer
+                  {interviewsLoading ? (
+                    <div className="text-center py-4">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                    </div>
+                      <p className="mt-2 text-muted">Loading interviews...</p>
+                      </div>
+                  ) : interviews.length > 0 ? (
+                    interviews.map((interview, index) => (
+                      <div key={interview._id} className={`bg-light p-3 br-5 ${index < interviews.length - 1 ? 'mb-4' : 'mb-0'}`}>
+                        <span className={`badge badge-${getInterviewBadgeColor(interview.interviewLevel)} badge-xs mb-1`}>
+                          {interview.appliedRole}
                     </span>
                     <h6 className="mb-2 text-truncate">
-                      Interview Candidates - UI/UX Designer
+                          Interview - {interview.candidateName}
                     </h6>
                     <div className="d-flex align-items-center flex-wrap">
                       <p className="fs-13 mb-1 me-2">
                         <i className="ti ti-calendar-event me-2" />
-                        Thu, 15 Feb 2025
+                            {formatInterviewDate(interview.scheduledDate)}
                       </p>
                       <p className="fs-13 mb-1">
                         <i className="ti ti-clock-hour-11 me-2" />
-                        01:00 PM - 02:20 PM
+                            {formatInterviewTime(interview.scheduledDate)}
                       </p>
                     </div>
                     <div className="d-flex align-items-center justify-content-between border-top mt-2 pt-3">
                       <div className="avatar-list-stacked avatar-group-sm">
+                        {/* Candidate Profile Picture */}
                         <span className="avatar avatar-rounded">
-                          <ImageWithBasePath
+                          <img
                             className="border border-white"
-                            src="assets/img/users/user-49.jpg"
-                            alt="img"
+                            src={interview.candidateProfileImage ? `${backend_url}/uploads/candidates/${interview.candidateProfileImage}` : "assets/img/users/user-1.jpg"}
+                            alt={`${interview.candidateName}`}
+                            onError={(e) => {
+                              e.currentTarget.src = "assets/img/users/user-1.jpg";
+                            }}
                           />
                         </span>
-                        <span className="avatar avatar-rounded">
-                          <ImageWithBasePath
-                            className="border border-white"
-                            src="assets/img/users/user-13.jpg"
-                            alt="img"
-                          />
-                        </span>
-                        <span className="avatar avatar-rounded">
-                          <ImageWithBasePath
-                            className="border border-white"
-                            src="assets/img/users/user-11.jpg"
-                            alt="img"
-                          />
-                        </span>
-                        <span className="avatar avatar-rounded">
-                          <ImageWithBasePath
-                            className="border border-white"
-                            src="assets/img/users/user-22.jpg"
-                            alt="img"
-                          />
-                        </span>
-                        <span className="avatar avatar-rounded">
-                          <ImageWithBasePath
-                            className="border border-white"
-                            src="assets/img/users/user-58.jpg"
-                            alt="img"
-                          />
-                        </span>
+                        {/* Recruiter Profile Picture */}
+                        {interview.recruiter && (
+                          <span className="avatar avatar-rounded">
+                            <img
+                              className="border border-white"
+                              src={interview.recruiter.profileImage ? `${backend_url}/uploads/${interview.recruiter.profileImage}` : "assets/img/users/user-1.jpg"}
+                              alt={`${interview.recruiter.firstName} ${interview.recruiter.lastName}`}
+                              onError={(e) => {
+                                e.currentTarget.src = "assets/img/users/user-1.jpg";
+                              }}
+                            />
+                          </span>
+                        )}
+                      </div>
                         <Link
-                          className="avatar bg-primary avatar-rounded text-fixed-white fs-10 fw-medium"
-                          to="#"
+                            to={interview.interviewLink || `${routes.candidatesGrid}?viewCandidate=${interview.candidateId}`} 
+                            className="btn btn-primary btn-xs"
+                            target={interview.interviewLink ? "_blank" : undefined}
                         >
-                          +3
+                            {interview.interviewLink ? 'Join Meeting' : 'View Details'}
                         </Link>
                       </div>
-                      <Link to="#" className="btn btn-primary btn-xs">
-                        Join Meeting
-                      </Link>
                     </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4">
+                      <i className="ti ti-calendar-off text-muted fs-2 mb-3"></i>
+                      <p className="text-muted">No upcoming interviews scheduled</p>
                   </div>
-                  <div className="bg-light p-3 br-5 mb-0">
-                    <span className="badge badge-dark badge-xs mb-1">
-                      IOS Developer
-                    </span>
-                    <h6 className="mb-2 text-truncate">
-                      Interview Candidates - IOS Developer
-                    </h6>
-                    <div className="d-flex align-items-center flex-wrap">
-                      <p className="fs-13 mb-1 me-2">
-                        <i className="ti ti-calendar-event me-2" />
-                        Thu, 15 Feb 2025
-                      </p>
-                      <p className="fs-13 mb-1">
-                        <i className="ti ti-clock-hour-11 me-2" />
-                        02:00 PM - 04:20 PM
-                      </p>
-                    </div>
-                    <div className="d-flex align-items-center justify-content-between border-top mt-2 pt-3">
-                      <div className="avatar-list-stacked avatar-group-sm">
-                        <span className="avatar avatar-rounded">
-                          <ImageWithBasePath
-                            className="border border-white"
-                            src="assets/img/users/user-49.jpg"
-                            alt="img"
-                          />
-                        </span>
-                        <span className="avatar avatar-rounded">
-                          <ImageWithBasePath
-                            className="border border-white"
-                            src="assets/img/users/user-13.jpg"
-                            alt="img"
-                          />
-                        </span>
-                        <span className="avatar avatar-rounded">
-                          <ImageWithBasePath
-                            className="border border-white"
-                            src="assets/img/users/user-11.jpg"
-                            alt="img"
-                          />
-                        </span>
-                        <span className="avatar avatar-rounded">
-                          <ImageWithBasePath
-                            className="border border-white"
-                            src="assets/img/users/user-22.jpg"
-                            alt="img"
-                          />
-                        </span>
-                        <span className="avatar avatar-rounded">
-                          <ImageWithBasePath
-                            className="border border-white"
-                            src="assets/img/users/user-58.jpg"
-                            alt="img"
-                          />
-                        </span>
-                        <Link
-                          className="avatar bg-primary avatar-rounded text-fixed-white fs-10 fw-medium"
-                          to="#"
-                        >
-                          +3
-                        </Link>
-                      </div>
-                      <Link to="#" className="btn btn-primary btn-xs">
-                        Join Meeting
-                      </Link>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -2734,163 +3710,95 @@ const AdminDashboard = () => {
             <div className="col-xxl-4 col-xl-6 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
-                  <h5 className="mb-2">Recent Activities</h5>
-                  <Link to="activity.html" className="btn btn-light btn-md mb-2">
-                    View All
-                  </Link>
+                  <div>
+                    <h5 className="mb-2">Recent Activities</h5>
+                    {lastActivitiesUpdate && (
+                      <small className="text-muted">
+                        Last updated: {lastActivitiesUpdate.toLocaleTimeString()}
+                      </small>
+                    )}
+                  </div>
+                  <div className="d-flex gap-2">
+                    <button 
+                      onClick={fetchActivities}
+                      className="btn btn-light btn-md mb-2"
+                      disabled={activitiesLoading}
+                      title="Refresh activities"
+                    >
+                      <i className={`ti ${activitiesLoading ? 'ti-loader-2' : 'ti-refresh'} ${activitiesLoading ? 'animate-spin' : ''}`}></i>
+                    </button>
+                    <Link to={routes.activity} className="btn btn-light btn-md mb-2">
+                      View All
+                    </Link>
+                  </div>
                 </div>
                 <div className="card-body">
-                  <div className="recent-item">
-                    <div className="d-flex justify-content-between">
-                      <div className="d-flex align-items-center w-100">
-                        <Link to="#"
-                          className="avatar  flex-shrink-0"
-                        >
-                          <ImageWithBasePath
-                            src="assets/img/users/user-38.jpg"
-                            className="rounded-circle"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="ms-2 flex-fill">
-                          <div className="d-flex align-items-center justify-content-between">
-                            <h6 className="fs-medium text-truncate">
-                              <Link to="#">Matt Morgan</Link>
-                            </h6>
-                            <p className="fs-13">05:30 PM</p>
-                          </div>
-                          <p className="fs-13">
-                            Added New Project{" "}
-                            <span className="text-primary">HRMS Dashboard</span>
-                          </p>
-                        </div>
+                  {activitiesLoading ? (
+                    <div className="text-center py-4">
+                      <div className="spinner-border spinner-border-sm text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
                       </div>
+                      <p className="text-muted mt-2">Loading activities...</p>
                     </div>
-                  </div>
-                  <div className="recent-item">
-                    <div className="d-flex justify-content-between">
-                      <div className="d-flex align-items-center w-100">
-                        <Link to="#"
-                          className="avatar  flex-shrink-0"
-                        >
-                          <ImageWithBasePath
-                            src="assets/img/users/user-01.jpg"
-                            className="rounded-circle"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="ms-2 flex-fill">
-                          <div className="d-flex align-items-center justify-content-between">
-                            <h6 className="fs-medium text-truncate">
-                              <Link to="#">Jay Ze</Link>
-                            </h6>
-                            <p className="fs-13">05:00 PM</p>
+                  ) : activities.length > 0 ? (
+                    activities.slice(0, 6).map((activity) => {
+                      const activityDate = new Date(activity.timestamp);
+                      const timeString = activityDate.toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      });
+                      
+                      return (
+                        <div key={activity._id} className="recent-item">
+                          <div className="d-flex justify-content-between">
+                            <div className="d-flex align-items-center w-100">
+                              <Link to="#" className="avatar flex-shrink-0">
+                                {activity.user.profileImage ? (
+                                  <img
+                                    src={`${backend_url}/uploads/${activity.user.profileImage}`}
+                                    className="rounded-circle"
+                                    alt="img"
+                                    style={{ width: '40px', height: '40px', objectFit: 'cover' }}
+                                  />
+                                ) : (
+                                  <ImageWithBasePath
+                                    src="assets/img/users/user-01.jpg"
+                                    className="rounded-circle"
+                                    alt="img"
+                                  />
+                                )}
+                              </Link>
+                              <div className="ms-2 flex-fill">
+                                <div className="d-flex align-items-center justify-content-between">
+                                  <div className="d-flex align-items-center gap-2">
+                                    <h6 className="fs-medium text-truncate">
+                                      <Link to="#">{activity.user.firstName} {activity.user.lastName}</Link>
+                                    </h6>
+                                    <span className={activityService.getActivityLabel(activity.entityType).color}>
+                                      {activityService.getActivityLabel(activity.entityType).text}
+                                    </span>
+                                  </div>
+                                  <p className="fs-13">{timeString}</p>
+                                </div>
+                                <p 
+                                  className="fs-13"
+                                  dangerouslySetInnerHTML={{
+                                    __html: activityService.formatActivityDescription(activity)
+                                  }}
+                                />
+                              </div>
+                            </div>
                           </div>
-                          <p className="fs-13">Commented on Uploaded Document</p>
                         </div>
-                      </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-4">
+                      <i className="ti ti-activity text-muted fs-2 mb-3"></i>
+                      <p className="text-muted">No recent activities</p>
                     </div>
-                  </div>
-                  <div className="recent-item">
-                    <div className="d-flex justify-content-between">
-                      <div className="d-flex align-items-center w-100">
-                        <Link to="#"
-                          className="avatar  flex-shrink-0"
-                        >
-                          <ImageWithBasePath
-                            src="assets/img/users/user-19.jpg"
-                            className="rounded-circle"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="ms-2 flex-fill">
-                          <div className="d-flex align-items-center justify-content-between">
-                            <h6 className="fs-medium text-truncate">
-                              <Link to="#">Mary Donald</Link>
-                            </h6>
-                            <p className="fs-13">05:30 PM</p>
-                          </div>
-                          <p className="fs-13">Approved Task Projects</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="recent-item">
-                    <div className="d-flex justify-content-between">
-                      <div className="d-flex align-items-center w-100">
-                        <Link to="#"
-                          className="avatar  flex-shrink-0"
-                        >
-                          <ImageWithBasePath
-                            src="assets/img/users/user-11.jpg"
-                            className="rounded-circle"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="ms-2 flex-fill">
-                          <div className="d-flex align-items-center justify-content-between">
-                            <h6 className="fs-medium text-truncate">
-                              <Link to="#">George David</Link>
-                            </h6>
-                            <p className="fs-13">06:00 PM</p>
-                          </div>
-                          <p className="fs-13">
-                            Requesting Access to Module Tickets
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="recent-item">
-                    <div className="d-flex justify-content-between">
-                      <div className="d-flex align-items-center w-100">
-                        <Link to="#"
-                          className="avatar  flex-shrink-0"
-                        >
-                          <ImageWithBasePath
-                            src="assets/img/users/user-20.jpg"
-                            className="rounded-circle"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="ms-2 flex-fill">
-                          <div className="d-flex align-items-center justify-content-between">
-                            <h6 className="fs-medium text-truncate">
-                              <Link to="#">Aaron Zeen</Link>
-                            </h6>
-                            <p className="fs-13">06:30 PM</p>
-                          </div>
-                          <p className="fs-13">Downloaded App Reportss</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="recent-item">
-                    <div className="d-flex justify-content-between">
-                      <div className="d-flex align-items-center w-100">
-                        <Link to="#"
-                          className="avatar  flex-shrink-0"
-                        >
-                          <ImageWithBasePath
-                            src="assets/img/users/user-08.jpg"
-                            className="rounded-circle"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="ms-2 flex-fill">
-                          <div className="d-flex align-items-center justify-content-between">
-                            <h6 className="fs-medium text-truncate">
-                              <Link to="#">Hendry Daniel</Link>
-                            </h6>
-                            <p className="fs-13">05:30 PM</p>
-                          </div>
-                          <p className="fs-13">
-                            Completed New Project <span>HMS</span>
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -2900,140 +3808,166 @@ const AdminDashboard = () => {
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Birthdays</h5>
-                  <Link to="#"
+                  <Link to={routes.employeeBirthdays}
                     className="btn btn-light btn-md mb-2"
                   >
                     View All
                   </Link>
                 </div>
                 <div className="card-body pb-1">
+                  {birthdaysLoading ? (
+                    <div className="text-center py-3">
+                      <div className="spinner-border spinner-border-sm" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                                            {/* Today's Birthdays */}
+                      {birthdays.today.length > 0 && (
+                        <>
                   <h6 className="mb-2">Today</h6>
-                  <div className="bg-light p-2 border border-dashed rounded-top mb-3">
+                          {birthdays.today.map((employee, index) => (
+                            <div key={employee._id} className="bg-light p-2 border border-dashed rounded-top mb-3">
                     <div className="d-flex align-items-center justify-content-between">
                       <div className="d-flex align-items-center">
-                        <Link to="#" className="avatar">
+                                  <Link to={routes.employeedetailsWithId.replace(':id', employee._id)} className="avatar">
                           <ImageWithBasePath
-                            src="assets/img/users/user-38.jpg"
+                                      src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "assets/img/users/user-1.jpg"}
                             className="rounded-circle"
                             alt="img"
                           />
                         </Link>
                         <div className="ms-2 overflow-hidden">
-                          <h6 className="fs-medium ">Andrew Jermia</h6>
-                          <p className="fs-13">IOS Developer</p>
+                                    <h6 className="fs-medium">
+                                      <Link to={routes.employeedetailsWithId.replace(':id', employee._id)}>
+                                        {employee.fullName}
+                                      </Link>
+                                    </h6>
+                                    <p className="fs-13">{employee.designation}</p>
                         </div>
                       </div>
-                      <Link
+                                {/* <Link
                         to="#"
                         className="btn btn-secondary btn-xs"
                       >
                         <i className="ti ti-cake me-1" />
                         Send
-                      </Link>
+                                </Link> */}
                     </div>
                   </div>
-                  <h6 className="mb-2">Tomorow</h6>
-                  <div className="bg-light p-2 border border-dashed rounded-top mb-3">
+                          ))}
+                        </>
+                      )}
+
+                                            {/* Tomorrow's Birthdays */}
+                      {birthdays.tomorrow.length > 0 && (
+                        <>
+                          <h6 className="mb-2">Tomorrow</h6>
+                          {birthdays.tomorrow.map((employee, index) => (
+                            <div key={employee._id} className="bg-light p-2 border border-dashed rounded-top mb-3">
                     <div className="d-flex align-items-center justify-content-between">
                       <div className="d-flex align-items-center">
-                        <Link to="#" className="avatar">
+                                  <Link to={routes.employeedetailsWithId.replace(':id', employee._id)} className="avatar">
                           <ImageWithBasePath
-                            src="assets/img/users/user-10.jpg"
+                                      src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "assets/img/users/user-1.jpg"}
                             className="rounded-circle"
                             alt="img"
                           />
                         </Link>
                         <div className="ms-2 overflow-hidden">
                           <h6 className="fs-medium">
-                            <Link to="#">Mary Zeen</Link>
+                                      <Link to={routes.employeedetailsWithId.replace(':id', employee._id)}>
+                                        {employee.fullName}
+                                      </Link>
                           </h6>
-                          <p className="fs-13">UI/UX Designer</p>
+                                    <p className="fs-13">{employee.designation}</p>
                         </div>
                       </div>
-                      <Link
+                                {/* <Link
                         to="#"
                         className="btn btn-secondary btn-xs"
                       >
                         <i className="ti ti-cake me-1" />
                         Send
-                      </Link>
+                                </Link> */}
                     </div>
                   </div>
+                          ))}
+                        </>
+                      )}
+
+                                            {/* Upcoming Birthdays */}
+                      {birthdays.upcoming.length > 0 && (
+                        <>
+                          {birthdays.upcoming.slice(0, 3).map((employee, index) => (
+                            <div key={employee._id}>
+                              {index === 0 && <h6 className="mb-2">Upcoming this month</h6>}
                   <div className="bg-light p-2 border border-dashed rounded-top mb-3">
                     <div className="d-flex align-items-center justify-content-between">
                       <div className="d-flex align-items-center">
-                        <Link to="#" className="avatar">
+                                    <Link to={routes.employeedetailsWithId.replace(':id', employee._id)} className="avatar">
                           <ImageWithBasePath
-                            src="assets/img/users/user-09.jpg"
+                                        src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "assets/img/users/user-1.jpg"}
                             className="rounded-circle"
                             alt="img"
                           />
                         </Link>
                         <div className="ms-2 overflow-hidden">
-                          <h6 className="fs-medium ">
-                            <Link to="#">Antony Lewis</Link>
+                                      <h6 className="fs-medium">
+                                        <Link to={routes.employeedetailsWithId.replace(':id', employee._id)}>
+                                          {employee.fullName}
+                                        </Link>
                           </h6>
-                          <p className="fs-13">Android Developer</p>
+                                      <p className="fs-13">{employee.designation}</p>
                         </div>
                       </div>
-                      <Link
-                        to="#"
-                        className="btn btn-secondary btn-xs"
-                      >
-                        <i className="ti ti-cake me-1" />
-                        Send
-                      </Link>
+                                  <div className="text-end">
+                                    <small className="text-muted">
+                                      {new Date(employee.birthday).toLocaleDateString('en-US', { 
+                                        month: 'short', 
+                                        day: 'numeric' 
+                                      })}
+                                    </small>
                     </div>
                   </div>
-                  <h6 className="mb-2">25 Jan 2025</h6>
-                  <div className="bg-light p-2 border border-dashed rounded-top mb-3">
-                    <div className="d-flex align-items-center justify-content-between">
-                      <div className="d-flex align-items-center">
-                        <span className="avatar">
-                          <ImageWithBasePath
-                            src="assets/img/users/user-12.jpg"
-                            className="rounded-circle"
-                            alt="img"
-                          />
-                        </span>
-                        <div className="ms-2 overflow-hidden">
-                          <h6 className="fs-medium ">Doglas Martini</h6>
-                          <p className="fs-13">.Net Developer</p>
                         </div>
                       </div>
-                      <Link
-                        to="#"
-                        className="btn btn-secondary btn-xs"
-                      >
-                        <i className="ti ti-cake me-1" />
-                        Send
-                      </Link>
+                          ))}
+                        </>
+                      )}
+
+                      {/* No birthdays message */}
+                      {birthdays.today.length === 0 && birthdays.tomorrow.length === 0 && birthdays.upcoming.length === 0 && (
+                        <div className="text-center py-3">
+                          <p className="text-muted mb-0">No upcoming birthdays in the next 30 days</p>
                     </div>
-                  </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
             {/* /Birthdays */}
           </div>
         </div>
-        <div className="footer d-sm-flex align-items-center justify-content-between border-top bg-white p-3">
-          <p className="mb-0">2014 - 2025 © SmartHR.</p>
-          <p>
-            Designed &amp; Developed By{" "}
-            <Link to="#" className="text-primary">
-              Dreams
-            </Link>
-          </p>
-        </div>
       </div>
       {/* /Page Wrapper */}
+      {/* Modals */}
       <ProjectModals />
       <RequestModals />
-      <TodoModal />
+      <TodoModal 
+        isOpen={todoModalOpen}
+        onClose={() => setTodoModalOpen(false)}
+        onTodoCreated={handleTodoCreated}
+        totalTodos={totalTodos}
+      />
     </>
-
   );
 };
 
 export default AdminDashboard;
+
+
+
 

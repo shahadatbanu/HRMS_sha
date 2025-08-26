@@ -925,6 +925,11 @@ export const HorizontalSidebarData = [
                     base: 'leave-type',
                   },
                   {
+                    menuValue: 'Attendance Settings',
+                    route: routes.attendanceSettings,
+                    base: 'attendance-settings',
+                  },
+                  {
                     menuValue: 'Custom Fields',
                     route: routes.customFields,
                     base: 'custom-fields',

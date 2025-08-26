@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { backend_url } from '../../environment';
 
 interface User {
   _id: string;
@@ -7,6 +8,7 @@ interface User {
   email: string;
   role: 'admin' | 'hr' | 'employee';
   profileImage?: string;
+  designation?: string;
 }
 
 interface UserContextType {
@@ -44,7 +46,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         return;
       }
 
-      const response = await fetch('/api/auth/profile', {
+      const response = await fetch(`${backend_url}/api/auth/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -144,9 +146,12 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       return ['create', 'read', 'update', 'delete'].includes(action);
     }
 
-    // Employee has read-only permissions for candidates module
+    // Employee has limited permissions for candidates module
+    // They can read, add notes, update status, and perform other actions on assigned candidates
+    // But they cannot create new candidates or delete existing ones
     if (user.role === 'employee' && module === 'candidates') {
-      return ['read'].includes(action);
+      // Employees can read and create content (notes, attachments, etc.) but not new candidates
+      return ['read', 'create'].includes(action);
     }
 
     return false;

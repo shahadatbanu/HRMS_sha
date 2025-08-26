@@ -21,9 +21,9 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["react", "react-dom", "react-router-dom"]
+    "types": ["react", "react-dom", "react-router-dom", "node"]
   },
-  "include": ["src",  "src/types"]
+  "include": ["src", "src/types", "src/types/global.d.ts"]
 }
 
 
