@@ -400,11 +400,23 @@ const EmployeeDetails = () => {
 
     // Pre-fill basic info when opening modal
     const handleOpenBasicInfoModal = () => {
+      // Convert birthday from Date object to DD-MM-YYYY format for the DatePicker
+      let birthdayFormatted = '';
+      if (employee?.birthday) {
+        const birthdayDate = new Date(employee.birthday);
+        if (!isNaN(birthdayDate.getTime())) {
+          const day = birthdayDate.getDate().toString().padStart(2, '0');
+          const month = (birthdayDate.getMonth() + 1).toString().padStart(2, '0');
+          const year = birthdayDate.getFullYear();
+          birthdayFormatted = `${day}-${month}-${year}`;
+        }
+      }
+      
       setBasicInfo({
         phoneNumber: employee?.phoneNumber || '',
         email: employee?.email || '',
         gender: employee?.gender || '',
-        birthday: employee?.birthday || '',
+        birthday: birthdayFormatted,
         address: employee?.address || ''
       });
       setBasicInfoError(null);
@@ -2865,8 +2877,8 @@ const EmployeeDetails = () => {
                                                     }}
                                                     getPopupContainer={getModalContainer}
                                                     placeholder="DD-MM-YYYY"
-                                                    value={basicInfo.birthday ? dayjs(basicInfo.birthday) : null}
-                                                    onChange={(date) => setBasicInfo({ ...basicInfo, birthday: date ? date.format('YYYY-MM-DD') : '' })}
+                                                    value={basicInfo.birthday ? dayjs(basicInfo.birthday, 'DD-MM-YYYY') : null}
+                                                    onChange={(date) => setBasicInfo({ ...basicInfo, birthday: date ? date.format('DD-MM-YYYY') : '' })}
                                                 />
                                                 <span className="input-icon-addon">
                                                     <i className="ti ti-calendar text-gray-7" />

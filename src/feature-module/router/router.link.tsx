@@ -179,6 +179,7 @@ const Assets = React.lazy(() => import("../administration/asset"));
 const AssetsCategory = React.lazy(() => import("../administration/asset-category"));
 const Knowledgebase = React.lazy(() => import("../administration/help-support/knowledgebase"));
 const Activity = React.lazy(() => import("../administration/help-support/activity"));
+const Activities = React.lazy(() => import("../administration/help-support/activities"));
 const Users = React.lazy(() => import("../administration/user-management/users"));
 const RolesPermission = React.lazy(() => import("../administration/user-management/rolePermission"));
 const Categories = React.lazy(() => import("../accounting/categories"));
@@ -250,6 +251,7 @@ const Clearcache = React.lazy(() => import("../settings/otherSettings/clearCache
 const Languageweb = React.lazy(() => import("../settings/websiteSettings/language-web"));
 const Addlanguage = React.lazy(() => import("../settings/websiteSettings/add-language"));
 const EmployeeList = React.lazy(() => import("../hrm/employees/employeesList"));
+const EmployeeBirthdays = React.lazy(() => import("../hrm/employees/employeeBirthdays"));
 const EmployeesGrid = React.lazy(() => import("../hrm/employees/employeesGrid"));
 const Department = React.lazy(() => import("../hrm/employees/deparment"));
 const Designations = React.lazy(() => import("../hrm/employees/designations"));
@@ -1317,7 +1319,7 @@ export const publicRoutes = [
   },
   {
     path: routes.activity,
-    element: <Activity />,
+    element: <Activities />,
   },
   {
     path: routes.users,
@@ -1525,6 +1527,11 @@ export const publicRoutes = [
   {
     path: routes.employeeList,
     element: <EmployeeList />,
+    route: Route,
+  },
+  {
+    path: routes.employeeBirthdays,
+    element: <EmployeeBirthdays />,
     route: Route,
   },
   {

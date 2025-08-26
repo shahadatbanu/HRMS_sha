@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect, useRef } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import PredefinedDateRanges from '../../../core/common/datePicker'
 import ImageWithBasePath from '../../../core/common/imageWithBasePath'
 import { all_routes } from '../../router/all_routes'
@@ -194,6 +194,9 @@ interface CandidateDetails {
 }
 
 const CandidateGrid = () => {
+    const [searchParams] = useSearchParams();
+    const viewCandidateId = searchParams.get('viewCandidate');
+    
     const [form, setForm] = useState({
         candidateId: '',
         firstName: '',
@@ -377,8 +380,85 @@ const CandidateGrid = () => {
     const [showEditCandidateModal, setShowEditCandidateModal] = useState(false);
     const [editingCandidate, setEditingCandidate] = useState<any>(null);
 
+    // Interview form mode (add/edit)
+    const [interviewFormMode, setInterviewFormMode] = useState<'add' | 'edit'>('add');
+
     // User context for role-based access control
     const { user, hasPermission } = useUser();
+
+    // Ref for interview section scrolling
+    const interviewSectionRef = useRef<HTMLDivElement>(null);
+
+    // Handle viewCandidate URL parameter
+    useEffect(() => {
+        if (viewCandidateId) {
+            console.log('Viewing candidate from URL parameter:', viewCandidateId);
+            fetchCandidateDetails(viewCandidateId);
+            // Automatically show the interview section when navigating from dashboard
+            setShowInterviewInput(true);
+        }
+    }, [viewCandidateId]);
+
+    // Scroll to interview section when candidate is loaded from dashboard
+    useEffect(() => {
+        if (selectedCandidate && viewCandidateId && interviewSectionRef.current) {
+            // Activate the interview tab first using a more robust approach
+            const interviewTab = document.getElementById('interview-tab');
+            const interviewTabContent = document.getElementById('interview');
+            
+            if (interviewTab && interviewTabContent) {
+                // Remove active class from all tabs and content
+                document.querySelectorAll('.nav-link').forEach(tab => {
+                    tab.classList.remove('active');
+                    tab.setAttribute('aria-selected', 'false');
+                });
+                document.querySelectorAll('.tab-pane').forEach(content => {
+                    content.classList.remove('show', 'active');
+                    (content as HTMLElement).style.display = 'none';
+                });
+                
+                // Add active class to interview tab and content
+                interviewTab.classList.add('active');
+                interviewTab.setAttribute('aria-selected', 'true');
+                interviewTabContent.classList.add('show', 'active');
+                
+                // Force the tab content to be visible with important styles
+                interviewTabContent.style.display = 'block !important';
+                interviewTabContent.style.opacity = '1';
+                interviewTabContent.style.visibility = 'visible';
+                
+                // Also ensure the tab is visually highlighted
+                (interviewTab as HTMLElement).style.backgroundColor = '#e3f2fd';
+                (interviewTab as HTMLElement).style.borderColor = '#2196f3';
+            }
+            
+            // Small delay to ensure the interview section is rendered
+            setTimeout(() => {
+                interviewSectionRef.current?.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                });
+                
+                // Add a temporary highlight to make the interview section more visible
+                if (interviewSectionRef.current) {
+                    interviewSectionRef.current.style.border = '3px solid #2196f3';
+                    interviewSectionRef.current.style.backgroundColor = '#e3f2fd';
+                    interviewSectionRef.current.style.padding = '10px';
+                    interviewSectionRef.current.style.borderRadius = '8px';
+                    
+                    // Remove the highlight after 3 seconds
+                    setTimeout(() => {
+                        if (interviewSectionRef.current) {
+                            interviewSectionRef.current.style.border = '';
+                            interviewSectionRef.current.style.backgroundColor = '';
+                            interviewSectionRef.current.style.padding = '';
+                            interviewSectionRef.current.style.borderRadius = '';
+                        }
+                    }, 3000);
+                }
+            }, 500);
+        }
+    }, [selectedCandidate, viewCandidateId, showInterviewInput]);
 
     // Populate offer details form when candidate is selected
     // Reset offer details form when selectedCandidate changes (don't auto-populate)
@@ -1854,17 +1934,32 @@ const CandidateGrid = () => {
         setIsSavingInterview(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`/api/candidates/${selectedCandidate._id}/interviews`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(interviewForm)
-            });
+            
+            let response;
+            if (interviewFormMode === 'edit' && editingInterview) {
+                // Update existing interview
+                response = await fetch(`/api/candidates/${selectedCandidate._id}/interviews/${editingInterview.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(interviewForm)
+                });
+            } else {
+                // Add new interview
+                response = await fetch(`/api/candidates/${selectedCandidate._id}/interviews`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(interviewForm)
+                });
+            }
             
             if (!response.ok) {
-                throw new Error('Failed to add interview');
+                throw new Error(interviewFormMode === 'edit' ? 'Failed to update interview' : 'Failed to add interview');
             }
             
             // Refresh candidate details to get updated data
@@ -1879,8 +1974,10 @@ const CandidateGrid = () => {
                 notes: ''
             });
             setShowInterviewInput(false);
+            setInterviewFormMode('add');
+            setEditingInterview(null);
             
-            setSuccessMessage('Interview scheduled successfully!');
+            setSuccessMessage(interviewFormMode === 'edit' ? 'Interview updated successfully!' : 'Interview scheduled successfully!');
             setShowSuccessAlert(true);
             
             // Auto-dismiss success message
@@ -1947,6 +2044,8 @@ const CandidateGrid = () => {
             // Reset editing state
             setEditingInterview(null);
             setIsEditingInterview(false);
+            setInterviewFormMode('add');
+            setShowInterviewInput(false);
             
             setSuccessMessage('Interview updated successfully!');
             setShowSuccessAlert(true);
@@ -2218,7 +2317,30 @@ const CandidateGrid = () => {
     };
 
     const handleEditInterviewCard = (interviewId: string) => {
-        handleInterviewReschedule(interviewId);
+        // Close the interview details modal first
+        setShowInterviewDetailsModal(false);
+        
+        // Find the interview and populate the form for editing
+        const interview = selectedCandidate?.interviews?.find(i => i._id === interviewId);
+        if (interview) {
+            setInterviewForm({
+                scheduledDate: interview.scheduledDate ? new Date(interview.scheduledDate).toISOString().slice(0, 16) : '',
+                interviewLevel: interview.interviewLevel,
+                interviewer: interview.interviewer,
+                interviewLink: interview.interviewLink || '',
+                notes: interview.notes || ''
+            });
+            setEditingInterview({
+                id: interview._id,
+                scheduledDate: interview.scheduledDate ? new Date(interview.scheduledDate).toISOString().slice(0, 16) : '',
+                interviewLevel: interview.interviewLevel,
+                interviewer: interview.interviewer,
+                interviewLink: interview.interviewLink || '',
+                notes: interview.notes || ''
+            });
+            setInterviewFormMode('edit');
+            setShowInterviewInput(true);
+        }
     };
 
     const handleDeleteInterviewCard = (interviewId: string) => {
@@ -5238,7 +5360,21 @@ const CandidateGrid = () => {
                                                 <button
                                                     type="button"
                                                     className="btn btn-primary btn-sm"
-                                                    onClick={() => setShowInterviewInput(!showInterviewInput)}
+                                                    onClick={() => {
+                                                        if (!showInterviewInput) {
+                                                            // Opening the form - reset to add mode
+                                                            setInterviewFormMode('add');
+                                                            setEditingInterview(null);
+                                                            setInterviewForm({
+                                                                scheduledDate: '',
+                                                                interviewLevel: '',
+                                                                interviewer: '',
+                                                                interviewLink: '',
+                                                                notes: ''
+                                                            });
+                                                        }
+                                                        setShowInterviewInput(!showInterviewInput);
+                                                    }}
                                                 >
                                                     <i className="ti ti-plus me-1"></i>
                                                     Schedule Interview
@@ -5248,7 +5384,7 @@ const CandidateGrid = () => {
                                     </div>
                                     <div className="card-body p-0">
                                         {/* Modern Interview Section */}
-                                        <div className="interview-section">
+                                        <div className="interview-section" ref={interviewSectionRef}>
                                             {/* Add Interview Input Section - Modern Design */}
                                             {showInterviewInput && (
                                                 <div className="add-interview-form p-4 bg-gradient-light border-bottom">
@@ -5380,12 +5516,12 @@ const CandidateGrid = () => {
                                                             {isSavingInterview ? (
                                                                 <>
                                                                     <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                                                    Scheduling Interview...
+                                                                    {interviewFormMode === 'edit' ? 'Updating Interview...' : 'Scheduling Interview...'}
                                                                 </>
                                                             ) : (
                                                                 <>
-                                                                    <i className="ti ti-calendar-plus me-2"></i>
-                                                                    Schedule Interview
+                                                                    <i className={interviewFormMode === 'edit' ? 'ti ti-edit me-2' : 'ti ti-calendar-plus me-2'}></i>
+                                                                    {interviewFormMode === 'edit' ? 'Update Interview' : 'Schedule Interview'}
                                                                 </>
                                                             )}
                                                         </button>
@@ -5401,6 +5537,8 @@ const CandidateGrid = () => {
                                                                     interviewLink: '',
                                                                     notes: ''
                                                                 });
+                                                                setInterviewFormMode('add');
+                                                                setEditingInterview(null);
                                                             }}
                                                             style={{ borderRadius: '12px', fontWeight: '600' }}
                                                         >
@@ -8040,6 +8178,8 @@ const CandidateGrid = () => {
                     </div>
                 </div>
             )}
+
+
 
         </>
 

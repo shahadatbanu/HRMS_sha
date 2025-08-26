@@ -44,6 +44,10 @@ export interface TodoFilters {
   page?: number;
 }
 
+export interface DashboardTodoFilters {
+  page?: number;
+}
+
 class TodoService {
   private getHeaders(): HeadersInit {
     const token = localStorage.getItem('token');
@@ -75,6 +79,24 @@ class TodoService {
 
     if (!response.ok) {
       throw new Error('Failed to fetch todos');
+    }
+
+    return response.json();
+  }
+
+  async getDashboardTodos(filters: DashboardTodoFilters = {}): Promise<{ data: Todo[]; total: number; page: number; limit: number; totalPages: number }> {
+    const params = new URLSearchParams();
+    
+    if (filters.page) {
+      params.append('page', filters.page.toString());
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/todos/dashboard?${params.toString()}`, {
+      headers: this.getHeaders()
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch dashboard todos');
     }
 
     return response.json();

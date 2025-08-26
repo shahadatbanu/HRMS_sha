@@ -349,6 +349,7 @@ export const all_routes = {
   //HRM
   employeeList: "/employees",
   employeeGrid: "/employees-grid",
+  employeeBirthdays: "/employee-birthdays",
   departments: "/departments",
   designations: "/designations",
   policy: "/policy",
@@ -389,7 +390,7 @@ export const all_routes = {
   payrollDeduction: "/payroll-deduction",
   //ADMINISTRATION
   knowledgebase: "/knowledgebase",
-  activity: "/activity",
+  activity: "/activities",
   users: "/users",
   rolePermission: "/roles-permissions",
   permissionpage: "/permission",

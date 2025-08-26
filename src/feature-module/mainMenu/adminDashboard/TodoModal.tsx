@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import todoService, { CreateTodoData } from '../../../core/services/todoService';
+import Swal from 'sweetalert2';
 
 interface TodoModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTodoCreated: () => void;
+  totalTodos: number;
 }
 
-const TodoModal: React.FC<TodoModalProps> = ({ isOpen, onClose, onTodoCreated }) => {
+const TodoModal: React.FC<TodoModalProps> = ({ isOpen, onClose, onTodoCreated, totalTodos }) => {
   const [formData, setFormData] = useState<CreateTodoData>({
     title: '',
     description: '',
@@ -57,11 +59,40 @@ const TodoModal: React.FC<TodoModalProps> = ({ isOpen, onClose, onTodoCreated })
       return;
     }
 
+    // Check if we're at the limit and show warning
+    if (totalTodos >= 10) {
+      const result = await Swal.fire({
+        title: 'Todo Limit Reached!',
+        text: 'You have reached the maximum of 10 todos. The oldest todo will be automatically deleted to make room for this new one.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, create todo',
+        cancelButtonText: 'Cancel'
+      });
+
+      if (!result.isConfirmed) {
+        return;
+      }
+    }
+
     try {
       setLoading(true);
       setError('');
       
       await todoService.createTodo(formData);
+      
+      // Show success message if we were at the limit
+      if (totalTodos >= 10) {
+        await Swal.fire({
+          title: 'Todo Created!',
+          text: 'Your new todo has been created and the oldest todo has been automatically deleted.',
+          icon: 'success',
+          timer: 3000,
+          timerProgressBar: true
+        });
+      }
       
       onTodoCreated();
       onClose();
