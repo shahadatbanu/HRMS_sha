@@ -4,6 +4,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { OverlayTrigger, Tooltip } from "react-bootstrap";
 import { setHeaderCollapse } from "../../data/redux/themeSettingSlice";
 
+{Set Headers}
+
 const CollapseHeader = () => {
   const dispatch = useDispatch();
   const headerCollapse = useSelector((state: any) => state.themeSetting.headerCollapse);
