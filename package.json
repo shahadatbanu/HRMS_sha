@@ -73,11 +73,14 @@
   },
 "scripts": {
   "start": "set GENERATE_SOURCEMAP=false && react-scripts start",
-  "build": "node --max_old_space_size=4096 node_modules/react-scripts/scripts/build.js",
+  "build": "react-scripts build",
   "test": "react-scripts test",
   "eject": "react-scripts eject",
   "analyze": "npm run build && npx webpack-bundle-analyzer build/static/js/*.js"
 },
+  "engines": {
+    "node": "18.x"
+  },
 
   "eslintConfig": {
     "extends": [
