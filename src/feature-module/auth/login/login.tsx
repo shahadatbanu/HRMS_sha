@@ -78,7 +78,7 @@ const Login = () => {
                     Empowering people <br /> through seamless HR <br /> management.
                   </h1>
                   <div className="my-4 mx-auto authen-overlay-img">
-                    <img src="assets/img/bg/authentication-bg-01.png" alt="Img" />
+                    <img src="https://www.shutterstock.com/image-vector/cute-pig-illustration-kawaii-chibi-600nw-2291790391.jpg" alt="Img" />
                   </div>
                   <div>
                     <p className="text-white fs-20 fw-semibold text-center">
