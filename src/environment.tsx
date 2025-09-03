@@ -5,4 +5,4 @@ export const img_path ='/'
 
 // Backend URL configuration
 // You can change this value based on your environment
-export const backend_url = 'http://localhost:5000'
+export const backend_url = 'https://hrms-backend-ten.vercel.app'
