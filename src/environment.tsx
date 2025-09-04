@@ -5,4 +5,4 @@ export const img_path ='/'
 
 // Backend URL configuration
 // You can change this value based on your environment
-export const backend_url = 'https://hrms-backend-mdww.onrender.com'
+export const backend_url = 'http://31.97.239.252.5000'
