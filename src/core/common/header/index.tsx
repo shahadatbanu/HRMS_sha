@@ -484,7 +484,7 @@ const Header = () => {
 											<Link className="dropdown-item d-inline-flex align-items-center p-0 py-2" to={routes.profile}>
 												<i className="ti ti-user-circle me-1"></i>My Profile
 											</Link>
-											<Link className="dropdown-item d-inline-flex align-items-center p-0 py-2" to={routes.bussinessSettings}>
+											{/* <Link className="dropdown-item d-inline-flex align-items-center p-0 py-2" to={routes.bussinessSettings}>
 												<i className="ti ti-settings me-1"></i>Settings
 											</Link>
 											<Link className="dropdown-item d-inline-flex align-items-center p-0 py-2" to={routes.securitysettings}>
@@ -495,7 +495,7 @@ const Header = () => {
 											</Link>
 											<Link className="dropdown-item d-inline-flex align-items-center p-0 py-2" to={routes.knowledgebase}>
 												<i className="ti ti-question-mark me-1"></i>Knowledge Base
-											</Link>
+											</Link> */}
 										</div>
 										<div className="card-footer">
 											<Link className="dropdown-item d-inline-flex align-items-center p-0 py-2" to="/login" onClick={handleLogout}>Logout</Link>
@@ -513,7 +513,7 @@ const Header = () => {
 					</Link>
 					<div className="dropdown-menu dropdown-menu-end">
 						<Link className="dropdown-item" to={routes.profile}>My Profile</Link>
-						<Link className="dropdown-item" to={routes.profilesettings}>Settings</Link>
+						{/* <Link className="dropdown-item" to={routes.profilesettings}>Settings</Link> */}
 						<Link className="dropdown-item" to="/login" onClick={handleLogout}>Logout</Link>
 					</div>
 				</div>
