@@ -9,6 +9,7 @@ interface Image {
   width?: number;
   id?: string;
   style?: React.CSSProperties;
+  onError?: () => void;
 }
 
 const ImageWithBasePath = (props: Image) => {
@@ -25,6 +26,7 @@ const ImageWithBasePath = (props: Image) => {
       width={props.width}
       id={props.id}
       style={props.style}
+      onError={props.onError}
     />
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import PredefinedDateRanges from '../../../core/common/datePicker'
 import Table from "../../../core/common/dataTable/index";
@@ -144,16 +144,34 @@ const EmployeeDetails = () => {
   const [assetImagePreview, setAssetImagePreview] = useState<string | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
   const [userProfileLoading, setUserProfileLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     if (id) {
+      setImageError(false); // Reset image error when employee changes
       fetchEmployeeDetails();
     } else {
       setLoading(false);
     }
-    // Fetch current user profile data
-    fetchCurrentUserProfile();
   }, [id]);
+
+  // Separate useEffect for fetching current user profile
+  useEffect(() => {
+    fetchCurrentUserProfile();
+  }, []);
+
+  // Memoize the profile image URL to prevent unnecessary re-renders
+  const profileImageUrl = useMemo(() => {
+    if (imageError || !employee?.profileImage) {
+      return "assets/img/users/user-13.jpg";
+    }
+    
+    if (employee.profileImage.startsWith('http')) {
+      return employee.profileImage;
+    }
+    
+    return `${BACKEND_URL}/uploads/${employee.profileImage}`;
+  }, [employee?.profileImage, BACKEND_URL, imageError]);
 
   const fetchCurrentUserProfile = async () => {
     try {
@@ -1153,16 +1171,11 @@ const EmployeeDetails = () => {
                                 <div className="card-body p-0">
                                     <span className="avatar avatar-xl avatar-rounded border border-2 border-white m-auto d-flex mb-2">
                                         <ImageWithBasePath
-                                            src={employee.profileImage ? 
-                                                (employee.profileImage.startsWith('http') ? 
-                                                    employee.profileImage : 
-                                                    `${BACKEND_URL}/uploads/${employee.profileImage}`
-                                                ) : 
-                                                "assets/img/users/user-13.jpg"
-                                            }
+                                            src={profileImageUrl}
                                             className="w-auto rounded-circle"
                                             alt="Employee Profile"
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                            onError={() => setImageError(true)}
                                         />
                                     </span>
                                     <div className="text-center px-3 pb-3 border-bottom">

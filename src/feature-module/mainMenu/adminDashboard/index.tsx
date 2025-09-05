@@ -161,6 +161,7 @@ const AdminDashboard = () => {
   const [performanceLoading, setPerformanceLoading] = useState(false);
   const [selectedEmployeeName, setSelectedEmployeeName] = useState<string>('All Employees');
   const [topPerformer, setTopPerformer] = useState<{name: string, submissions: number} | null>(null);
+  const [performanceDataType, setPerformanceDataType] = useState<string>('submissions');
 
   const [performance_chart2, setPerformanceChart2] = useState<any>({
     series: [{
@@ -243,6 +244,7 @@ const AdminDashboard = () => {
   const [submissionsLoading, setSubmissionsLoading] = useState(true);
   const [selectedSubmissionEmployee, setSelectedSubmissionEmployee] = useState('All Employees');
   const [submissionEmployees, setSubmissionEmployees] = useState<any[]>([]);
+  const [submissionsDataType, setSubmissionsDataType] = useState<string>('submissions');
 
   // Add state for birthdays
   const [birthdays, setBirthdays] = useState({
@@ -285,7 +287,7 @@ const AdminDashboard = () => {
       },
     },
     series: [{
-      name: 'Monthly Submissions',
+      name: 'Monthly Data',
       data: []
     }],
     xaxis: {
@@ -995,17 +997,44 @@ const AdminDashboard = () => {
     return averagePerformance;
   };
 
-  const calculateTopPerformer = async () => {
+  const calculateTopPerformer = async (dataType: string = 'submissions') => {
     try {
-      console.log('Calculating top performer for employees:', performanceEmployees.length);
-      let maxSubmissions = 0;
+      console.log('Calculating top performer for employees:', performanceEmployees.length, 'dataType:', dataType);
+      let maxData = 0;
       let topEmployee = null;
       const currentMonth = new Date().getMonth(); // 0-11 (Jan = 0, Dec = 11)
       
       console.log('Current month:', currentMonth);
       
+      // Determine endpoint and data key based on data type
+      let endpoint = '';
+      let dataKey = '';
+      let dataLabel = '';
+      
+      switch (dataType) {
+        case 'submissions':
+          endpoint = `${backend_url}/api/candidates/submissions/dashboard?employeeId=`;
+          dataKey = 'submissions';
+          dataLabel = 'submissions';
+          break;
+        case 'job-offers':
+          endpoint = `${backend_url}/api/candidates/job-offers/dashboard?employeeId=`;
+          dataKey = 'jobOffers';
+          dataLabel = 'job offers';
+          break;
+        case 'interview-schedules':
+          endpoint = `${backend_url}/api/candidates/interview-schedules/dashboard?employeeId=`;
+          dataKey = 'interviewSchedules';
+          dataLabel = 'interview schedules';
+          break;
+        default:
+          endpoint = `${backend_url}/api/candidates/submissions/dashboard?employeeId=`;
+          dataKey = 'submissions';
+          dataLabel = 'submissions';
+      }
+      
       for (const employee of performanceEmployees) {
-        const response = await fetch(`${backend_url}/api/candidates/submissions/dashboard?employeeId=${employee._id}`, {
+        const response = await fetch(`${endpoint}${employee._id}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
             'Content-Type': 'application/json'
@@ -1014,16 +1043,16 @@ const AdminDashboard = () => {
         
         if (response.ok) {
           const result = await response.json();
-          const monthlySubmissions = result.data.submissions || [];
-          const currentMonthSubmissions = monthlySubmissions[currentMonth] || 0;
+          const monthlyData = result.data[dataKey] || [];
+          const currentMonthData = monthlyData[currentMonth] || 0;
           
-          console.log(`${employee.firstName} ${employee.lastName}: ${currentMonthSubmissions} submissions this month`);
+          console.log(`${employee.firstName} ${employee.lastName}: ${currentMonthData} ${dataLabel} this month`);
           
-          if (currentMonthSubmissions > maxSubmissions) {
-            maxSubmissions = currentMonthSubmissions;
+          if (currentMonthData > maxData) {
+            maxData = currentMonthData;
             topEmployee = {
               name: `${employee.firstName} ${employee.lastName}`,
-              submissions: currentMonthSubmissions
+              submissions: currentMonthData
             };
           }
         } else {
@@ -1033,10 +1062,10 @@ const AdminDashboard = () => {
       
       console.log('Top performer result:', topEmployee);
       
-      // If no one has submissions this month, show a fallback
+      // If no one has data this month, show a fallback
       if (!topEmployee && performanceEmployees.length > 0) {
         topEmployee = {
-          name: 'No submissions this month',
+          name: `No ${dataLabel} this month`,
           submissions: 0
         };
       }
@@ -1047,10 +1076,33 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchPerformanceData = async (employeeId: string) => {
+  const fetchPerformanceData = async (employeeId: string, dataType: string = 'submissions') => {
     try {
       setPerformanceLoading(true);
-      const response = await fetch(`${backend_url}/api/candidates/submissions/dashboard?employeeId=${employeeId}`, {
+      
+      // Determine endpoint based on data type
+      let endpoint = '';
+      let dataKey = '';
+      
+      switch (dataType) {
+        case 'submissions':
+          endpoint = `${backend_url}/api/candidates/submissions/dashboard?employeeId=${employeeId}`;
+          dataKey = 'submissions';
+          break;
+        case 'job-offers':
+          endpoint = `${backend_url}/api/candidates/job-offers/dashboard?employeeId=${employeeId}`;
+          dataKey = 'jobOffers';
+          break;
+        case 'interview-schedules':
+          endpoint = `${backend_url}/api/candidates/interview-schedules/dashboard?employeeId=${employeeId}`;
+          dataKey = 'interviewSchedules';
+          break;
+        default:
+          endpoint = `${backend_url}/api/candidates/submissions/dashboard?employeeId=${employeeId}`;
+          dataKey = 'submissions';
+      }
+      
+      const response = await fetch(endpoint, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
@@ -1059,14 +1111,24 @@ const AdminDashboard = () => {
       
       if (response.ok) {
         const result = await response.json();
-        const monthlySubmissions = result.data.submissions || [];
+        const monthlyData = result.data[dataKey] || [];
         
-        // Store original submission data for tooltip
-        setOriginalSubmissionsData(monthlySubmissions);
+        // Store original data for tooltip
+        setOriginalSubmissionsData(monthlyData);
         
         // Calculate performance percentages if KPI settings are available
-        if (kpiSettings && kpiSettings.submissions) {
-          const highKPI = kpiSettings.submissions.high;
+        // Map data type to KPI settings key
+        const kpiKey = dataType === 'job-offers' ? 'jobOffers' : 
+                      dataType === 'interview-schedules' ? 'interviews' : 'submissions';
+        
+        if (kpiSettings && kpiSettings[kpiKey]) {
+          const highKPI = kpiSettings[kpiKey].high;
+          console.log(`Performance calculation for ${dataType}:`, {
+            kpiKey,
+            highKPI,
+            monthlyData,
+            kpiSettings: kpiSettings[kpiKey]
+          });
           
           let performancePercentages: number[];
           if (employeeId === 'all') {
@@ -1074,12 +1136,12 @@ const AdminDashboard = () => {
             // First, get individual employee data to calculate average
             const individualEmployeeData = await fetchIndividualEmployeePerformance();
             performancePercentages = calculateAveragePerformance(individualEmployeeData, highKPI);
-          } else {
-            // For individual employees, use normal calculation
-            performancePercentages = monthlySubmissions.map((submissions: number) => 
-              Math.min((submissions / highKPI) * 100, 100)
-            );
-          }
+                      } else {
+              // For individual employees, use normal calculation
+              performancePercentages = monthlyData.map((data: number) => 
+                Math.min((data / highKPI) * 100, 100)
+              );
+            }
           
           setPerformanceData(performancePercentages);
           
@@ -1093,10 +1155,12 @@ const AdminDashboard = () => {
             tooltip: {
               y: {
                 formatter: function(val: number, { dataPointIndex }: any) {
-                  const originalSubmissions = monthlySubmissions[dataPointIndex] || 0;
+                  const originalData = monthlyData[dataPointIndex] || 0;
                   const isAllEmployees = employeeId === 'all';
-                  const submissionLabel = isAllEmployees ? 'avg submissions' : 'submissions';
-                  return `${val}% (${Math.round(originalSubmissions)} ${submissionLabel})`;
+                  const dataLabel = dataType === 'submissions' ? 'submissions' : 
+                                   dataType === 'job-offers' ? 'job offers' : 'interview schedules';
+                  const avgLabel = isAllEmployees ? 'avg ' : '';
+                  return `${val}% (${Math.round(originalData)} ${avgLabel}${dataLabel})`;
                 }
               },
               style: {
@@ -1108,10 +1172,12 @@ const AdminDashboard = () => {
                 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                 const month = w.globals.labels && w.globals.labels[dataPointIndex] ? w.globals.labels[dataPointIndex] : monthNames[dataPointIndex];
                 const performanceValue = series[seriesIndex][dataPointIndex];
-                const originalSubmissions = monthlySubmissions[dataPointIndex] || 0;
+                const originalData = monthlyData[dataPointIndex] || 0;
                 
                 const isAllEmployees = employeeId === 'all';
-                const submissionLabel = isAllEmployees ? 'avg submissions' : 'submissions';
+                const dataLabel = dataType === 'submissions' ? 'submissions' : 
+                                 dataType === 'job-offers' ? 'job offers' : 'interview schedules';
+                const avgLabel = isAllEmployees ? 'avg ' : '';
                 
                 return `
                   <div style="
@@ -1137,7 +1203,7 @@ const AdminDashboard = () => {
                         performance: <span style="color: #03C95A; font-weight: 600;">${Math.round(performanceValue)}%</span>
                       </div>
                       <div style="color: #6b7280; font-size: 14px;">
-                        ${submissionLabel}: <span style="color: #374151; font-weight: 600;">${Math.round(originalSubmissions * (isAllEmployees ? 1 : 1))}</span>
+                        ${avgLabel}${dataLabel}: <span style="color: #374151; font-weight: 600;">${Math.round(originalData * (isAllEmployees ? 1 : 1))}</span>
                       </div>
                     </div>
                   </div>
@@ -1147,20 +1213,27 @@ const AdminDashboard = () => {
           }));
         } else {
           // Fallback to raw data if KPI settings not available
-          setPerformanceData(monthlySubmissions);
+          console.log(`No KPI settings available for ${dataType} (${kpiKey}):`, {
+            kpiSettings,
+            kpiKey,
+            dataType
+          });
+          setPerformanceData(monthlyData);
           setPerformanceChart2((prev: any) => ({
             ...prev,
             series: [{
               name: "performance",
-              data: monthlySubmissions
+              data: monthlyData
             }],
             tooltip: {
               y: {
                 formatter: function(val: number, { dataPointIndex }: any) {
-                  const originalSubmissions = monthlySubmissions[dataPointIndex] || 0;
+                  const originalData = monthlyData[dataPointIndex] || 0;
                   const isAllEmployees = employeeId === 'all';
-                  const submissionLabel = isAllEmployees ? 'avg submissions' : 'submissions';
-                  return `${val}% (${Math.round(originalSubmissions)} ${submissionLabel})`;
+                  const dataLabel = dataType === 'submissions' ? 'submissions' : 
+                                   dataType === 'job-offers' ? 'job offers' : 'interview schedules';
+                  const avgLabel = isAllEmployees ? 'avg ' : '';
+                  return `${val}% (${Math.round(originalData)} ${avgLabel}${dataLabel})`;
                 }
               },
               style: {
@@ -1172,10 +1245,12 @@ const AdminDashboard = () => {
                 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                 const month = w.globals.labels && w.globals.labels[dataPointIndex] ? w.globals.labels[dataPointIndex] : monthNames[dataPointIndex];
                 const performanceValue = series[seriesIndex][dataPointIndex];
-                const originalSubmissions = monthlySubmissions[dataPointIndex] || 0;
+                const originalData = monthlyData[dataPointIndex] || 0;
                 
                 const isAllEmployees = employeeId === 'all';
-                const submissionLabel = isAllEmployees ? 'avg submissions' : 'submissions';
+                const dataLabel = dataType === 'submissions' ? 'submissions' : 
+                                 dataType === 'job-offers' ? 'job offers' : 'interview schedules';
+                const avgLabel = isAllEmployees ? 'avg ' : '';
                 
                 return `
                   <div style="
@@ -1201,7 +1276,7 @@ const AdminDashboard = () => {
                         performance: <span style="color: #03C95A; font-weight: 600;">${Math.round(performanceValue)}%</span>
                       </div>
                       <div style="color: #6b7280; font-size: 14px;">
-                        ${submissionLabel}: <span style="color: #374151; font-weight: 600;">${Math.round(originalSubmissions * (isAllEmployees ? 1 : 1))}</span>
+                        ${avgLabel}${dataLabel}: <span style="color: #374151; font-weight: 600;">${Math.round(originalData * (isAllEmployees ? 1 : 1))}</span>
                       </div>
                     </div>
                   </div>
@@ -1230,7 +1305,7 @@ const AdminDashboard = () => {
       const employee = performanceEmployees.find(emp => emp._id === employeeId);
       setSelectedEmployeeName(employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown Employee');
     }
-    fetchPerformanceData(employeeId);
+    fetchPerformanceData(employeeId, performanceDataType);
   };
 
   // Fetch pending leave requests count on component mount and refresh periodically
@@ -1253,7 +1328,7 @@ const AdminDashboard = () => {
     if (user && !isLoading) {
       fetchPerformanceEmployees();
       fetchKpiSettings();
-      fetchPerformanceData('all');
+      fetchPerformanceData('all', performanceDataType);
     }
   }, [user, isLoading]);
 
@@ -1261,16 +1336,16 @@ const AdminDashboard = () => {
   useEffect(() => {
     if (performanceEmployees.length > 0) {
       console.log('Triggering top performer calculation for', performanceEmployees.length, 'employees');
-      calculateTopPerformer();
+      calculateTopPerformer(performanceDataType);
     }
-  }, [performanceEmployees]);
+  }, [performanceEmployees, performanceDataType]);
 
   // Refetch performance data when KPI settings change
   useEffect(() => {
     if (kpiSettings && selectedEmployee) {
-      fetchPerformanceData(selectedEmployee);
+      fetchPerformanceData(selectedEmployee, performanceDataType);
     }
-  }, [kpiSettings]);
+  }, [kpiSettings, performanceDataType]);
 
   //New Chart
   const [empDepartment, setEmpDepartment] = useState<any>({
@@ -1443,7 +1518,7 @@ const AdminDashboard = () => {
   const profileImg = user && user.profileImage ? `${backend_url}/uploads/${user.profileImage}` : 'assets/img/profiles/avatar-31.jpg';
 
   // Function to fetch submissions data from backend
-  const fetchSubmissionsData = async (selectedEmployee: string = 'All Employees') => {
+  const fetchSubmissionsData = async (selectedEmployee: string = 'All Employees', dataType: string = 'submissions') => {
     try {
       setSubmissionsLoading(true);
       
@@ -1456,7 +1531,34 @@ const AdminDashboard = () => {
         }
       }
       
-      const response = await fetch(`${backend_url}/api/candidates/submissions/dashboard?employeeId=${employeeId}`, {
+      // Determine endpoint based on data type
+      let endpoint = '';
+      let dataKey = '';
+      let seriesName = '';
+      
+      switch (dataType) {
+        case 'submissions':
+          endpoint = `${backend_url}/api/candidates/submissions/dashboard?employeeId=${employeeId}`;
+          dataKey = 'submissions';
+          seriesName = 'Monthly Submissions';
+          break;
+        case 'job-offers':
+          endpoint = `${backend_url}/api/candidates/job-offers/dashboard?employeeId=${employeeId}`;
+          dataKey = 'jobOffers';
+          seriesName = 'Monthly Job Offers';
+          break;
+        case 'interview-schedules':
+          endpoint = `${backend_url}/api/candidates/interview-schedules/dashboard?employeeId=${employeeId}`;
+          dataKey = 'interviewSchedules';
+          seriesName = 'Monthly Interview Schedules';
+          break;
+        default:
+          endpoint = `${backend_url}/api/candidates/submissions/dashboard?employeeId=${employeeId}`;
+          dataKey = 'submissions';
+          seriesName = 'Monthly Submissions';
+      }
+      
+      const response = await fetch(endpoint, {
         headers: { 
           'Authorization': `Bearer ${localStorage.getItem('token')}`, 
           'Content-Type': 'application/json' 
@@ -1465,16 +1567,17 @@ const AdminDashboard = () => {
       
       if (response.ok) {
         const result = await response.json();
-        const { months, submissions } = result.data;
+        const { months } = result.data;
+        const data = result.data[dataKey] || [];
         
-        setSubmissionsData(submissions);
+        setSubmissionsData(data);
         
         // Update chart data
         const chartData = {
           ...submissionsChartData,
           series: [{
-            name: 'Monthly Submissions',
-            data: submissions
+            name: seriesName,
+            data: data
           }],
           xaxis: {
             ...submissionsChartData.xaxis,
@@ -1484,15 +1587,27 @@ const AdminDashboard = () => {
         
         setSubmissionsChartData(chartData);
       } else {
-        console.error('Error fetching submissions data:', response.statusText);
+        console.error(`Error fetching ${dataType} data:`, response.statusText);
         setSubmissionsData([]);
       }
     } catch (error) {
-      console.error('Error fetching submissions data:', error);
+      console.error(`Error fetching ${dataType} data:`, error);
       setSubmissionsData([]);
     } finally {
       setSubmissionsLoading(false);
     }
+  };
+
+  // Handler for data type changes
+  const handleSubmissionsDataTypeChange = (dataType: string) => {
+    setSubmissionsDataType(dataType);
+    fetchSubmissionsData(selectedSubmissionEmployee, dataType);
+  };
+
+  // Handler for performance data type changes
+  const handlePerformanceDataTypeChange = (dataType: string) => {
+    setPerformanceDataType(dataType);
+    fetchPerformanceData(selectedEmployee, dataType);
   };
 
   // Function to fetch employees for submissions filter
@@ -1652,9 +1767,9 @@ const AdminDashboard = () => {
   // Update submissions data when employee filter changes
   useEffect(() => {
     if (user && !isLoading) {
-      fetchSubmissionsData(selectedSubmissionEmployee);
+      fetchSubmissionsData(selectedSubmissionEmployee, submissionsDataType);
     }
-  }, [selectedSubmissionEmployee, user, isLoading]);
+  }, [selectedSubmissionEmployee, submissionsDataType, user, isLoading]);
 
   // Auto-refresh activities every 30 seconds
   useEffect(() => {
@@ -3291,16 +3406,55 @@ const AdminDashboard = () => {
             {/* /Todo */}
           </div>
           <div className="row">
-            {/* Submissions Overview */}
+            {/* Dynamic Overview Card */}
             <div className="col-xl-7 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
-                  <h5 className="mb-2">Submissions Overview</h5>
+                  <h5 className="mb-2">
+                    {submissionsDataType === 'submissions' ? 'Submissions Overview' : 
+                     submissionsDataType === 'job-offers' ? 'Job Offers Overview' : 'Interview Schedules Overview'}
+                  </h5>
                   <div className="d-flex align-items-center">
+                    <div className="dropdown mb-2 me-2">
+                      <Link
+                        to="#"
+                        className="dropdown-toggle btn btn-white border-0 btn-sm d-inline-flex align-items-center fs-13"
+                        data-bs-toggle="dropdown"
+                      >
+                        {submissionsDataType === 'submissions' ? 'Submissions' : 
+                         submissionsDataType === 'job-offers' ? 'Job Offers' : 'Interview Schedules'}
+                      </Link>
+                      <ul className="dropdown-menu dropdown-menu-end p-3">
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                            onClick={() => handleSubmissionsDataTypeChange('submissions')}
+                          >
+                            Submissions
+                          </Link>
+                        </li>
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                            onClick={() => handleSubmissionsDataTypeChange('job-offers')}
+                          >
+                            Job Offers
+                          </Link>
+                        </li>
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                            onClick={() => handleSubmissionsDataTypeChange('interview-schedules')}
+                          >
+                            Interview Schedules
+                          </Link>
+                        </li>
+                      </ul>
+                    </div>
                     <div className="dropdown mb-2">
                       <Link
                         to="#"
-                        className="dropdown-toggle btn btn-white border-0 btn-sm d-inline-flex align-items-center fs-13 me-2"
+                        className="dropdown-toggle btn btn-white border-0 btn-sm d-inline-flex align-items-center fs-13"
                         data-bs-toggle="dropdown"
                       >
                         {selectedSubmissionEmployee}
@@ -3334,7 +3488,10 @@ const AdminDashboard = () => {
                       <div className="spinner-border text-primary" role="status">
                         <span className="visually-hidden">Loading...</span>
                       </div>
-                      <p className="mt-2 text-muted">Loading submissions data...</p>
+                      <p className="mt-2 text-muted">
+                        Loading {submissionsDataType === 'submissions' ? 'submissions' : 
+                                submissionsDataType === 'job-offers' ? 'job offers' : 'interview schedules'} data...
+                      </p>
                     </div>
                   ) : submissionsData.length > 0 ? (
                     <>
@@ -3342,7 +3499,8 @@ const AdminDashboard = () => {
                     <div className="d-flex align-items-center mb-1">
                       <p className="fs-13 text-gray-9 me-3 mb-0">
                         <i className="ti ti-square-filled me-2 text-primary" />
-                            Monthly Submissions
+                            {submissionsDataType === 'submissions' ? 'Monthly Submissions' : 
+                             submissionsDataType === 'job-offers' ? 'Monthly Job Offers' : 'Monthly Interview Schedules'}
                       </p>
                     </div>
                         <p className="fs-13 mb-1">Last Updated at {new Date().toLocaleTimeString()}</p>
@@ -3358,13 +3516,16 @@ const AdminDashboard = () => {
                   ) : (
                     <div className="text-center py-4">
                       <i className="ti ti-file-off fs-1 text-muted mb-3"></i>
-                      <p className="text-muted">No submissions data available.</p>
+                      <p className="text-muted">
+                        No {submissionsDataType === 'submissions' ? 'submissions' : 
+                            submissionsDataType === 'job-offers' ? 'job offers' : 'interview schedules'} data available.
+                      </p>
                 </div>
                   )}
               </div>
             </div>
             </div>
-            {/* /Submissions Overview */}
+            {/* /Dynamic Overview Card */}
             {/* Invoices */}
             {/* <div className="col-xl-5 d-flex">
               <div className="card flex-fill">
@@ -3635,10 +3796,52 @@ const AdminDashboard = () => {
                   <div className="d-flex align-items-center justify-content-between flex-wrap row-gap-2">
                     <h5>Performance</h5>
                     <div className="d-flex align-items-center">
+                      <div className="dropdown mb-2 me-2">
+                        <Link
+                          to="#"
+                          className="dropdown-toggle btn btn-white border-0 btn-sm d-inline-flex align-items-center fs-13"
+                          data-bs-toggle="dropdown"
+                          style={{ pointerEvents: performanceLoading ? 'none' : 'auto' }}
+                        >
+                          {performanceLoading ? (
+                            <div className="spinner-border spinner-border-sm me-1" role="status">
+                              <span className="visually-hidden">Loading...</span>
+                            </div>
+                          ) : null}
+                          {performanceDataType === 'submissions' ? 'Submissions' : 
+                           performanceDataType === 'job-offers' ? 'Job Offers' : 'Interview Schedules'}
+                        </Link>
+                        <ul className="dropdown-menu dropdown-menu-end p-3">
+                          <li>
+                            <Link to="#"
+                              className="dropdown-item rounded-1"
+                              onClick={() => handlePerformanceDataTypeChange('submissions')}
+                            >
+                              Submissions
+                            </Link>
+                          </li>
+                          <li>
+                            <Link to="#"
+                              className="dropdown-item rounded-1"
+                              onClick={() => handlePerformanceDataTypeChange('job-offers')}
+                            >
+                              Job Offers
+                            </Link>
+                          </li>
+                          <li>
+                            <Link to="#"
+                              className="dropdown-item rounded-1"
+                              onClick={() => handlePerformanceDataTypeChange('interview-schedules')}
+                            >
+                              Interview Schedules
+                            </Link>
+                          </li>
+                        </ul>
+                      </div>
                       <div className="dropdown mb-2">
                         <Link
                           to="#"
-                          className="dropdown-toggle btn btn-white border-0 btn-sm d-inline-flex align-items-center fs-13 me-2"
+                          className="dropdown-toggle btn btn-white border-0 btn-sm d-inline-flex align-items-center fs-13"
                           data-bs-toggle="dropdown"
                           style={{ pointerEvents: performanceLoading ? 'none' : 'auto' }}
                         >
@@ -3679,7 +3882,8 @@ const AdminDashboard = () => {
                     </span>
                     <small className="text-muted">
                       {topPerformer ? (
-                        `${topPerformer.name} (${topPerformer.submissions} submissions this month)`
+                        `${topPerformer.name} (${topPerformer.submissions} ${performanceDataType === 'submissions' ? 'submissions' : 
+                                                                        performanceDataType === 'job-offers' ? 'job offers' : 'interview schedules'} this month)`
                       ) : (
                         'Loading...'
                       )}
