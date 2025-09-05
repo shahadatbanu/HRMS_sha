@@ -7,6 +7,7 @@ import PredefinedDateRanges from '../../../core/common/datePicker';
 // import { employee_list_details } from '../../../core/data/json/employees_list_details';
 import { DatePicker } from 'antd';
 import CommonSelect from '../../../core/common/commonSelect';
+import { getDesignations } from '../../../core/services/designationService';
 import CollapseHeader from '../../../core/common/collapse-header/collapse-header';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -23,6 +24,7 @@ interface EmployeeTableRow {
   Phone: string;
   Designation: string;
   JoiningDate: string;
+  JoiningDateISO?: string;
   Status: string;
   Image: string;
   CurrentRole: string;
@@ -33,6 +35,8 @@ const EmployeeList = () => {
   // const data = employee_list_details;
   // Instead, fetch from backend:
   const [data, setData] = useState<EmployeeTableRow[]>([]);
+  const [filterDesignation, setFilterDesignation] = useState<string>('Select');
+  const [filterStatus, setFilterStatus] = useState<string>('');
   const [dashboardStats, setDashboardStats] = useState({
     totalEmployees: 0,
     activeEmployees: 0,
@@ -55,10 +59,34 @@ const EmployeeList = () => {
     Phone: emp.phoneNumber,
     Designation: emp.designation,
     JoiningDate: emp.joiningDate ? new Date(emp.joiningDate).toLocaleDateString() : '',
+    JoiningDateISO: emp.joiningDate || undefined,
     Status: emp.status || 'Active',
     Image: emp.profileImage ? `${BACKEND_URL}/uploads/${emp.profileImage}` : 'assets/img/users/user-1.jpg',
     CurrentRole: emp.designation || '',
   }));
+
+  const [filterDateRange, setFilterDateRange] = useState<{ start: dayjs.Dayjs | null; end: dayjs.Dayjs | null }>({ start: null, end: null });
+  const [applyDateFilter, setApplyDateFilter] = useState<boolean>(false);
+
+  const filteredData = React.useMemo(() => {
+    let result = data;
+    if (filterDesignation && filterDesignation !== 'Select') {
+      result = result.filter((row) => row.Designation === filterDesignation);
+    }
+    if (filterStatus) {
+      result = result.filter((row) => row.Status === filterStatus);
+    }
+    if (applyDateFilter && filterDateRange.start && filterDateRange.end) {
+      const start = filterDateRange.start.startOf('day');
+      const end = filterDateRange.end.endOf('day');
+      result = result.filter((row) => {
+        if (!row.JoiningDateISO) return false;
+        const d = dayjs(row.JoiningDateISO);
+        return d.isValid() && (d.isAfter(start) || d.isSame(start)) && (d.isBefore(end) || d.isSame(end));
+      });
+    }
+    return result;
+  }, [data, filterDesignation, filterStatus, filterDateRange, applyDateFilter]);
 
   React.useEffect(() => {
     // Fetch employee data from backend
@@ -111,8 +139,7 @@ const EmployeeList = () => {
           <Link
             to={`${all_routes.employeedetails}/${record.key}`}
             className="avatar avatar-md"
-            data-bs-toggle="modal" data-inert={true}
-            data-bs-target="#view_details"
+            
           >
             <img 
               src={record.Image} 
@@ -125,8 +152,7 @@ const EmployeeList = () => {
             <p className="text-dark mb-0">
               <Link
                 to={`${all_routes.employeedetails}/${record.key}`}
-                data-bs-toggle="modal" data-inert={true}
-                data-bs-target="#view_details"
+                
               >
                 {record.Name}
               </Link>
@@ -227,12 +253,26 @@ const EmployeeList = () => {
     { value: "Developer", label: "Developer" },
     { value: "Executive", label: "Executive" },
   ];
-  const designation = [
+  const [designationOptions, setDesignationOptions] = useState<{ value: string; label: string }[]>([
     { value: "Select", label: "Select" },
-    { value: "Finance", label: "Finance" },
-    { value: "Developer", label: "Developer" },
-    { value: "Executive", label: "Executive" },
-  ];
+  ]);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const res = await getDesignations();
+        if (!isMounted) return;
+        const options = Array.isArray(res)
+          ? [{ value: 'Select', label: 'Select' }, ...res.filter((d: any) => d?.status !== 'Inactive').map((d: any) => ({ value: d.name, label: d.name }))]
+          : [{ value: 'Select', label: 'Select' }];
+        setDesignationOptions(options);
+      } catch (e) {
+        setDesignationOptions([{ value: 'Select', label: 'Select' }]);
+      }
+    })();
+    return () => { isMounted = false };
+  }, []);
 
   const getModalContainer = () => {
     const modalElement = document.getElementById('modal-datepicker');
@@ -543,7 +583,7 @@ const EmployeeList = () => {
               </nav>
             </div>
             <div className="d-flex my-xl-auto right-content align-items-center flex-wrap ">
-              <div className="me-2 mb-2">
+              {/* <div className="me-2 mb-2">
                 <div className="d-flex align-items-center border bg-white rounded p-1 me-2 icon-list">
                   <Link
                     to={all_routes.employeeList}
@@ -555,17 +595,17 @@ const EmployeeList = () => {
                     <i className="ti ti-layout-grid" />
                   </Link>
                 </div>
-              </div>
+              </div> */}
               <div className="me-2 mb-2">
                 <div className="dropdown">
-                  <Link
+                  {/* <Link
                     to="#"
                     className="dropdown-toggle btn btn-white d-inline-flex align-items-center"
                     data-bs-toggle="dropdown"
                   >
                     <i className="ti ti-file-export me-1" />
                     Export
-                  </Link>
+                  </Link> */}
                   <ul className="dropdown-menu  dropdown-menu-end p-3">
                     <li>
                       <Link
@@ -599,9 +639,9 @@ const EmployeeList = () => {
                   Add Employee
                 </Link>
               </div>
-              <div className="head-icons ms-2">
+              {/* <div className="head-icons ms-2">
                 <CollapseHeader />
-              </div>
+              </div> */}
             </div>
           </div>
           {/* /Breadcrumb */}
@@ -717,46 +757,27 @@ const EmployeeList = () => {
               <div className="d-flex my-xl-auto right-content align-items-center flex-wrap row-gap-3">
                 <div className="me-3">
                   <div className="input-icon-end position-relative">
-                    <PredefinedDateRanges />
+                    <PredefinedDateRanges 
+                      onDateRangeChange={(start, end) => {
+                        setFilterDateRange({
+                          start: dayjs(start.toDate()),
+                          end: dayjs(end.toDate()),
+                        });
+                        setApplyDateFilter(true);
+                      }}
+                    />
                     <span className="input-icon-addon">
                       <i className="ti ti-chevron-down" />
                     </span>
                   </div>
                 </div>
-                <div className="dropdown me-3">
-                  <Link
-                    to="#"
-                    className="dropdown-toggle btn btn-white d-inline-flex align-items-center"
-                    data-bs-toggle="dropdown"
-                  >
-                    Designation
-                  </Link>
-                  <ul className="dropdown-menu  dropdown-menu-end p-3">
-                    <li>
-                      <Link
-                        to="#"
-                        className="dropdown-item rounded-1"
-                      >
-                        Finance
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        to="#"
-                        className="dropdown-item rounded-1"
-                      >
-                        Developer
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        to="#"
-                        className="dropdown-item rounded-1"
-                      >
-                        Executive
-                      </Link>
-                    </li>
-                  </ul>
+                <div className="me-3" style={{ minWidth: 220 }}>
+                  <CommonSelect
+                    className='select'
+                    options={designationOptions}
+                    value={designationOptions.find(d => d.value === filterDesignation) || designationOptions[0]}
+                    onChange={(opt: any) => setFilterDesignation(opt ? opt.value : 'Select')}
+                  />
                 </div>
                 <div className="dropdown me-3">
                   <Link
@@ -771,6 +792,7 @@ const EmployeeList = () => {
                       <Link
                         to="#"
                         className="dropdown-item rounded-1"
+                        onClick={() => setFilterStatus('Active')}
                       >
                         Active
                       </Link>
@@ -779,8 +801,18 @@ const EmployeeList = () => {
                       <Link
                         to="#"
                         className="dropdown-item rounded-1"
+                        onClick={() => setFilterStatus('Inactive')}
                       >
                         Inactive
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        to="#"
+                        className="dropdown-item rounded-1"
+                        onClick={() => setFilterStatus('')}
+                      >
+                        Clear Status
                       </Link>
                     </li>
                   </ul>
@@ -807,7 +839,7 @@ const EmployeeList = () => {
               </div>
             </div>
             <div className="card-body p-0">
-              <Table dataSource={data} columns={columns} Selection={true} rowKey="key" />
+              <Table dataSource={filteredData} columns={columns} Selection={true} rowKey="key" />
             </div>
           </div>
         </div>
@@ -857,7 +889,7 @@ const EmployeeList = () => {
                       Basic Information
                     </button>
                   </li>
-                  <li className="nav-item" role="presentation">
+                  <li className="nav-item" role="presentation" style={{ display: 'none' }}>
                     <button
                       className="nav-link"
                       id="address-tab"
@@ -1072,8 +1104,8 @@ const EmployeeList = () => {
                           <CommonSelect
                             key={`add-desig-${selectKey}`}
                             className='select'
-                            options={designation}
-                            value={designation.find(d => d.value === form.designation) || designation[0]}
+                            options={designationOptions}
+                            value={designationOptions.find(d => d.value === form.designation) || designationOptions[0]}
                             onChange={handleDesignationChange}
                           />
                         </div>
@@ -1125,6 +1157,7 @@ const EmployeeList = () => {
                   role="tabpanel"
                   aria-labelledby="address-tab"
                   tabIndex={0}
+                  style={{ display: 'none' }}
                 >
                   <div className="modal-body">
                     <div className="card bg-light-500 shadow-none">
@@ -1864,7 +1897,7 @@ const EmployeeList = () => {
                       Basic Information
                     </button>
                   </li>
-                  <li className="nav-item" role="presentation">
+                  <li className="nav-item" role="presentation" style={{ display: 'none' }}>
                     <button
                       className="nav-link"
                       id="address-tab2"
@@ -2109,8 +2142,8 @@ const EmployeeList = () => {
                           <CommonSelect
                             key={`desig-${selectKey}`}
                             className='select'
-                            options={designation}
-                            value={designation.find(d => d.value === form.designation) || designation[0]}
+                            options={designationOptions}
+                            value={designationOptions.find(d => d.value === form.designation) || designationOptions[0]}
                             onChange={handleDesignationChange}
                           />
                         </div>
@@ -2162,6 +2195,7 @@ const EmployeeList = () => {
                   role="tabpanel"
                   aria-labelledby="address-tab2"
                   tabIndex={0}
+                  style={{ display: 'none' }}
                 >
                   <div className="modal-body">
                     <div className="card bg-light-500 shadow-none">

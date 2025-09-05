@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { backend_url } from "../../../environment";
 import { all_routes } from "../../../feature-module/router/all_routes";
 import { getAbsenceStats } from "../../../core/services/attendanceSettingsService";
@@ -73,6 +73,7 @@ ChartJS.register(
 const AdminDashboard = () => {
   const routes = all_routes;
   const { user, isLoading } = useUser();
+  const navigate = useNavigate();
 
   const [isTodo, setIsTodo] = useState([false, false, false]);
 
@@ -126,6 +127,11 @@ const AdminDashboard = () => {
   const [employees, setEmployees] = useState<any[]>([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
   
+  // Add state for designation statistics
+  const [designationStats, setDesignationStats] = useState<any[]>([]);
+  const [designationStatsLoading, setDesignationStatsLoading] = useState(false);
+  const [designationPercentageChange, setDesignationPercentageChange] = useState(0);
+  
   // Add state for todos (for Todo card)
   const [todos, setTodos] = useState<Todo[]>([]);
   const [todosLoading, setTodosLoading] = useState(true);
@@ -145,6 +151,58 @@ const AdminDashboard = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [lastActivitiesUpdate, setLastActivitiesUpdate] = useState<Date | null>(null);
+
+  // Dynamic Performance Chart State
+  const [selectedEmployee, setSelectedEmployee] = useState<string>('all');
+  const [performanceEmployees, setPerformanceEmployees] = useState<Array<{_id: string, firstName: string, lastName: string}>>([]);
+  const [performanceData, setPerformanceData] = useState<number[]>([]);
+  const [originalSubmissionsData, setOriginalSubmissionsData] = useState<number[]>([]);
+  const [kpiSettings, setKpiSettings] = useState<any>(null);
+  const [performanceLoading, setPerformanceLoading] = useState(false);
+  const [selectedEmployeeName, setSelectedEmployeeName] = useState<string>('All Employees');
+  const [topPerformer, setTopPerformer] = useState<{name: string, submissions: number} | null>(null);
+
+  const [performance_chart2, setPerformanceChart2] = useState<any>({
+    series: [{
+      name: "performance",
+      data: [20, 20, 35, 35, 40, 60, 60]
+    }],
+    chart: {
+      height: 288,
+      type: 'area',
+      zoom: {
+        enabled: false
+      }
+    },
+    colors: ['#03C95A'],
+    dataLabels: {
+      enabled: false
+    },
+    stroke: {
+      curve: 'straight'
+    },
+    title: {
+      text: '',
+      align: 'left'
+    },
+    xaxis: {
+      categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    },
+    yaxis: {
+      min: 0,
+      max: 100,
+      tickAmount: 5,
+      labels: {
+        formatter: (val: number) => {
+          return val + '%'
+        }
+      }
+    },
+    legend: {
+      position: 'top',
+      horizontalAlign: 'left'
+    }
+  })
 
   //Attendance ChartJs
   const [chartData, setChartData] = useState({
@@ -284,6 +342,7 @@ const AdminDashboard = () => {
     fetchAttendanceOverview(); // Fetch attendance overview data
     fetchClockInOutData(); // Fetch clock-in/out data on component mount
     fetchEmployeeDesignations(); // Fetch employee designations on component mount
+    fetchDesignationStats(); // Fetch designation statistics on component mount
     // fetchEmployees(); // Fetch employees data on component mount - moved to user effect
   }, []);
 
@@ -318,6 +377,26 @@ const AdminDashboard = () => {
       ]
     });
   }, [attendanceOverview]);
+
+  // Update designation chart when designation stats change
+  useEffect(() => {
+    if (designationStats.length > 0) {
+      const categories = designationStats.map(stat => stat._id);
+      const data = designationStats.map(stat => stat.count);
+      
+      setEmpDepartment((prev: any) => ({
+        ...prev,
+        series: [{
+          ...prev.series[0],
+          data: data
+        }],
+        xaxis: {
+          ...prev.xaxis,
+          categories: categories
+        }
+      }));
+    }
+  }, [designationStats]);
 
   // Function to fetch pending leave requests count
   const fetchPendingLeaveRequests = async () => {
@@ -632,6 +711,36 @@ const AdminDashboard = () => {
     }
   };
 
+  // Function to fetch designation statistics
+  const fetchDesignationStats = async () => {
+    setDesignationStatsLoading(true);
+    try {
+      console.log('Fetching designation stats...');
+      const response = await fetch(`${backend_url}/api/employees/stats/designations?period=all`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('Designation stats response status:', response.status);
+      const result = await response.json();
+      console.log('Designation stats result:', result);
+      if (result.success) {
+        setDesignationStats(result.data.designations);
+        setDesignationPercentageChange(result.data.percentageChange);
+        console.log('Designation stats set successfully:', result.data.designations);
+      }
+    } catch (error) {
+      console.error('Error fetching designation stats:', error);
+    } finally {
+      setDesignationStatsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDesignationStats();
+  }, []); // Remove selectedDesignationPeriod dependency
+
   // Function to fetch employees for the Employees card
   const fetchEmployees = async () => {
     try {
@@ -647,7 +756,7 @@ const AdminDashboard = () => {
       console.log('Fetching employees with token:', localStorage.getItem('token'));
       
       // Fetch employees data
-      const response = await fetch(`${backend_url}/api/employees?limit=5`, {
+      const response = await fetch(`${backend_url}/api/employees?limit=7`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
@@ -792,6 +901,338 @@ const AdminDashboard = () => {
     fetchPendingLeaveRequests();
   };
 
+  // Performance Chart Data Fetching Functions
+  const fetchPerformanceEmployees = async () => {
+    try {
+      const response = await fetch(`${backend_url}/api/employees`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPerformanceEmployees(data);
+      } else {
+        console.error('Error fetching employees');
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    }
+  };
+
+  const fetchKpiSettings = async () => {
+    try {
+      const response = await fetch(`${backend_url}/api/performance-settings`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setKpiSettings(result.data);
+      } else {
+        console.error('Error fetching KPI settings');
+      }
+    } catch (error) {
+      console.error('Error fetching KPI settings:', error);
+    }
+  };
+
+  const fetchIndividualEmployeePerformance = async () => {
+    try {
+      const employeeData = [];
+      for (const employee of performanceEmployees) {
+        const response = await fetch(`${backend_url}/api/candidates/submissions/dashboard?employeeId=${employee._id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          employeeData.push({
+            employeeId: employee._id,
+            monthlySubmissions: result.data.submissions || []
+          });
+        }
+      }
+      return employeeData;
+    } catch (error) {
+      console.error('Error fetching individual employee performance:', error);
+      return [];
+    }
+  };
+
+  const calculateAveragePerformance = (employeeData: any[], highKPI: number) => {
+    const months = 12;
+    const averagePerformance = [];
+    
+    for (let month = 0; month < months; month++) {
+      let totalSubmissions = 0;
+      let employeeCount = 0;
+      
+      // Sum submissions for this month across all employees
+      employeeData.forEach(emp => {
+        if (emp.monthlySubmissions[month]) {
+          totalSubmissions += emp.monthlySubmissions[month];
+          employeeCount++;
+        }
+      });
+      
+      // Calculate average submissions for this month
+      const averageSubmissions = employeeCount > 0 ? totalSubmissions / employeeCount : 0;
+      
+      // Calculate performance percentage based on average
+      const performancePercentage = Math.min((averageSubmissions / highKPI) * 100, 100);
+      averagePerformance.push(performancePercentage);
+    }
+    
+    return averagePerformance;
+  };
+
+  const calculateTopPerformer = async () => {
+    try {
+      console.log('Calculating top performer for employees:', performanceEmployees.length);
+      let maxSubmissions = 0;
+      let topEmployee = null;
+      const currentMonth = new Date().getMonth(); // 0-11 (Jan = 0, Dec = 11)
+      
+      console.log('Current month:', currentMonth);
+      
+      for (const employee of performanceEmployees) {
+        const response = await fetch(`${backend_url}/api/candidates/submissions/dashboard?employeeId=${employee._id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          const monthlySubmissions = result.data.submissions || [];
+          const currentMonthSubmissions = monthlySubmissions[currentMonth] || 0;
+          
+          console.log(`${employee.firstName} ${employee.lastName}: ${currentMonthSubmissions} submissions this month`);
+          
+          if (currentMonthSubmissions > maxSubmissions) {
+            maxSubmissions = currentMonthSubmissions;
+            topEmployee = {
+              name: `${employee.firstName} ${employee.lastName}`,
+              submissions: currentMonthSubmissions
+            };
+          }
+        } else {
+          console.error(`Failed to fetch data for ${employee.firstName} ${employee.lastName}`);
+        }
+      }
+      
+      console.log('Top performer result:', topEmployee);
+      
+      // If no one has submissions this month, show a fallback
+      if (!topEmployee && performanceEmployees.length > 0) {
+        topEmployee = {
+          name: 'No submissions this month',
+          submissions: 0
+        };
+      }
+      
+      setTopPerformer(topEmployee);
+    } catch (error) {
+      console.error('Error calculating top performer:', error);
+    }
+  };
+
+  const fetchPerformanceData = async (employeeId: string) => {
+    try {
+      setPerformanceLoading(true);
+      const response = await fetch(`${backend_url}/api/candidates/submissions/dashboard?employeeId=${employeeId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        const monthlySubmissions = result.data.submissions || [];
+        
+        // Store original submission data for tooltip
+        setOriginalSubmissionsData(monthlySubmissions);
+        
+        // Calculate performance percentages if KPI settings are available
+        if (kpiSettings && kpiSettings.submissions) {
+          const highKPI = kpiSettings.submissions.high;
+          
+          let performancePercentages: number[];
+          if (employeeId === 'all') {
+            // For "All Employees", calculate average performance instead of sum
+            // First, get individual employee data to calculate average
+            const individualEmployeeData = await fetchIndividualEmployeePerformance();
+            performancePercentages = calculateAveragePerformance(individualEmployeeData, highKPI);
+          } else {
+            // For individual employees, use normal calculation
+            performancePercentages = monthlySubmissions.map((submissions: number) => 
+              Math.min((submissions / highKPI) * 100, 100)
+            );
+          }
+          
+          setPerformanceData(performancePercentages);
+          
+          // Update chart data with enhanced tooltip
+          setPerformanceChart2((prev: any) => ({
+            ...prev,
+            series: [{
+              name: "performance",
+              data: performancePercentages
+            }],
+            tooltip: {
+              y: {
+                formatter: function(val: number, { dataPointIndex }: any) {
+                  const originalSubmissions = monthlySubmissions[dataPointIndex] || 0;
+                  const isAllEmployees = employeeId === 'all';
+                  const submissionLabel = isAllEmployees ? 'avg submissions' : 'submissions';
+                  return `${val}% (${Math.round(originalSubmissions)} ${submissionLabel})`;
+                }
+              },
+              style: {
+                fontSize: '14px',
+                fontFamily: 'Helvetica, Arial, sans-serif'
+              },
+              custom: function({ series, seriesIndex, dataPointIndex, w }: any) {
+                // Get month name from chart labels or fallback to month array
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const month = w.globals.labels && w.globals.labels[dataPointIndex] ? w.globals.labels[dataPointIndex] : monthNames[dataPointIndex];
+                const performanceValue = series[seriesIndex][dataPointIndex];
+                const originalSubmissions = monthlySubmissions[dataPointIndex] || 0;
+                
+                const isAllEmployees = employeeId === 'all';
+                const submissionLabel = isAllEmployees ? 'avg submissions' : 'submissions';
+                
+                return `
+                  <div style="
+                    background: #fff;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 8px;
+                    padding: 0;
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                    min-width: 180px;
+                    font-family: Helvetica, Arial, sans-serif;
+                    overflow: hidden;
+                  ">
+                    <div style="
+                      background: #f8f9fa;
+                      padding: 8px 12px;
+                      font-weight: 600;
+                      color: #6b7280;
+                      font-size: 12px;
+                      border-bottom: 1px solid #e5e7eb;
+                    ">${month}</div>
+                    <div style="padding: 12px;">
+                      <div style="color: #6b7280; font-size: 14px; margin-bottom: 4px;">
+                        performance: <span style="color: #03C95A; font-weight: 600;">${Math.round(performanceValue)}%</span>
+                      </div>
+                      <div style="color: #6b7280; font-size: 14px;">
+                        ${submissionLabel}: <span style="color: #374151; font-weight: 600;">${Math.round(originalSubmissions * (isAllEmployees ? 1 : 1))}</span>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }
+            }
+          }));
+        } else {
+          // Fallback to raw data if KPI settings not available
+          setPerformanceData(monthlySubmissions);
+          setPerformanceChart2((prev: any) => ({
+            ...prev,
+            series: [{
+              name: "performance",
+              data: monthlySubmissions
+            }],
+            tooltip: {
+              y: {
+                formatter: function(val: number, { dataPointIndex }: any) {
+                  const originalSubmissions = monthlySubmissions[dataPointIndex] || 0;
+                  const isAllEmployees = employeeId === 'all';
+                  const submissionLabel = isAllEmployees ? 'avg submissions' : 'submissions';
+                  return `${val}% (${Math.round(originalSubmissions)} ${submissionLabel})`;
+                }
+              },
+              style: {
+                fontSize: '14px',
+                fontFamily: 'Helvetica, Arial, sans-serif'
+              },
+              custom: function({ series, seriesIndex, dataPointIndex, w }: any) {
+                // Get month name from chart labels or fallback to month array
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const month = w.globals.labels && w.globals.labels[dataPointIndex] ? w.globals.labels[dataPointIndex] : monthNames[dataPointIndex];
+                const performanceValue = series[seriesIndex][dataPointIndex];
+                const originalSubmissions = monthlySubmissions[dataPointIndex] || 0;
+                
+                const isAllEmployees = employeeId === 'all';
+                const submissionLabel = isAllEmployees ? 'avg submissions' : 'submissions';
+                
+                return `
+                  <div style="
+                    background: #fff;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 8px;
+                    padding: 0;
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                    min-width: 180px;
+                    font-family: Helvetica, Arial, sans-serif;
+                    overflow: hidden;
+                  ">
+                    <div style="
+                      background: #f8f9fa;
+                      padding: 8px 12px;
+                      font-weight: 600;
+                      color: #6b7280;
+                      font-size: 12px;
+                      border-bottom: 1px solid #e5e7eb;
+                    ">${month}</div>
+                    <div style="padding: 12px;">
+                      <div style="color: #6b7280; font-size: 14px; margin-bottom: 4px;">
+                        performance: <span style="color: #03C95A; font-weight: 600;">${Math.round(performanceValue)}%</span>
+                      </div>
+                      <div style="color: #6b7280; font-size: 14px;">
+                        ${submissionLabel}: <span style="color: #374151; font-weight: 600;">${Math.round(originalSubmissions * (isAllEmployees ? 1 : 1))}</span>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }
+            }
+          }));
+        }
+      } else {
+        console.error('Error fetching performance data');
+        setPerformanceData([]);
+      }
+    } catch (error) {
+      console.error('Error fetching performance data:', error);
+      setPerformanceData([]);
+    } finally {
+      setPerformanceLoading(false);
+    }
+  };
+
+  const handleEmployeeChange = (employeeId: string) => {
+    setSelectedEmployee(employeeId);
+    if (employeeId === 'all') {
+      setSelectedEmployeeName('All Employees');
+    } else {
+      const employee = performanceEmployees.find(emp => emp._id === employeeId);
+      setSelectedEmployeeName(employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown Employee');
+    }
+    fetchPerformanceData(employeeId);
+  };
+
   // Fetch pending leave requests count on component mount and refresh periodically
   useEffect(() => {
     // Only fetch if user is authenticated and has admin/HR role
@@ -807,8 +1248,32 @@ const AdminDashboard = () => {
     }
   }, [user]);
 
+  // Fetch performance data when component mounts
+  useEffect(() => {
+    if (user && !isLoading) {
+      fetchPerformanceEmployees();
+      fetchKpiSettings();
+      fetchPerformanceData('all');
+    }
+  }, [user, isLoading]);
+
+  // Calculate top performer when employees are loaded
+  useEffect(() => {
+    if (performanceEmployees.length > 0) {
+      console.log('Triggering top performer calculation for', performanceEmployees.length, 'employees');
+      calculateTopPerformer();
+    }
+  }, [performanceEmployees]);
+
+  // Refetch performance data when KPI settings change
+  useEffect(() => {
+    if (kpiSettings && selectedEmployee) {
+      fetchPerformanceData(selectedEmployee);
+    }
+  }, [kpiSettings]);
+
   //New Chart
-  const [empDepartment] = useState<any>({
+  const [empDepartment, setEmpDepartment] = useState<any>({
     chart: {
       height: 235,
       type: 'bar',
@@ -849,11 +1314,11 @@ const AdminDashboard = () => {
       enabled: false
     },
     series: [{
-      data: [80, 110, 80, 20, 60, 100],
+      data: [],
       name: 'Employee'
     }],
     xaxis: {
-      categories: ['UI/UX', 'Development', 'Management', 'HR', 'Testing', 'Marketing'],
+      categories: [],
       labels: {
         style: {
           colors: '#111827',
@@ -1207,6 +1672,62 @@ const AdminDashboard = () => {
     }
   }, [user, isLoading]);
 
+  // Check if user is admin, if not redirect to appropriate page
+  useEffect(() => {
+    if (!isLoading && user) {
+      if (user.role !== 'admin') {
+        // Redirect non-admin users to appropriate dashboard
+        if (user.role === 'hr') {
+          navigate(routes.adminDashboard); // HR can access admin dashboard
+        } else if (user.role === 'employee') {
+          navigate(routes.employeeDashboard);
+        } else {
+          navigate('/login');
+        }
+      }
+    } else if (!isLoading && !user) {
+      // No user logged in, redirect to login
+      navigate('/login');
+    }
+  }, [user, isLoading, navigate, routes.adminDashboard, routes.employeeDashboard]);
+
+  // Show loading while checking authentication
+  if (isLoading) {
+    return (
+      <div className="page-wrapper">
+        <div className="content container-fluid">
+          <div className="text-center py-5">
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <p className="mt-3">Loading dashboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show access denied if user is not admin
+  if (!user || user.role !== 'admin') {
+    return (
+      <div className="page-wrapper">
+        <div className="content container-fluid">
+          <div className="text-center py-5">
+            <i className="ti ti-shield-x fs-1 text-danger mb-3"></i>
+            <h4 className="text-danger">Access Denied</h4>
+            <p className="text-muted">You don't have permission to access this page.</p>
+            <button 
+              className="btn btn-primary"
+              onClick={() => navigate('/login')}
+            >
+              Go to Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* Page Wrapper */}
@@ -1215,7 +1736,7 @@ const AdminDashboard = () => {
           {/* Breadcrumb */}
           <div className="d-md-flex d-block align-items-center justify-content-between page-breadcrumb mb-3">
             <div className="my-auto mb-2">
-              <h2 className="mb-1">Admin Dashboard</h2>
+              <h2 className="mb-1">Employee Dashboard</h2>
               <nav>
                 <ol className="breadcrumb mb-0">
                   <li className="breadcrumb-item">
@@ -1225,7 +1746,7 @@ const AdminDashboard = () => {
                   </li>
                   <li className="breadcrumb-item">Dashboard</li>
                   <li className="breadcrumb-item active" aria-current="page">
-                    Admin Dashboard
+                    Employee Dashboard
                   </li>
                 </ol>
               </nav>
@@ -1371,9 +1892,9 @@ const AdminDashboard = () => {
           {/* /Welcome Wrap */}
           <div className="row">
             {/* Widget Info */}
-            <div className="col-xxl-8 d-flex">
+            <div className="col-xxl-4 d-flex">
               <div className="row flex-fill">
-                <div className="col-md-3 d-flex">
+                <div className="col-md-6 d-flex">
                   <div className="card flex-fill">
                     <div className="card-body">
                       <span className="avatar rounded-circle bg-primary mb-2">
@@ -1402,7 +1923,7 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                 </div>
-                <div className="col-md-3 d-flex">
+                <div className="col-md-6 d-flex">
                   <div className="card flex-fill">
                     <div className="card-body">
                       <span className="avatar rounded-circle bg-warning mb-2">
@@ -1431,7 +1952,51 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                 </div>
-                <div className="col-md-3 d-flex">
+                {/* <div className="col-md-3 d-flex">
+                  <div className="card flex-fill">
+                    <div className="card-body">
+                      <span className="avatar rounded-circle bg-purple mb-2">
+                        <i className="ti ti-moneybag fs-16" />
+                      </span>
+                      <h6 className="fs-13 fw-medium text-default mb-1">
+                        Earnings
+                      </h6>
+                      <h3 className="mb-3">
+                        $2144{" "}
+                        <span className="fs-12 fw-medium text-success">
+                          <i className="fa-solid fa-caret-up me-1" />
+                          +10.2%
+                        </span>
+                      </h3>
+                      <Link to="expenses.html" className="link-default">
+                        View All
+                      </Link>
+                    </div>
+                  </div>
+                </div> */}
+                {/* <div className="col-md-3 d-flex">
+                  <div className="card flex-fill">
+                    <div className="card-body">
+                      <span className="avatar rounded-circle bg-danger mb-2">
+                        <i className="ti ti-browser fs-16" />
+                      </span>
+                      <h6 className="fs-13 fw-medium text-default mb-1">
+                        Profit This Week
+                      </h6>
+                      <h3 className="mb-3">
+                        $5,544{" "}
+                        <span className="fs-12 fw-medium text-success">
+                          <i className="fa-solid fa-caret-up me-1" />
+                          +2.1%
+                        </span>
+                      </h3>
+                      <Link to="purchase-transaction.html" className="link-default">
+                        View All
+                      </Link>
+                    </div>
+                  </div>
+                </div> */}
+                <div className="col-md-6 d-flex">
                   <div className="card flex-fill">
                     <div className="card-body">
                       <span className="avatar rounded-circle bg-danger mb-2">
@@ -1460,7 +2025,7 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                 </div>
-                <div className="col-md-3 d-flex">
+                <div className="col-md-6 d-flex">
                   <div className="card flex-fill">
                     <div className="card-body">
                       <span className="avatar rounded-circle bg-dark mb-2">
@@ -1489,51 +2054,7 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                 </div>
-                <div className="col-md-3 d-flex">
-                  <div className="card flex-fill">
-                    <div className="card-body">
-                      <span className="avatar rounded-circle bg-purple mb-2">
-                        <i className="ti ti-moneybag fs-16" />
-                      </span>
-                      <h6 className="fs-13 fw-medium text-default mb-1">
-                        Earnings
-                      </h6>
-                      <h3 className="mb-3">
-                        $2144{" "}
-                        <span className="fs-12 fw-medium text-success">
-                          <i className="fa-solid fa-caret-up me-1" />
-                          +10.2%
-                        </span>
-                      </h3>
-                      <Link to="expenses.html" className="link-default">
-                        View All
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-md-3 d-flex">
-                  <div className="card flex-fill">
-                    <div className="card-body">
-                      <span className="avatar rounded-circle bg-danger mb-2">
-                        <i className="ti ti-browser fs-16" />
-                      </span>
-                      <h6 className="fs-13 fw-medium text-default mb-1">
-                        Profit This Week
-                      </h6>
-                      <h3 className="mb-3">
-                        $5,544{" "}
-                        <span className="fs-12 fw-medium text-success">
-                          <i className="fa-solid fa-caret-up me-1" />
-                          +2.1%
-                        </span>
-                      </h3>
-                      <Link to="purchase-transaction.html" className="link-default">
-                        View All
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-md-3 d-flex">
+                {/* <div className="col-md-3 d-flex">
                   <div className="card flex-fill">
                     <div className="card-body">
                       <span className="avatar rounded-circle bg-success mb-2">
@@ -1554,8 +2075,8 @@ const AdminDashboard = () => {
                       </Link>
                     </div>
                   </div>
-                </div>
-                <div className="col-md-3 d-flex">
+                </div> */}
+                {/* <div className="col-md-3 d-flex">
                   <div className="card flex-fill">
                     <div className="card-body">
                       <span className="avatar rounded-circle bg-pink mb-2">
@@ -1576,70 +2097,264 @@ const AdminDashboard = () => {
                       </Link>
                     </div>
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
             {/* /Widget Info */}
             {/* Employees By Department */}
             <div className="col-xxl-4 d-flex">
               <div className="card flex-fill">
-                <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
-                  <h5 className="mb-2">Employees By Department</h5>
-                  <div className="dropdown mb-2">
-                    <Link to="#"
-                      className="btn btn-white border btn-sm d-inline-flex align-items-center"
-                      data-bs-toggle="dropdown"
-                    >
-                      <i className="ti ti-calendar me-1" />
-                      This Week
-                    </Link>
-                    <ul className="dropdown-menu  dropdown-menu-end p-3">
-                      <li>
-                        <Link to="#"
-                          className="dropdown-item rounded-1"
-                        >
-                          This Month
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="#"
-                          className="dropdown-item rounded-1"
-                        >
-                          This Week
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="#"
-                          className="dropdown-item rounded-1"
-                        >
-                          Last Week
-                        </Link>
-                      </li>
-                    </ul>
-                  </div>
+                <div className="card-header pb-2">
+                  <h5 className="mb-2">Employees By Designation</h5>
                 </div>
                 <div className="card-body">
-                  <ReactApexChart
-                    id="emp-department"
-                    options={empDepartment}
-                    series={empDepartment.series}
-                    type="bar"
-                    height={220}
-                  />
-                  <p className="fs-13">
-                    <i className="ti ti-circle-filled me-2 fs-8 text-primary" />
-                    No of Employees increased by{" "}
-                    <span className="text-success fw-bold">+20%</span> from last
-                    Week
-                  </p>
+                  {designationStatsLoading ? (
+                    <div className="text-center py-4">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                      <p className="mt-2 text-muted">Loading designation data...</p>
+                    </div>
+                  ) : designationStats.length > 0 ? (
+                    <>
+                      <ReactApexChart
+                        id="emp-department"
+                        options={empDepartment}
+                        series={empDepartment.series}
+                        type="bar"
+                        height={250}
+                      />
+                      <p className="fs-13">
+                        <i className="ti ti-circle-filled me-2 fs-8 text-primary" />
+                        No of Employees {designationPercentageChange >= 0 ? 'increased' : 'decreased'} by{" "}
+                        <span className={`fw-bold ${designationPercentageChange >= 0 ? 'text-success' : 'text-danger'}`}>
+                          {designationPercentageChange >= 0 ? '+' : ''}{designationPercentageChange}%
+                        </span> from last month
+                      </p>
+                    </>
+                  ) : (
+                    <div className="text-center py-4">
+                      <i className="ti ti-users-off fs-1 text-muted mb-3"></i>
+                      <p className="text-muted">No employee data available.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
             {/* /Employees By Department */}
+             {/* Todo */}
+             <div className="col-xxl-4 col-xl-6 d-flex">
+              <div className="card flex-fill">
+                <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
+                  <div className="d-flex align-items-center">
+                    <h5 className="mb-2">Todo</h5>
+                    {totalTodos >= 8 && totalTodos < 10 && (
+                      <div className="ms-2">
+                        <span className="badge badge-warning badge-xs">
+                          <i className="ti ti-alert-triangle me-1"></i>
+                          Warning: {totalTodos}/10 todos
+                        </span>
+                      </div>
+                    )}
+                    {totalTodos >= 10 && (
+                      <div className="ms-2">
+                        <span className="badge badge-danger badge-xs">
+                          <i className="ti ti-alert-circle me-1"></i>
+                          Limit reached: {totalTodos}/10
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="d-flex align-items-center">
+                    <div className="dropdown mb-2 me-2">
+                      <Link
+                        to="#"
+                        className="btn btn-white border btn-sm d-inline-flex align-items-center"
+                        data-bs-toggle="dropdown"
+                      >
+                        <i className="ti ti-calendar me-1" />
+                        Today
+                      </Link>
+                      <ul className="dropdown-menu  dropdown-menu-end p-3">
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                          >
+                            This Month
+                          </Link>
+                        </li>
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                          >
+                            This Week
+                          </Link>
+                        </li>
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                          >
+                            Today
+                          </Link>
+                        </li>
+                      </ul>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-icon btn-xs rounded-circle d-flex align-items-center justify-content-center p-0 mb-2"
+                      onClick={async () => {
+                        if (totalTodos >= 8 && totalTodos < 10) {
+                          const result = await Swal.fire({
+                            title: 'Approaching Todo Limit',
+                            text: `You have ${totalTodos}/10 todos. Adding one more will trigger auto-deletion of the oldest todo.`,
+                            icon: 'info',
+                            showCancelButton: true,
+                            confirmButtonColor: '#3085d6',
+                            cancelButtonColor: '#6c757d',
+                            confirmButtonText: 'Continue',
+                            cancelButtonText: 'Cancel'
+                          });
+                          
+                          if (result.isConfirmed) {
+                            setTodoModalOpen(true);
+                          }
+                        } else {
+                          setTodoModalOpen(true);
+                        }
+                      }}
+                    >
+                      <i className="ti ti-plus fs-16" />
+                    </button>
+                  </div>
+                </div>
+                <div className="card-body">
+                  {todosLoading ? (
+                    <div className="text-center py-4">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                    </div>
+                      <p className="mt-2 text-muted">Loading todos...</p>
+                  </div>
+                  ) : todos.length > 0 ? (
+                    todos.map((todo, index) => (
+                        <div 
+                          key={todo._id} 
+                          className={`todo-item border br-5 mb-2 ${
+                            draggedTodo === todo._id ? 'dragging' : ''
+                          } ${
+                            dragOverTodo === todo._id ? 'drag-over' : ''
+                          }`}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, todo._id)}
+                          onDragOver={(e) => handleDragOver(e, todo._id)}
+                          onDragLeave={handleDragLeave}
+                          onDrop={(e) => handleDrop(e, todo._id)}
+                        >
+                          <div 
+                            className="d-flex align-items-center p-2"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => handleTodoClick(todo._id)}
+                          >
+                            <i 
+                              className="ti ti-grid-dots me-2" 
+                              style={{ cursor: 'grab' }}
+                            />
+                            <div className="form-check flex-grow-1">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                id={`todo${todo._id}`}
+                                checked={todo.completed}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  toggleTodoCompletion(todo._id);
+                                }}
+                              />
+                              <label 
+                                className="form-check-label fw-medium" 
+                                htmlFor={`todo${todo._id}`}
+                                style={{
+                                  textDecoration: todo.completed ? 'line-through' : 'none',
+                                  color: todo.completed ? '#6c757d' : 'inherit',
+                                  opacity: todo.completed ? 0.7 : 1
+                                }}
+                              >
+                                {todo.title}
+                              </label>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn-link btn-sm text-danger p-0 ms-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTodoDelete(todo._id);
+                              }}
+                              title="Delete todo"
+                            >
+                              <i className="ti ti-trash fs-14" />
+                            </button>
+                          </div>
+                          
+                          {/* Description section */}
+                          {expandedTodoId === todo._id && todo.description && (
+                            <div className="px-3 pb-2 border-top">
+                              <div className="mt-2">
+                                <small className="text-muted d-block mb-1">
+                                  <i className="ti ti-file-text me-1"></i>
+                                  Description:
+                                </small>
+                                <p className="mb-0 text-muted small" style={{ lineHeight: '1.4' }}>
+                                  {todo.description}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4">
+                      <i className="ti ti-checklist-off fs-1 text-muted mb-3"></i>
+                      <p className="text-muted">No todos found.</p>
+                    </div>
+                  )}
+                  
+                  {/* Pagination */}
+                  {totalTodoPages > 1 && (
+                    <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top todo-pagination">
+                      <div className="text-muted small">
+                        Showing {((currentTodoPage - 1) * 5) + 1} - {Math.min(currentTodoPage * 5, totalTodos)} of {totalTodos} todos
+                      </div>
+                      <div className="d-flex gap-1">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={() => fetchTodos(currentTodoPage - 1)}
+                          disabled={currentTodoPage === 1}
+                        >
+                          <i className="ti ti-chevron-left" />
+                        </button>
+                        <span className="btn btn-sm btn-outline-secondary disabled">
+                          {currentTodoPage} / {totalTodoPages}
+                        </span>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={() => fetchTodos(currentTodoPage + 1)}
+                          disabled={currentTodoPage === totalTodoPages}
+                        >
+                          <i className="ti ti-chevron-right" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            {/* /Todo */}
           </div>
           <div className="row">
             {/* Total Employee */}
-            <div className="col-xxl-4 d-flex">
+            {/* <div className="col-xxl-4 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Employee Status</h5>
@@ -1800,8 +2515,76 @@ const AdminDashboard = () => {
                   </Link>
                 </div>
               </div>
-            </div>
+            </div> */}
             {/* /Total Employee */}
+            {/* Employees */}
+            <div className="col-xxl-4 col-xl-6 d-flex">
+              <div className="card flex-fill">
+                <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
+                  <h5 className="mb-2">Employees</h5>
+                  <Link to="employees.html" className="btn btn-light btn-md mb-2">
+                    View All
+                  </Link>
+                </div>
+                <div className="card-body p-0">
+                  {employeesLoading ? (
+                    <div className="text-center py-4">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                      <p className="mt-2 text-muted">Loading employees...</p>
+                    </div>
+                  ) : employees.length > 0 ? (
+                  <div className="table-responsive">
+                    <table className="table table-nowrap mb-0">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                            <th>Designation</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                          {employees.slice(0, 7).map((employee: any, index: number) => (
+                            <tr key={employee._id || index}>
+                              <td className={index === Math.min(6, employees.length - 1) ? 'border-0' : ''}>
+                            <div className="d-flex align-items-center">
+                              <Link to="#" className="avatar">
+                                <ImageWithBasePath
+                                      src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "assets/img/users/user-32.jpg"}
+                                  className="img-fluid rounded-circle"
+                                      alt={`${employee.firstName} ${employee.lastName}`}
+                                />
+                              </Link>
+                              <div className="ms-2">
+                                <h6 className="fw-medium">
+                                      <Link to={`${routes.employeedetailsWithId.replace(':id', employee._id)}`}>
+                                        {employee.firstName} {employee.lastName}
+                              </Link>
+                                </h6>
+                                    <span className="fs-12">{employee.designation || 'Employee'}</span>
+                              </div>
+                            </div>
+                          </td>
+                              <td className={index === Math.min(6, employees.length - 1) ? 'border-0' : ''}>
+                                <span className={`badge badge-${getDepartmentBadgeColor(employee.designation)}-transparent badge-xs`}>
+                                  {employee.designation || 'General'}
+                            </span>
+                          </td>
+                        </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <i className="ti ti-users-off fs-1 text-muted mb-3"></i>
+                      <p className="text-muted">No employees found.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            {/* /Employees */}
             {/* Attendance Overview */}
             <div className="col-xxl-4 col-xl-6 d-flex">
               <div className="card flex-fill">
@@ -2054,11 +2837,24 @@ const AdminDashboard = () => {
                         <div key={index} className="d-flex align-items-center justify-content-between mb-3 p-2 border border-dashed br-5">
                       <div className="d-flex align-items-center">
                             <Link to="#" className="avatar flex-shrink-0">
-                          <ImageWithBasePath
-                                src={attendance.employeeId?.profileImage || "assets/img/profiles/avatar-24.jpg"}
-                            className="rounded-circle border border-2"
-                            alt="img"
-                          />
+                          {attendance.employeeId?.profileImage ? (
+                            <img
+                              src={`${backend_url}/uploads/${attendance.employeeId.profileImage}`}
+                              className="rounded-circle border border-2"
+                              alt={`${attendance.employeeId.firstName} ${attendance.employeeId.lastName}`}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = "/assets/img/profiles/avatar-24.jpg";
+                              }}
+                            />
+                          ) : (
+                            <ImageWithBasePath
+                              src="assets/img/profiles/avatar-24.jpg"
+                              className="rounded-circle border border-2"
+                              alt="img"
+                            />
+                          )}
                         </Link>
                         <div className="ms-2">
                           <h6 className="fs-14 fw-medium text-truncate">
@@ -2093,11 +2889,24 @@ const AdminDashboard = () => {
                             <div key={index} className="d-flex align-items-center justify-content-between mb-3 p-2 border border-dashed br-5">
                     <div className="d-flex align-items-center">
                       <span className="avatar flex-shrink-0">
-                        <ImageWithBasePath
-                                    src={attendance.employeeId?.profileImage || "assets/img/profiles/avatar-29.jpg"}
-                          className="rounded-circle border border-2"
-                          alt="img"
-                        />
+                        {attendance.employeeId?.profileImage ? (
+                          <img
+                            src={`${backend_url}/uploads/${attendance.employeeId.profileImage}`}
+                            className="rounded-circle border border-2"
+                            alt={`${attendance.employeeId.firstName} ${attendance.employeeId.lastName}`}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = "/assets/img/profiles/avatar-29.jpg";
+                            }}
+                          />
+                        ) : (
+                          <ImageWithBasePath
+                            src="assets/img/profiles/avatar-29.jpg"
+                            className="rounded-circle border border-2"
+                            alt="img"
+                          />
+                        )}
                       </span>
                       <div className="ms-2">
                         <h6 className="fs-14 fw-medium text-truncate">
@@ -2155,7 +2964,7 @@ const AdminDashboard = () => {
           </div>
           <div className="row">
             {/* Jobs Applicants */}
-            <div className="col-xxl-4 d-flex">
+            {/* <div className="col-xxl-4 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Jobs Applicants</h5>
@@ -2407,10 +3216,10 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> */}
             {/* /Jobs Applicants */}
             {/* Employees */}
-            <div className="col-xxl-4 col-xl-6 d-flex">
+            {/* <div className="col-xxl-4 col-xl-6 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Employees</h5>
@@ -2475,216 +3284,10 @@ const AdminDashboard = () => {
                   )}
                 </div>
               </div>
-            </div>
+            </div> */}
             {/* /Employees */}
             {/* Todo */}
-            <div className="col-xxl-4 col-xl-6 d-flex">
-              <div className="card flex-fill">
-                <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
-                  <div className="d-flex align-items-center">
-                    <h5 className="mb-2">Todo</h5>
-                    {totalTodos >= 8 && totalTodos < 10 && (
-                      <div className="ms-2">
-                        <span className="badge badge-warning badge-xs">
-                          <i className="ti ti-alert-triangle me-1"></i>
-                          Warning: {totalTodos}/10 todos
-                        </span>
-                      </div>
-                    )}
-                    {totalTodos >= 10 && (
-                      <div className="ms-2">
-                        <span className="badge badge-danger badge-xs">
-                          <i className="ti ti-alert-circle me-1"></i>
-                          Limit reached: {totalTodos}/10
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="d-flex align-items-center">
-                    <div className="dropdown mb-2 me-2">
-                      <Link
-                        to="#"
-                        className="btn btn-white border btn-sm d-inline-flex align-items-center"
-                        data-bs-toggle="dropdown"
-                      >
-                        <i className="ti ti-calendar me-1" />
-                        Today
-                      </Link>
-                      <ul className="dropdown-menu  dropdown-menu-end p-3">
-                        <li>
-                          <Link to="#"
-                            className="dropdown-item rounded-1"
-                          >
-                            This Month
-                          </Link>
-                        </li>
-                        <li>
-                          <Link to="#"
-                            className="dropdown-item rounded-1"
-                          >
-                            This Week
-                          </Link>
-                        </li>
-                        <li>
-                          <Link to="#"
-                            className="dropdown-item rounded-1"
-                          >
-                            Today
-                          </Link>
-                        </li>
-                      </ul>
-                    </div>
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-icon btn-xs rounded-circle d-flex align-items-center justify-content-center p-0 mb-2"
-                      onClick={async () => {
-                        if (totalTodos >= 8 && totalTodos < 10) {
-                          const result = await Swal.fire({
-                            title: 'Approaching Todo Limit',
-                            text: `You have ${totalTodos}/10 todos. Adding one more will trigger auto-deletion of the oldest todo.`,
-                            icon: 'info',
-                            showCancelButton: true,
-                            confirmButtonColor: '#3085d6',
-                            cancelButtonColor: '#6c757d',
-                            confirmButtonText: 'Continue',
-                            cancelButtonText: 'Cancel'
-                          });
-                          
-                          if (result.isConfirmed) {
-                            setTodoModalOpen(true);
-                          }
-                        } else {
-                          setTodoModalOpen(true);
-                        }
-                      }}
-                    >
-                      <i className="ti ti-plus fs-16" />
-                    </button>
-                  </div>
-                </div>
-                <div className="card-body">
-                  {todosLoading ? (
-                    <div className="text-center py-4">
-                      <div className="spinner-border text-primary" role="status">
-                        <span className="visually-hidden">Loading...</span>
-                    </div>
-                      <p className="mt-2 text-muted">Loading todos...</p>
-                  </div>
-                  ) : todos.length > 0 ? (
-                    todos.map((todo, index) => (
-                        <div 
-                          key={todo._id} 
-                          className={`todo-item border br-5 mb-2 ${
-                            draggedTodo === todo._id ? 'dragging' : ''
-                          } ${
-                            dragOverTodo === todo._id ? 'drag-over' : ''
-                          }`}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, todo._id)}
-                          onDragOver={(e) => handleDragOver(e, todo._id)}
-                          onDragLeave={handleDragLeave}
-                          onDrop={(e) => handleDrop(e, todo._id)}
-                        >
-                          <div 
-                            className="d-flex align-items-center p-2"
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => handleTodoClick(todo._id)}
-                          >
-                            <i 
-                              className="ti ti-grid-dots me-2" 
-                              style={{ cursor: 'grab' }}
-                            />
-                            <div className="form-check flex-grow-1">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                id={`todo${todo._id}`}
-                                checked={todo.completed}
-                                onChange={(e) => {
-                                  e.stopPropagation();
-                                  toggleTodoCompletion(todo._id);
-                                }}
-                              />
-                              <label 
-                                className="form-check-label fw-medium" 
-                                htmlFor={`todo${todo._id}`}
-                                style={{
-                                  textDecoration: todo.completed ? 'line-through' : 'none',
-                                  color: todo.completed ? '#6c757d' : 'inherit',
-                                  opacity: todo.completed ? 0.7 : 1
-                                }}
-                              >
-                                {todo.title}
-                              </label>
-                            </div>
-                            <button
-                              type="button"
-                              className="btn btn-link btn-sm text-danger p-0 ms-2"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleTodoDelete(todo._id);
-                              }}
-                              title="Delete todo"
-                            >
-                              <i className="ti ti-trash fs-14" />
-                            </button>
-                          </div>
-                          
-                          {/* Description section */}
-                          {expandedTodoId === todo._id && todo.description && (
-                            <div className="px-3 pb-2 border-top">
-                              <div className="mt-2">
-                                <small className="text-muted d-block mb-1">
-                                  <i className="ti ti-file-text me-1"></i>
-                                  Description:
-                                </small>
-                                <p className="mb-0 text-muted small" style={{ lineHeight: '1.4' }}>
-                                  {todo.description}
-                                </p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4">
-                      <i className="ti ti-checklist-off fs-1 text-muted mb-3"></i>
-                      <p className="text-muted">No todos found.</p>
-                    </div>
-                  )}
-                  
-                  {/* Pagination */}
-                  {totalTodoPages > 1 && (
-                    <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top todo-pagination">
-                      <div className="text-muted small">
-                        Showing {((currentTodoPage - 1) * 5) + 1} - {Math.min(currentTodoPage * 5, totalTodos)} of {totalTodos} todos
-                      </div>
-                      <div className="d-flex gap-1">
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-secondary"
-                          onClick={() => fetchTodos(currentTodoPage - 1)}
-                          disabled={currentTodoPage === 1}
-                        >
-                          <i className="ti ti-chevron-left" />
-                        </button>
-                        <span className="btn btn-sm btn-outline-secondary disabled">
-                          {currentTodoPage} / {totalTodoPages}
-                        </span>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-secondary"
-                          onClick={() => fetchTodos(currentTodoPage + 1)}
-                          disabled={currentTodoPage === totalTodoPages}
-                        >
-                          <i className="ti ti-chevron-right" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+           
             {/* /Todo */}
           </div>
           <div className="row">
@@ -2763,7 +3366,7 @@ const AdminDashboard = () => {
             </div>
             {/* /Submissions Overview */}
             {/* Invoices */}
-            <div className="col-xl-5 d-flex">
+            {/* <div className="col-xl-5 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Invoices</h5>
@@ -3024,12 +3627,111 @@ const AdminDashboard = () => {
                   </Link>
                 </div>
               </div>
-            </div>
+            </div> */}
             {/* /Invoices */}
+            <div className="col-xl-5 d-flex">
+              <div className="card flex-fill">
+                <div className="card-header">
+                  <div className="d-flex align-items-center justify-content-between flex-wrap row-gap-2">
+                    <h5>Performance</h5>
+                    <div className="d-flex align-items-center">
+                      <div className="dropdown mb-2">
+                        <Link
+                          to="#"
+                          className="dropdown-toggle btn btn-white border-0 btn-sm d-inline-flex align-items-center fs-13 me-2"
+                          data-bs-toggle="dropdown"
+                          style={{ pointerEvents: performanceLoading ? 'none' : 'auto' }}
+                        >
+                          {performanceLoading ? (
+                            <div className="spinner-border spinner-border-sm me-1" role="status">
+                              <span className="visually-hidden">Loading...</span>
+                            </div>
+                          ) : null}
+                          {selectedEmployeeName}
+                        </Link>
+                        <ul className="dropdown-menu dropdown-menu-end p-3">
+                          <li>
+                            <Link to="#"
+                              className="dropdown-item rounded-1"
+                              onClick={() => handleEmployeeChange('all')}
+                            >
+                              All Employees
+                            </Link>
+                          </li>
+                          {performanceEmployees.map((employee) => (
+                            <li key={employee._id}>
+                              <Link to="#"
+                                className="dropdown-item rounded-1"
+                                onClick={() => handleEmployeeChange(employee._id)}
+                              >
+                                {employee.firstName} {employee.lastName}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="d-flex align-items-center mt-2">
+                    <span className="badge badge-soft-success me-2">
+                      <i className="ti ti-crown me-1"></i>
+                      Top Performer
+                    </span>
+                    <small className="text-muted">
+                      {topPerformer ? (
+                        `${topPerformer.name} (${topPerformer.submissions} submissions this month)`
+                      ) : (
+                        'Loading...'
+                      )}
+                    </small>
+                  </div>
+                </div>
+                <div className="card-body">
+                  <div>
+                    <div className="bg-light d-flex align-items-center rounded p-2 mb-3">
+                      <h3 className="me-2">
+                        {performanceLoading ? (
+                          <div className="spinner-border spinner-border-sm" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                        ) : performanceData.length > 0 ? (
+                          `${Math.round(performanceData[performanceData.length - 1])}%`
+                        ) : (
+                          '0%'
+                        )}
+                      </h3>
+                      {performanceData.length > 1 && !performanceLoading && (
+                        <span className={`badge rounded-pill me-1 ${
+                          performanceData[performanceData.length - 1] > performanceData[performanceData.length - 2]
+                            ? 'badge-outline-success bg-success-transparent'
+                            : 'badge-outline-danger bg-danger-transparent'
+                        }`}>
+                          {performanceData[performanceData.length - 1] > performanceData[performanceData.length - 2] ? '+' : ''}
+                          {Math.round(performanceData[performanceData.length - 1] - performanceData[performanceData.length - 2])}%
+                        </span>
+                      )}
+                      <span>vs last month</span>
+                    </div>
+                    <div className="mb-2">
+                      <small className="text-muted">
+                        {performanceLoading ? 'Loading...' : selectedEmployeeName}
+                      </small>
+                    </div>
+                    <ReactApexChart
+                      id="performance_chart2"
+                      options={performance_chart2}
+                      series={performance_chart2.series}
+                      type="area"
+                      height={288}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div className="row">
             {/* Projects */}
-            <div className="col-xxl-8 col-xl-7 d-flex">
+            {/* <div className="col-xxl-8 col-xl-7 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Projects</h5>
@@ -3525,10 +4227,10 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> */}
             {/* /Projects */}
             {/* Tasks Statistics */}
-            <div className="col-xxl-4 col-xl-5 d-flex">
+            {/* <div className="col-xxl-4 col-xl-5 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Tasks Statistics</h5>
@@ -3619,7 +4321,7 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> */}
             {/* /Tasks Statistics */}
           </div>
           <div className="row">

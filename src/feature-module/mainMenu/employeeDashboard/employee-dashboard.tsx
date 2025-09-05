@@ -1627,7 +1627,7 @@ const EmployeeDashboard = () => {
               <div className="card flex-fill">
                 <div className="card-header">
                   <div className="d-flex align-items-center justify-content-between flex-wrap row-gap-2">
-                    <h5>Performance</h5>
+                    <h5>Performance yhi he</h5>
                     <div className="dropdown">
                       <Link
                         to="#"
