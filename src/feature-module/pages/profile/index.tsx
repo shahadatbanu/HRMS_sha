@@ -3,11 +3,16 @@ import { Link } from "react-router-dom";
 import { all_routes } from "../../router/all_routes";
 import CommonSelect from "../../../core/common/commonSelect";
 import CollapseHeader from "../../../core/common/collapse-header/collapse-header";
+import { useUser } from '../../../core/context/UserContext';
+import { backend_url } from "../../../environment";
+import Swal from 'sweetalert2';
 
 type PasswordField = "oldPassword" | "newPassword" | "confirmPassword" | "currentPassword";
 
 const Profile = () => {
   const route = all_routes;
+  const { user, isLoading, setUser } = useUser();
+  
   const [passwordVisibility, setPasswordVisibility] = useState({
     oldPassword: false,
     newPassword: false,
@@ -20,36 +25,74 @@ const Profile = () => {
     firstName: "",
     lastName: "",
     email: "",
-    phone: "",
+    phoneNumber: "",
     address: "",
     country: "Select",
     state: "Select",
     city: "Select",
     postalCode: "",
   });
+  
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  // Fetch profile on mount
+  // Load user data on component mount
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-    fetch("http://localhost:5000/api/auth/profile", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(res => res.json())
-      .then(data => {
-        setProfile(prev => ({
-          ...prev,
-          ...data,
-        }));
-      })
-      .catch(() => {});
-  }, []);
+    if (user && !isLoading) {
+      setProfile({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        email: user.email || "",
+        phoneNumber: user.phoneNumber || "",
+        address: user.address || "",
+        country: "Select",
+        state: "Select",
+        city: "Select",
+        postalCode: "",
+      });
+    }
+  }, [user, isLoading]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setProfile({ ...profile, [e.target.name]: e.target.value });
+  };
+
+  // Handle select changes
+  const handleSelectChange = (field: string, value: string) => {
+    setProfile(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // Handle profile image upload
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError('Please select a valid image file');
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image size should be less than 5MB');
+        return;
+      }
+
+      setProfileImage(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,22 +100,60 @@ const Profile = () => {
     setLoading(true);
     setSuccess("");
     setError("");
+    
     const token = localStorage.getItem("token");
+    if (!token) {
+      setError('Authentication required. Please login again.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await fetch("http://localhost:5000/api/auth/profile", {
+      const formDataToSend = new FormData();
+      
+      // Add form fields
+      formDataToSend.append('firstName', profile.firstName);
+      formDataToSend.append('lastName', profile.lastName);
+      formDataToSend.append('phoneNumber', profile.phoneNumber);
+      formDataToSend.append('address', profile.address);
+      
+      // Add profile image if selected
+      if (profileImage) {
+        formDataToSend.append('profileImage', profileImage);
+      }
+
+      const res = await fetch(`${backend_url}/api/auth/profile`, {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(profile),
+        body: formDataToSend,
       });
+      
       const data = await res.json();
+      
       if (!res.ok) {
         setError(data.message || "Update failed");
       } else {
         setSuccess("Profile updated successfully");
-        setProfile(prev => ({ ...prev, ...data }));
+        
+        // Update user context with new data
+        if (data.user) {
+          setUser(data.user);
+        }
+        
+        // Show success message
+        Swal.fire({
+          icon: 'success',
+          title: 'Success!',
+          text: 'Profile updated successfully',
+          timer: 2000,
+          showConfirmButton: false
+        });
+        
+        // Reset image state
+        setProfileImage(null);
+        setImagePreview(null);
       }
     } catch (err) {
       setError("Server error. Please try again later.");
@@ -86,6 +167,17 @@ const Profile = () => {
       ...prevState,
       [field]: !prevState[field as keyof typeof prevState],
     }));
+  };
+
+  // Get profile image source
+  const getProfileImageSrc = () => {
+    if (imagePreview) {
+      return imagePreview;
+    }
+    if (user?.profileImage) {
+      return `${backend_url}/uploads/${user.profileImage}`;
+    }
+    return '/assets/img/profiles/avatar-24.jpg';
   };
 
   const countryChoose = [
@@ -121,17 +213,17 @@ const Profile = () => {
           {/* Breadcrumb */}
           <div className="d-md-flex d-block align-items-center justify-content-between page-breadcrumb mb-3">
             <div className="my-auto mb-2">
-              <h2 className="mb-1">Profile </h2>
+              <h2 className="mb-1">Profile</h2>
               <nav>
                 <ol className="breadcrumb mb-0">
                   <li className="breadcrumb-item">
-                    <Link to="index.html">
+                    <Link to={route.adminDashboard}>
                       <i className="ti ti-smart-home" />
                     </Link>
                   </li>
                   <li className="breadcrumb-item">Pages</li>
                   <li className="breadcrumb-item active" aria-current="page">
-                    Profile{" "}
+                    Profile
                   </li>
                 </ol>
               </nav>
@@ -141,10 +233,25 @@ const Profile = () => {
             </div>
           </div>
           {/* /Breadcrumb */}
+          
+          {/* Success/Error Messages */}
+          {success && (
+            <div className="alert alert-success alert-dismissible fade show" role="alert">
+              {success}
+              <button type="button" className="btn-close" onClick={() => setSuccess("")}></button>
+            </div>
+          )}
+          {error && (
+            <div className="alert alert-danger alert-dismissible fade show" role="alert">
+              {error}
+              <button type="button" className="btn-close" onClick={() => setError("")}></button>
+            </div>
+          )}
+
           <div className="card">
             <div className="card-body">
               <div className="border-bottom mb-3 pb-3">
-                <h4>Profile </h4>
+                <h4>Profile</h4>
               </div>
               <form onSubmit={handleSubmit}>
                 <div className="border-bottom mb-3">
@@ -154,13 +261,26 @@ const Profile = () => {
                         <h6 className="mb-3">Basic Information</h6>
                         <div className="d-flex align-items-center flex-wrap row-gap-3 bg-light w-100 rounded p-3 mb-4">
                           <div className="d-flex align-items-center justify-content-center avatar avatar-xxl rounded-circle border border-dashed me-2 flex-shrink-0 text-dark frames">
-                            <i className="ti ti-photo text-gray-3 fs-16" />
+                            {user?.profileImage || imagePreview ? (
+                              <img
+                                src={getProfileImageSrc()}
+                                alt="Profile"
+                                className="img-fluid rounded-circle"
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = "/assets/img/profiles/avatar-24.jpg";
+                                }}
+                              />
+                            ) : (
+                              <i className="ti ti-photo text-gray-3 fs-16" />
+                            )}
                           </div>
                           <div className="profile-upload">
                             <div className="mb-2">
                               <h6 className="mb-1">Profile Photo</h6>
                               <p className="fs-12">
-                                Recommended image size is 40px x 40px
+                                Recommended image size is 300px x 300px, max 5MB
                               </p>
                             </div>
                             <div className="profile-uploader d-flex align-items-center">
@@ -169,15 +289,23 @@ const Profile = () => {
                                 <input
                                   type="file"
                                   className="form-control image-sign"
-                                  multiple
+                                  accept="image/*"
+                                  onChange={handleImageUpload}
+                                  style={{ opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }}
                                 />
                               </div>
-                              <Link
-                                to="#"
-                                className="btn btn-light btn-sm"
-                              >
-                                Cancel
-                              </Link>
+                              {(profileImage || imagePreview) && (
+                                <button
+                                  type="button"
+                                  className="btn btn-light btn-sm"
+                                  onClick={() => {
+                                    setProfileImage(null);
+                                    setImagePreview(null);
+                                  }}
+                                >
+                                  Remove
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -188,7 +316,7 @@ const Profile = () => {
                     <div className="col-md-6">
                       <div className="row align-items-center mb-3">
                         <div className="col-md-4">
-                          <label className="form-label mb-md-0">First Name</label>
+                          <label className="form-label mb-md-0">First Name *</label>
                         </div>
                         <div className="col-md-8">
                           <input
@@ -197,6 +325,7 @@ const Profile = () => {
                             name="firstName"
                             value={profile.firstName}
                             onChange={handleChange}
+                            required
                           />
                         </div>
                       </div>
@@ -204,7 +333,7 @@ const Profile = () => {
                     <div className="col-md-6">
                       <div className="row align-items-center mb-3">
                         <div className="col-md-4">
-                          <label className="form-label mb-md-0">Last Name</label>
+                          <label className="form-label mb-md-0">Last Name *</label>
                         </div>
                         <div className="col-md-8">
                           <input
@@ -213,6 +342,7 @@ const Profile = () => {
                             name="lastName"
                             value={profile.lastName}
                             onChange={handleChange}
+                            required
                           />
                         </div>
                       </div>
@@ -224,11 +354,11 @@ const Profile = () => {
                         </div>
                         <div className="col-md-8">
                           <input
-                            type="text"
+                            type="email"
                             className="form-control"
-                            name="email"
                             value={profile.email}
-                            onChange={handleChange}
+                            disabled
+                            title="Email cannot be changed"
                           />
                         </div>
                       </div>
@@ -242,8 +372,8 @@ const Profile = () => {
                           <input
                             type="text"
                             className="form-control"
-                            name="phone"
-                            value={profile.phone}
+                            name="phoneNumber"
+                            value={profile.phoneNumber}
                             onChange={handleChange}
                           />
                         </div>
@@ -276,11 +406,12 @@ const Profile = () => {
                           <label className="form-label mb-md-0">Country</label>
                         </div>
                         <div className="col-md-8">
-                          <CommonSelect
-                            className="select"
-                            options={countryChoose}
-                            defaultValue={getOption(countryChoose, profile.country)}
-                          />
+                                                      <CommonSelect
+                              className="select"
+                              options={countryChoose}
+                              value={countryChoose.find(opt => opt.value === profile.country)}
+                              onChange={(option) => option && handleSelectChange('country', option.value)}
+                            />
                         </div>
                       </div>
                     </div>
@@ -290,11 +421,12 @@ const Profile = () => {
                           <label className="form-label mb-md-0">State</label>
                         </div>
                         <div className="col-md-8">
-                          <CommonSelect
-                            className="select"
-                            options={stateChoose}
-                            defaultValue={getOption(stateChoose, profile.state)}
-                          />
+                                                      <CommonSelect
+                              className="select"
+                              options={stateChoose}
+                              value={stateChoose.find(opt => opt.value === profile.state)}
+                              onChange={(option) => option && handleSelectChange('state', option.value)}
+                            />
                         </div>
                       </div>
                     </div>
@@ -304,11 +436,12 @@ const Profile = () => {
                           <label className="form-label mb-md-0">City</label>
                         </div>
                         <div className="col-md-8">
-                          <CommonSelect
-                            className="select"
-                            options={cityChoose}
-                            defaultValue={getOption(cityChoose, profile.city)}
-                          />
+                                                      <CommonSelect
+                              className="select"
+                              options={cityChoose}
+                              value={cityChoose.find(opt => opt.value === profile.city)}
+                              onChange={(option) => option && handleSelectChange('city', option.value)}
+                            />
                         </div>
                       </div>
                     </div>
@@ -331,14 +464,25 @@ const Profile = () => {
                   </div>
                 </div>
                 <div className="d-flex align-items-center justify-content-end">
-                  <button
-                    type="button"
+                  <Link
+                    to={route.adminDashboard}
                     className="btn btn-outline-light border me-3"
                   >
                     Cancel
-                  </button>
-                  <button type="submit" className="btn btn-primary">
-                    Save
+                  </Link>
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Changes'
+                    )}
                   </button>
                 </div>
               </form>
@@ -357,7 +501,6 @@ const Profile = () => {
       </div>
       {/* /Page Wrapper */}
     </>
-
   );
 };
 

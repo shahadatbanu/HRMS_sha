@@ -9,6 +9,8 @@ interface User {
   role: 'admin' | 'hr' | 'employee';
   profileImage?: string;
   designation?: string;
+  phoneNumber?: string;
+  address?: string;
 }
 
 interface UserContextType {
