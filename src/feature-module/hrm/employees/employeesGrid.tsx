@@ -3,6 +3,7 @@ import { all_routes } from '../../router/all_routes'
 import { Link } from 'react-router-dom'
 import ImageWithBasePath from '../../../core/common/imageWithBasePath';
 import CommonSelect from '../../../core/common/commonSelect';
+import { getDesignations } from '../../../core/services/designationService';
 import { DatePicker } from 'antd';
 import CollapseHeader from '../../../core/common/collapse-header/collapse-header';
 import axios from 'axios';
@@ -45,12 +46,26 @@ const EmployeesGrid = () => {
         { value: "Developer", label: "Developer" },
         { value: "Executive", label: "Executive" },
     ];
-    const designation = [
-        { value: "Select", label: "Select" },
-        { value: "Finance", label: "Finance" },
-        { value: "Developer", label: "Developer" },
-        { value: "Executive", label: "Executive" },
-    ];
+    const [designationOptions, setDesignationOptions] = React.useState<{ value: string; label: string }[]>([
+        { value: 'Select', label: 'Select' },
+    ]);
+
+    React.useEffect(() => {
+        let isMounted = true;
+        (async () => {
+            try {
+                const res = await getDesignations();
+                if (!isMounted) return;
+                const options = Array.isArray(res)
+                    ? [{ value: 'Select', label: 'Select' }, ...res.filter((d: any) => d?.status !== 'Inactive').map((d: any) => ({ value: d.name, label: d.name }))]
+                    : [{ value: 'Select', label: 'Select' }];
+                setDesignationOptions(options);
+            } catch (e) {
+                setDesignationOptions([{ value: 'Select', label: 'Select' }]);
+            }
+        })();
+        return () => { isMounted = false };
+    }, []);
 
     const getModalContainer = () => {
         const modalElement = document.getElementById('modal-datepicker');
@@ -1529,7 +1544,7 @@ const EmployeesGrid = () => {
                                             Basic Information
                                         </button>
                                     </li>
-                                    <li className="nav-item" role="presentation">
+                                    <li className="nav-item" role="presentation" style={{ display: 'none' }}>
                                         <button
                                             className="nav-link"
                                             id="address-tab"
@@ -1701,8 +1716,8 @@ const EmployeesGrid = () => {
                                                     <label className="form-label">Designation</label>
                                                     <CommonSelect
                                                         className='select'
-                                                        options={designation}
-                                                        defaultValue={designation[0]}
+                                                        options={designationOptions}
+                                                        defaultValue={designationOptions[0]}
                                                     />
                                                 </div>
                                             </div>
@@ -1739,6 +1754,7 @@ const EmployeesGrid = () => {
                                     role="tabpanel"
                                     aria-labelledby="address-tab"
                                     tabIndex={0}
+                                    style={{ display: 'none' }}
                                 >
                                     <div className="modal-body">
                                         <div className="card bg-light-500 shadow-none">
@@ -2683,8 +2699,8 @@ const EmployeesGrid = () => {
                                                     <label className="form-label">Designation</label>
                                                     <CommonSelect
                                                         className='select'
-                                                        options={designation}
-                                                        defaultValue={designation[1]}
+                                                        options={designationOptions}
+                                                        defaultValue={designationOptions[0]}
                                                     />
                                                 </div>
                                             </div>

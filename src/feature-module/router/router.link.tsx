@@ -1069,6 +1069,10 @@ export const publicRoutes = [
     element: <Securitysettings />,
   },
   {
+    path: routes.profile,
+    element: <Profile />,
+  },
+  {
     path: routes.notificationssettings,
     element: <Notificationssettings />,
   },

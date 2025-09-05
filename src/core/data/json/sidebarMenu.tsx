@@ -17,10 +17,11 @@ export const SidebarDataTest = [
         icon: 'smart-home',
         base: 'dashboard',
         materialicons: 'start',
+        roles: ['admin'], // Only admin users can see this menu
         // dot: true,
         submenuItems: [
-          { label: "Admin Dashboard", link: routes.adminDashboard },
-          { label: "Employee Dashboard", link: routes.employeeDashboard },
+          { label: "Admin Dashboard", link: routes.adminDashboard, roles: ['admin'] },
+          { label: "Employee Dashboard", link: routes.employeeDashboard, roles: ['admin', 'hr', 'employee'] },
           // { label: "Deals Dashboard", link: routes.dealsDashboard },
           // { label: "Leads Dashboard", link: routes.leadsDashboard },
 
@@ -635,26 +636,26 @@ export const SidebarDataTest = [
             link: routes.performanceIndicator,
             base: 'indicator',
           },
-          {
-            label: 'Performance Review',
-            link: routes.performanceReview,
-            base: 'review',
-          },
-          {
-            label: 'Performance Appraisal',
-            link: routes.performanceAppraisal,
-            base: 'appraisal',
-          },
-          {
-            label: 'Goal List',
-            link: routes.goalTracking,
-            base: 'appraisal',
-          },
-          {
-            label: 'Goal Type',
-            link: routes.goalType,
-            base: 'appraisal',
-          },
+          // {
+          //   label: 'Performance Review',
+          //   link: routes.performanceReview,
+          //   base: 'review',
+          // },
+          // {
+          //   label: 'Performance Appraisal',
+          //   link: routes.performanceAppraisal,
+          //   base: 'appraisal',
+          // },
+          // {
+          //   label: 'Goal List',
+          //   link: routes.goalTracking,
+          //   base: 'appraisal',
+          // },
+          // {
+          //   label: 'Goal Type',
+          //   link: routes.goalType,
+          //   base: 'appraisal',
+          // },
         ],
       },
       {
@@ -667,16 +668,16 @@ export const SidebarDataTest = [
         materialicons: 'group_add',
         submenuItems: [],
       },
-      {
-        label: 'Resignation',
-        link: routes.resignation,
-        submenu: false,
-        showSubRoute: false,
-        icon: 'external-link',
-        base: 'resignation',
-        materialicons: 'settings',
-        submenuItems: [],
-      },
+      // {
+      //   label: 'Resignation',
+      //   link: routes.resignation,
+      //   submenu: false,
+      //   showSubRoute: false,
+      //   icon: 'external-link',
+      //   base: 'resignation',
+      //   materialicons: 'settings',
+      //   submenuItems: [],
+      // },
       {
         label: 'Termination',
         link: routes.termination,

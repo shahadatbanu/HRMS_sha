@@ -9,6 +9,7 @@ import { DatePicker, TimePicker } from "antd";
 import CommonSelect from '../../../core/common/commonSelect';
 import CollapseHeader from '../../../core/common/collapse-header/collapse-header';
 import axios from 'axios';
+import { useUser } from '../../../core/context/UserContext';
 import dayjs from 'dayjs';
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
@@ -30,6 +31,7 @@ type PasswordField = "password" | "confirmPassword";
 
 const EmployeeDetails = () => {
   const { id } = useParams();
+  const { user } = useUser();
   const [employee, setEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -122,13 +124,54 @@ const EmployeeDetails = () => {
 
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
+  // State for About Employee modal
+  const [aboutText, setAboutText] = useState<string>('');
+  const [aboutSaving, setAboutSaving] = useState<boolean>(false);
+  const [aboutError, setAboutError] = useState<string | null>(null);
+
+  // State for assigning asset
+  const [assetForm, setAssetForm] = useState({
+    itemName: '',
+    assetCode: '',
+    image: '',
+    assignedBy: '',
+    note: '',
+  });
+  const [assetSaving, setAssetSaving] = useState(false);
+  const [assetError, setAssetError] = useState<string | null>(null);
+  const [selectedAssetIndex, setSelectedAssetIndex] = useState<number | null>(null);
+  const [assetImageFile, setAssetImageFile] = useState<File | null>(null);
+  const [assetImagePreview, setAssetImagePreview] = useState<string | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
+  const [userProfileLoading, setUserProfileLoading] = useState(true);
+
   useEffect(() => {
     if (id) {
       fetchEmployeeDetails();
     } else {
       setLoading(false);
     }
+    // Fetch current user profile data
+    fetchCurrentUserProfile();
   }, [id]);
+
+  const fetchCurrentUserProfile = async () => {
+    try {
+      setUserProfileLoading(true);
+      const response = await axios.get(
+        `${BACKEND_URL}/api/employees/me`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        }
+      );
+      console.log('Current user profile fetched:', response.data);
+      setCurrentUserProfile(response.data);
+    } catch (err) {
+      console.error('Failed to fetch current user profile:', err);
+    } finally {
+      setUserProfileLoading(false);
+    }
+  };
 
   const fetchEmployeeDetails = async () => {
     try {
@@ -147,6 +190,202 @@ const EmployeeDetails = () => {
       setError(err.response?.data?.message || 'Failed to fetch employee details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenAboutModal = () => {
+    setAboutText(employee?.about || '');
+    setAboutError(null);
+  };
+
+  const handleAboutSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id) return;
+    try {
+      setAboutSaving(true);
+      setAboutError(null);
+      await axios.put(
+        `${BACKEND_URL}/api/employees/${id}`,
+        { about: aboutText },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        }
+      );
+      setEmployee((prev: any) => ({ ...prev, about: aboutText }));
+      // Show success confirmation box
+      const MySwal = withReactContent(Swal);
+      await MySwal.fire({
+        title: "Success!",
+        text: "About information has been updated successfully.",
+        icon: "success",
+        confirmButtonColor: "#5CB85C",
+        confirmButtonText: "OK",
+      });
+      // Close modal if present
+      const modal = document.getElementById('edit_about');
+      if (modal) {
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) backdrop.remove();
+        (modal as any)?.classList?.remove('show');
+        (modal as any).setAttribute('style', 'display: none');
+        document.body.classList.remove('modal-open');
+      }
+    } catch (err: any) {
+      setAboutError(err.response?.data?.message || 'Failed to update about information');
+    } finally {
+      setAboutSaving(false);
+    }
+  };
+
+  const handleOpenAssignAsset = () => {
+    const assignedByName = currentUserProfile 
+      ? `${currentUserProfile.firstName || ''} ${currentUserProfile.lastName || ''}`.trim() || currentUserProfile.email || ''
+      : `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || '';
+      
+    setAssetForm({
+      itemName: '',
+      assetCode: '',
+      image: '',
+      assignedBy: assignedByName,
+      note: '',
+    });
+    setAssetImageFile(null);
+    setAssetImagePreview(null);
+    setAssetError(null);
+  };
+
+  const handleAssetImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAssetImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setAssetImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleViewAssetInfo = (assetIndex: number) => {
+    setSelectedAssetIndex(assetIndex);
+  };
+
+  const handleAssignAssetSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id || !employee) return;
+    try {
+      setAssetSaving(true);
+      setAssetError(null);
+      
+      let imageUrl = '';
+      
+      // Upload image if provided
+      if (assetImageFile) {
+        const formData = new FormData();
+        formData.append('image', assetImageFile);
+        
+        const uploadResponse = await axios.post(
+          `${BACKEND_URL}/api/employees/upload/asset-image`,
+          formData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+              Authorization: `Bearer ${localStorage.getItem('token')}`,
+            },
+          }
+        );
+        imageUrl = uploadResponse.data.imageUrl;
+      }
+      
+      console.log('Creating asset for user:', currentUserProfile?.firstName, currentUserProfile?.lastName);
+      
+      const newAsset = {
+        ...assetForm,
+        image: imageUrl,
+        assignedOn: new Date(), // Use current timestamp for accurate assignment time
+        assignedById: currentUserProfile?._id || user?._id, // Store the user ID who assigned the asset
+      };
+      const updatedAssets = Array.isArray(employee.assets) ? [...employee.assets, newAsset] : [newAsset];
+      const response = await axios.put(
+        `${BACKEND_URL}/api/employees/${id}`,
+        { assets: updatedAssets },
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        }
+      );
+      setEmployee(response.data?.employee ?? ((prev: any) => ({ ...prev, assets: updatedAssets })));
+      const MySwal = withReactContent(Swal);
+      await MySwal.fire({
+        title: "Success!",
+        text: "Asset assigned successfully.",
+        icon: "success",
+        confirmButtonColor: "#5CB85C",
+        confirmButtonText: "OK",
+      });
+      const modal = document.getElementById('assign_asset');
+      if (modal) {
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) backdrop.remove();
+        modal.classList.remove('show', 'd-block');
+        modal.setAttribute('aria-hidden', 'true');
+        modal.setAttribute('style', 'display: none !important');
+        document.body.classList.remove('modal-open');
+        document.body.style.paddingRight = '';
+        if (window.bootstrap) {
+          const bootstrapModal = window.bootstrap.Modal.getInstance(modal);
+          if (bootstrapModal) bootstrapModal.hide();
+        }
+      }
+    } catch (err: any) {
+      setAssetError(err.response?.data?.message || 'Failed to assign asset');
+    } finally {
+      setAssetSaving(false);
+    }
+  };
+
+  const handleDeleteAsset = async (assetIndex: number) => {
+    if (!id || !employee) return;
+    
+    const MySwal = withReactContent(Swal);
+    const result = await MySwal.fire({
+      title: 'Are you sure?',
+      text: 'You want to remove this asset from the employee?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, remove it!',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const updatedAssets = employee.assets.filter((_: any, index: number) => index !== assetIndex);
+        const response = await axios.put(
+          `${BACKEND_URL}/api/employees/${id}`,
+          { assets: updatedAssets },
+          {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+          }
+        );
+        setEmployee(response.data?.employee ?? ((prev: any) => ({ ...prev, assets: updatedAssets })));
+        
+        await MySwal.fire({
+          title: 'Deleted!',
+          text: 'Asset has been removed successfully.',
+          icon: 'success',
+          confirmButtonColor: '#5CB85C',
+        });
+      } catch (err: any) {
+        await MySwal.fire({
+          title: 'Error!',
+          text: err.response?.data?.message || 'Failed to remove asset',
+          icon: 'error',
+          confirmButtonColor: '#d33',
+        });
+      }
     }
   };
 
@@ -376,7 +615,9 @@ const EmployeeDetails = () => {
       setFamilyInfo({
         name: employee?.familyInfo?.name || '',
         relationship: employee?.familyInfo?.relationship || '',
-        dateOfBirth: employee?.familyInfo?.dateOfBirth || '',
+        dateOfBirth: employee?.familyInfo?.dateOfBirth
+          ? dayjs(employee.familyInfo.dateOfBirth).format('DD-MM-YYYY')
+          : '',
         phone: employee?.familyInfo?.phone || ''
       });
       setFamilyError(null);
@@ -384,17 +625,37 @@ const EmployeeDetails = () => {
 
     // Pre-fill education when opening modal
     const handleOpenEducationModal = () => {
-      setEducation(employee?.education && employee.education.length > 0 
-        ? employee.education 
-        : [{ institution: '', degree: '', yearFrom: '', yearTo: '' }]);
+      // Normalize any existing dates to DD-MM-YYYY strings for the DatePickers
+      const existing = employee?.education && employee.education.length > 0
+        ? employee.education.map((edu: any) => ({
+            institution: edu.institution || '',
+            degree: edu.degree || '',
+            yearFrom: edu.yearFrom ? dayjs(edu.yearFrom).format('DD-MM-YYYY') : '',
+            yearTo: edu.yearTo ? dayjs(edu.yearTo).format('DD-MM-YYYY') : '',
+          }))
+        : [
+            { institution: '', degree: '', yearFrom: '', yearTo: '' },
+            { institution: '', degree: '', yearFrom: '', yearTo: '' },
+            { institution: '', degree: '', yearFrom: '', yearTo: '' },
+            { institution: '', degree: '', yearFrom: '', yearTo: '' },
+          ];
+      setEducation(existing);
       setEducationError(null);
     };
 
     // Pre-fill experience when opening modal
     const handleOpenExperienceModal = () => {
-      setExperience(employee?.experience && employee.experience.length > 0 
-        ? employee.experience 
-        : [{ company: '', position: '', startDate: '', endDate: '' }]);
+      const existing = employee?.experience && employee.experience.length > 0
+        ? employee.experience.map((exp: any) => ({
+            company: exp.company || '',
+            position: exp.position || '',
+            startDate: exp.startDate ? dayjs(exp.startDate).format('DD-MM-YYYY') : '',
+            endDate: exp.endDate ? dayjs(exp.endDate).format('DD-MM-YYYY') : '',
+          }))
+        : [
+            { company: '', position: '', startDate: '', endDate: '' },
+          ];
+      setExperience(existing);
       setExperienceError(null);
     };
 
@@ -655,7 +916,7 @@ const EmployeeDetails = () => {
             }
           }
         );
-        setEmployee((prev: any) => ({ ...prev, familyInfo }));
+        setEmployee(response.data?.employee ?? ((prev: any) => ({ ...prev, familyInfo })));
         
         // Show success confirmation box
         const MySwal = withReactContent(Swal);
@@ -707,7 +968,7 @@ const EmployeeDetails = () => {
             }
           }
         );
-        setEmployee((prev: any) => ({ ...prev, education }));
+        setEmployee(response.data?.employee ?? ((prev: any) => ({ ...prev, education })));
         
         // Show success confirmation box
         const MySwal = withReactContent(Swal);
@@ -759,7 +1020,7 @@ const EmployeeDetails = () => {
             }
           }
         );
-        setEmployee((prev: any) => ({ ...prev, experience }));
+        setEmployee(response.data?.employee ?? ((prev: any) => ({ ...prev, experience })));
         
         // Show success confirmation box
         const MySwal = withReactContent(Swal);
@@ -868,7 +1129,7 @@ const EmployeeDetails = () => {
                                 </h5>
                             )}
                         </div>
-                        <div className="d-flex my-xl-auto right-content align-items-center flex-wrap ">
+                        {/* <div className="d-flex my-xl-auto right-content align-items-center flex-wrap ">
                             <div className="mb-2">
                                 <Link
                                     to="#"
@@ -883,7 +1144,7 @@ const EmployeeDetails = () => {
                             <div className="head-icons ms-2">
                                 <CollapseHeader />
                             </div>
-                        </div>
+                        </div> */}
                     </div>
                     {/* /Breadcrumb */}
                     <div className="row">
@@ -891,7 +1152,7 @@ const EmployeeDetails = () => {
                             <div className="card card-bg-1">
                                 <div className="card-body p-0">
                                     <span className="avatar avatar-xl avatar-rounded border border-2 border-white m-auto d-flex mb-2">
-                                        <img
+                                        <ImageWithBasePath
                                             src={employee.profileImage ? 
                                                 (employee.profileImage.startsWith('http') ? 
                                                     employee.profileImage : 
@@ -902,10 +1163,6 @@ const EmployeeDetails = () => {
                                             className="w-auto rounded-circle"
                                             alt="Employee Profile"
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                            onError={(e) => {
-                                                const target = e.target as HTMLImageElement;
-                                                target.src = "assets/img/users/user-13.jpg";
-                                            }}
                                         />
                                     </span>
                                     <div className="text-center px-3 pb-3 border-bottom">
@@ -1143,7 +1400,8 @@ const EmployeeDetails = () => {
                                                                 to="#"
                                                                 className="btn btn-sm btn-icon ms-auto"
                                                                 data-bs-toggle="modal" data-inert={true}
-                                                                data-bs-target="#edit_employee"
+                                                                data-bs-target="#edit_about"
+                                                                onClick={handleOpenAboutModal}
                                                             >
                                                                 <i className="ti ti-edit" />
                                                             </Link>
@@ -1456,7 +1714,7 @@ const EmployeeDetails = () => {
                                                             id="myTab"
                                                             role="tablist"
                                                         >
-                                                            <li className="nav-item" role="presentation">
+                                                            {/* <li className="nav-item" role="presentation">
                                                                 <button
                                                                     className="nav-link active"
                                                                     id="info-tab2"
@@ -1468,16 +1726,16 @@ const EmployeeDetails = () => {
                                                                 >
                                                                     Projects
                                                                 </button>
-                                                            </li>
+                                                            </li> */}
                                                             <li className="nav-item" role="presentation">
                                                                 <button
-                                                                    className="nav-link"
+                                                                    className="nav-link active"
                                                                     id="address-tab2"
                                                                     data-bs-toggle="tab"
                                                                     data-bs-target="#address2"
                                                                     type="button"
                                                                     role="tab"
-                                                                    aria-selected="false"
+                                                                    aria-selected="true"
                                                                 >
                                                                     Assets
                                                                 </button>
@@ -1485,6 +1743,7 @@ const EmployeeDetails = () => {
                                                         </ul>
                                                     </div>
                                                     <div className="tab-content" id="myTabContent3">
+                                                        {/* Projects tab content commented out
                                                         <div
                                                             className="tab-pane fade show active"
                                                             id="basic-info2"
@@ -1621,8 +1880,10 @@ const EmployeeDetails = () => {
                                                                 </div>
                                                             </div>
                                                         </div>
+                                                        </div>
+                                                        */}
                                                         <div
-                                                            className="tab-pane fade"
+                                                            className="tab-pane fade show active"
                                                             id="address2"
                                                             role="tabpanel"
                                                             aria-labelledby="address-tab2"
@@ -1631,123 +1892,48 @@ const EmployeeDetails = () => {
                                                             <div className="row">
                                                                 <div className="col-md-12 d-flex">
                                                                     <div className="card flex-fill">
-                                                                        <div className="card-body">
-                                                                            <div className="row align-items-center">
-                                                                                <div className="col-md-8">
-                                                                                    <div className="d-flex align-items-center">
-                                                                                        <Link
-                                                                                            to={all_routes.projectdetails}
-                                                                                            className="flex-shrink-0 me-2"
-                                                                                        >
-                                                                                            <ImageWithBasePath
-                                                                                                src="assets/img/products/product-05.jpg"
-                                                                                                className="img-fluid rounded-circle"
-                                                                                                alt="img"
-                                                                                            />
-                                                                                        </Link>
-                                                                                        <div>
-                                                                                            <h6 className="mb-1">
-                                                                                                <Link to={all_routes.projectdetails}>
-                                                                                                    Dell Laptop - #343556656
-                                                                                                </Link>
-                                                                                            </h6>
-                                                                                            <div className="d-flex align-items-center">
-                                                                                                <p>
-                                                                                                    <span className="text-primary">
-                                                                                                        AST - 001
-                                                                                                        <i className="ti ti-point-filled text-primary mx-1" />
-                                                                                                    </span>
-                                                                                                    Assigned on 22 Nov, 2022 10:32AM{" "}
-                                                                                                </p>
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                                <div className="col-md-3">
-                                                                                    <div>
-                                                                                        <span className="mb-1 d-block">
-                                                                                            Assigned by
-                                                                                        </span>
-                                                                                        <Link
-                                                                                            to="#"
-                                                                                            className="fw-normal d-flex align-items-center"
-                                                                                        >
-                                                                                            <ImageWithBasePath
-                                                                                                className="avatar avatar-sm rounded-circle me-2"
-                                                                                                src="assets/img/profiles/avatar-01.jpg"
-                                                                                                alt="Img"
-                                                                                            />
-                                                                                            Andrew Symon
-                                                                                        </Link>
-                                                                                    </div>
-                                                                                </div>
-                                                                                <div className="col-md-1">
-                                                                                    <div className="dropdown ms-2">
-                                                                                        <Link
-                                                                                            to="#"
-                                                                                            className="d-inline-flex align-items-center"
-                                                                                            data-bs-toggle="dropdown"
-                                                                                            aria-expanded="false"
-                                                                                        >
-                                                                                            <i className="ti ti-dots-vertical" />
-                                                                                        </Link>
-                                                                                        <ul className="dropdown-menu dropdown-menu-end p-3">
-                                                                                            <li>
-                                                                                                <Link
-                                                                                                    to="#"
-                                                                                                    className="dropdown-item rounded-1"
-                                                                                                    data-bs-toggle="modal" data-inert={true}
-                                                                                                    data-bs-target="#asset_info"
-                                                                                                >
-                                                                                                    View Info
-                                                                                                </Link>
-                                                                                            </li>
-                                                                                            <li>
-                                                                                                <Link
-                                                                                                    to="#"
-                                                                                                    className="dropdown-item rounded-1"
-                                                                                                    data-bs-toggle="modal" data-inert={true}
-                                                                                                    data-bs-target="#refuse_msg"
-                                                                                                >
-                                                                                                    Raise Issue{" "}
-                                                                                                </Link>
-                                                                                            </li>
-                                                                                        </ul>
-                                                                                    </div>
-                                                                                </div>
+                                                                        <div className="card-header">
+                                                                            <div className="d-flex justify-content-between align-items-center">
+                                                                                <h5 className="card-title mb-0">Assets</h5>
+                                                                                {(user?.role === 'admin' || user?.role === 'hr') && (
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        className="btn btn-primary btn-sm"
+                                                                                        data-bs-toggle="modal"
+                                                                                        data-bs-target="#assign_asset"
+                                                                                        onClick={handleOpenAssignAsset}
+                                                                                    >
+                                                                                        <i className="ti ti-plus me-1"></i>
+                                                                                        Add Asset
+                                                                                    </button>
+                                                                                )}
                                                                             </div>
                                                                         </div>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="col-md-12 d-flex">
-                                                                    <div className="card flex-fill mb-0">
                                                                         <div className="card-body">
-                                                                            <div className="row align-items-center">
+                                                                            {employee?.assets && employee.assets.length > 0 ? (
+                                                                                employee.assets.map((asset: any, index: number) => (
+                                                                                    <div key={index} className="row align-items-center mb-3">
                                                                                 <div className="col-md-8">
                                                                                     <div className="d-flex align-items-center">
-                                                                                        <Link
-                                                                                            to={all_routes.projectdetails}
-                                                                                            className="flex-shrink-0 me-2"
-                                                                                        >
+                                                                                                <div className="flex-shrink-0 me-2">
                                                                                             <ImageWithBasePath
-                                                                                                src="assets/img/products/product-06.jpg"
+                                                                                                        src={asset.image ? `/uploads/${asset.image}` : "assets/img/products/product-05.jpg"}
                                                                                                 className="img-fluid rounded-circle"
-                                                                                                alt="img"
+                                                                                                        alt="asset"
+                                                                                                        style={{ width: '50px', height: '50px', objectFit: 'cover' }}
                                                                                             />
-                                                                                        </Link>
+                                                                                                </div>
                                                                                         <div>
                                                                                             <h6 className="mb-1">
-                                                                                                <Link to={all_routes.projectdetails}>
-                                                                                                    Bluetooth Mouse - #478878
-                                                                                                </Link>
+                                                                                                        {asset.itemName} - {asset.assetCode}
                                                                                             </h6>
                                                                                             <div className="d-flex align-items-center">
                                                                                                 <p>
                                                                                                     <span className="text-primary">
-                                                                                                        AST - 001
+                                                                                                                {asset.assetCode}
                                                                                                         <i className="ti ti-point-filled text-primary mx-1" />
                                                                                                     </span>
-                                                                                                    Assigned on 22 Nov, 2022 10:32AM{" "}
+                                                                                                            Assigned on {dayjs(asset.assignedOn).format('DD MMM, YYYY hh:mm A')}
                                                                                                 </p>
                                                                                             </div>
                                                                                         </div>
@@ -1758,17 +1944,9 @@ const EmployeeDetails = () => {
                                                                                         <span className="mb-1 d-block">
                                                                                             Assigned by
                                                                                         </span>
-                                                                                        <Link
-                                                                                            to="#"
-                                                                                            className="fw-normal d-flex align-items-center"
-                                                                                        >
-                                                                                            <ImageWithBasePath
-                                                                                                className="avatar avatar-sm rounded-circle me-2"
-                                                                                                src="assets/img/profiles/avatar-01.jpg"
-                                                                                                alt="Img"
-                                                                                            />
-                                                                                            Andrew Symon
-                                                                                        </Link>
+                                                                                                                                                                                                 <div className="fw-normal">
+                                                                                                     {asset.assignedBy}
+                                                                                                 </div>
                                                                                     </div>
                                                                                 </div>
                                                                                 <div className="col-md-1">
@@ -1788,24 +1966,61 @@ const EmployeeDetails = () => {
                                                                                                     className="dropdown-item rounded-1"
                                                                                                     data-bs-toggle="modal" data-inert={true}
                                                                                                     data-bs-target="#asset_info"
+                                                                                                            onClick={() => handleViewAssetInfo(index)}
                                                                                                 >
                                                                                                     View Info
                                                                                                 </Link>
                                                                                             </li>
+                                                                                            {(user?.role === 'admin' || user?.role === 'hr') && (
+                                                                                                        <>
+                                                                                                <li>
+                                                                                                    <Link
+                                                                                                        to="#"
+                                                                                                        className="dropdown-item rounded-1"
+                                                                                                        data-bs-toggle="modal" data-inert={true}
+                                                                                                        data-bs-target="#assign_asset"
+                                                                                                        onClick={handleOpenAssignAsset}
+                                                                                                    >
+                                                                                                        Assign New Asset
+                                                                                                    </Link>
+                                                                                                </li>
                                                                                             <li>
                                                                                                 <Link
                                                                                                     to="#"
-                                                                                                    className="dropdown-item rounded-1"
-                                                                                                    data-bs-toggle="modal" data-inert={true}
-                                                                                                    data-bs-target="#refuse_msg"
+                                                                                                                    className="dropdown-item rounded-1 text-danger"
+                                                                                                                    onClick={() => handleDeleteAsset(index)}
                                                                                                 >
-                                                                                                    Raise Issue{" "}
+                                                                                                                    Remove Asset
                                                                                                 </Link>
                                                                                             </li>
+                                                                                                        </>
+                                                                                                    )}
                                                                                         </ul>
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
+                                                                                ))
+                                                                            ) : (
+                                                                                <div className="text-center py-4">
+                                                                                    <div className="mb-3">
+                                                                                        <i className="ti ti-package text-muted" style={{ fontSize: '3rem' }}></i>
+                                                                        </div>
+                                                                                    <h6 className="text-muted">No assets assigned</h6>
+                                                                                    <p className="text-muted">This employee doesn't have any assets assigned yet.</p>
+                                                                                    {(user?.role === 'admin' || user?.role === 'hr') && (
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            className="btn btn-primary btn-sm"
+                                                                                            data-bs-toggle="modal"
+                                                                                            data-bs-target="#assign_asset"
+                                                                                            onClick={handleOpenAssignAsset}
+                                                                                        >
+                                                                                            <i className="ti ti-plus me-1"></i>
+                                                                                            Assign First Asset
+                                                                                        </button>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -2179,7 +2394,7 @@ const EmployeeDetails = () => {
                                 <i className="ti ti-x" />
                             </button>
                         </div>
-                        <form>
+                        <form onSubmit={handleFamilyInfoSave}>
                             <div className="modal-body pb-0">
                                 <div className="row">
                                     <div className="col-md-12">
@@ -2187,25 +2402,40 @@ const EmployeeDetails = () => {
                                             <label className="form-label">
                                                 Name <span className="text-danger"> *</span>
                                             </label>
-                                            <input type="text" className="form-control" />
+                                            <input 
+                                                type="text" 
+                                                className="form-control" 
+                                                value={familyInfo.name}
+                                                onChange={(e) => setFamilyInfo(prev => ({ ...prev, name: e.target.value }))}
+                                            />
                                         </div>
                                     </div>
                                     <div className="col-md-12">
                                         <div className="mb-3">
                                             <label className="form-label">Relationship </label>
-                                            <input type="text" className="form-control" />
+                                            <input 
+                                                type="text" 
+                                                className="form-control" 
+                                                value={familyInfo.relationship}
+                                                onChange={(e) => setFamilyInfo(prev => ({ ...prev, relationship: e.target.value }))}
+                                            />
                                         </div>
                                     </div>
                                     <div className="col-md-12">
                                         <div className="mb-3">
                                             <label className="form-label">Phone </label>
-                                            <input type="text" className="form-control" />
+                                            <input 
+                                                type="text" 
+                                                className="form-control" 
+                                                value={familyInfo.phone}
+                                                onChange={(e) => setFamilyInfo(prev => ({ ...prev, phone: e.target.value }))}
+                                            />
                                         </div>
                                     </div>
                                     <div className="col-md-12">
                                         <div className="mb-3">
                                             <label className="form-label">
-                                                Passport Expiry Date <span className="text-danger"> *</span>
+                                                Date of Birth <span className="text-danger"> *</span>
                                             </label>
                                             <div className="input-icon-end position-relative">
                                                 <DatePicker
@@ -2216,6 +2446,8 @@ const EmployeeDetails = () => {
                                                     }}
                                                     getPopupContainer={getModalContainer}
                                                     placeholder="DD-MM-YYYY"
+                                                    value={familyInfo.dateOfBirth ? dayjs(familyInfo.dateOfBirth, 'DD-MM-YYYY') : null}
+                                                    onChange={(date) => setFamilyInfo(prev => ({ ...prev, dateOfBirth: date ? date.format('DD-MM-YYYY') : '' }))}
                                                 />
                                                 <span className="input-icon-addon">
                                                     <i className="ti ti-calendar text-gray-7" />
@@ -2233,8 +2465,8 @@ const EmployeeDetails = () => {
                                 >
                                     Cancel
                                 </button>
-                                <button type="button" data-bs-dismiss="modal" className="btn btn-primary">
-                                    Save
+                                <button type="submit" className="btn btn-primary" disabled={familySaving}>
+                                    {familySaving ? 'Saving...' : 'Save'}
                                 </button>
                             </div>
                         </form>
@@ -2257,68 +2489,101 @@ const EmployeeDetails = () => {
                                 <i className="ti ti-x" />
                             </button>
                         </div>
-                        <form>
+                        <form onSubmit={handleEducationSave}>
                             <div className="modal-body pb-0">
-                                <div className="row">
+                                {educationError && <div className="alert alert-danger">{educationError}</div>}
+                                {education.map((edu, idx) => (
+                                  <div className="row" key={idx}>
                                     <div className="col-md-6">
-                                        <div className="mb-3">
-                                            <label className="form-label">
-                                                Institution Name <span className="text-danger"> *</span>
-                                            </label>
-                                            <input type="text" className="form-control" />
-                                        </div>
+                                      <div className="mb-3">
+                                        <label className="form-label">
+                                          Institution Name <span className="text-danger"> *</span>
+                                        </label>
+                                        <input 
+                                          type="text" 
+                                          className="form-control" 
+                                          value={edu.institution}
+                                          onChange={(e) => updateEducation(idx, 'institution', e.target.value)}
+                                          placeholder={idx === 0 ? 'Secondary' : idx === 1 ? 'Senior Secondary' : idx === 2 ? 'Graduation' : idx === 3 ? 'Post Graduation' : 'Institution'}
+                                        />
+                                      </div>
                                     </div>
                                     <div className="col-md-6">
-                                        <div className="mb-3">
-                                            <label className="form-label">
-                                                Course <span className="text-danger"> *</span>
-                                            </label>
-                                            <input type="text" className="form-control" />
-                                        </div>
+                                      <div className="mb-3">
+                                        <label className="form-label">
+                                          Course <span className="text-danger"> *</span>
+                                        </label>
+                                        <input 
+                                          type="text" 
+                                          className="form-control" 
+                                          value={edu.degree}
+                                          onChange={(e) => updateEducation(idx, 'degree', e.target.value)}
+                                          placeholder="e.g., B.Sc, M.Tech"
+                                        />
+                                      </div>
                                     </div>
                                     <div className="col-md-6">
-                                        <div className="mb-3">
-                                            <label className="form-label">
-                                                Start Date <span className="text-danger"> *</span>
-                                            </label>
-                                            <div className="input-icon-end position-relative">
-                                                <DatePicker
-                                                    className="form-control datetimepicker"
-                                                    format={{
-                                                        format: "DD-MM-YYYY",
-                                                        type: "mask",
-                                                    }}
-                                                    getPopupContainer={getModalContainer}
-                                                    placeholder="DD-MM-YYYY"
-                                                />
-                                                <span className="input-icon-addon">
-                                                    <i className="ti ti-calendar text-gray-7" />
-                                                </span>
-                                            </div>
+                                      <div className="mb-3">
+                                        <label className="form-label">
+                                          Start Date <span className="text-danger"> *</span>
+                                        </label>
+                                        <div className="input-icon-end position-relative">
+                                          <DatePicker
+                                            className="form-control datetimepicker"
+                                            format={{
+                                              format: "DD-MM-YYYY",
+                                              type: "mask",
+                                            }}
+                                            getPopupContainer={getModalContainer}
+                                            placeholder="DD-MM-YYYY"
+                                            value={edu.yearFrom ? dayjs(edu.yearFrom, 'DD-MM-YYYY') : null}
+                                            onChange={(date) => updateEducation(idx, 'yearFrom', date ? date.format('DD-MM-YYYY') : '')}
+                                          />
+                                          <span className="input-icon-addon">
+                                            <i className="ti ti-calendar text-gray-7" />
+                                          </span>
                                         </div>
+                                      </div>
                                     </div>
                                     <div className="col-md-6">
-                                        <div className="mb-3">
-                                            <label className="form-label">
-                                                End Date <span className="text-danger"> *</span>
-                                            </label>
-                                            <div className="input-icon-end position-relative">
-                                                <DatePicker
-                                                    className="form-control datetimepicker"
-                                                    format={{
-                                                        format: "DD-MM-YYYY",
-                                                        type: "mask",
-                                                    }}
-                                                    getPopupContainer={getModalContainer}
-                                                    placeholder="DD-MM-YYYY"
-                                                />
-                                                <span className="input-icon-addon">
-                                                    <i className="ti ti-calendar text-gray-7" />
-                                                </span>
-                                            </div>
+                                      <div className="mb-3">
+                                        <label className="form-label">
+                                          End Date <span className="text-danger"> *</span>
+                                        </label>
+                                        <div className="input-icon-end position-relative">
+                                          <DatePicker
+                                            className="form-control datetimepicker"
+                                            format={{
+                                              format: "DD-MM-YYYY",
+                                              type: "mask",
+                                            }}
+                                            getPopupContainer={getModalContainer}
+                                            placeholder="DD-MM-YYYY"
+                                            value={edu.yearTo ? dayjs(edu.yearTo, 'DD-MM-YYYY') : null}
+                                            onChange={(date) => updateEducation(idx, 'yearTo', date ? date.format('DD-MM-YYYY') : '')}
+                                          />
+                                          <span className="input-icon-addon">
+                                            <i className="ti ti-calendar text-gray-7" />
+                                          </span>
                                         </div>
+                                      </div>
                                     </div>
-                                </div>
+                                    <div className="col-md-12">
+                                      <div className="d-flex justify-content-end mb-3">
+                                        {education.length > 1 && (
+                                          <button type="button" className="btn btn-outline-danger btn-sm me-2" onClick={() => removeEducation(idx)}>
+                                            Remove
+                                          </button>
+                                        )}
+                                        {idx === education.length - 1 && (
+                                          <button type="button" className="btn btn-outline-primary btn-sm" onClick={addEducation}>
+                                            Add Another
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
                             </div>
                             <div className="modal-footer">
                                 <button
@@ -2328,8 +2593,8 @@ const EmployeeDetails = () => {
                                 >
                                     Cancel
                                 </button>
-                                <button type="button" data-bs-dismiss="modal" className="btn btn-primary">
-                                    Save
+                                <button type="submit" className="btn btn-primary" disabled={educationSaving}>
+                                    {educationSaving ? 'Saving...' : 'Save'}
                                 </button>
                             </div>
                         </form>
@@ -2352,68 +2617,100 @@ const EmployeeDetails = () => {
                                 <i className="ti ti-x" />
                             </button>
                         </div>
-                        <form>
+                        <form onSubmit={handleExperienceSave}>
                             <div className="modal-body pb-0">
                                 <div className="row">
-                                    <div className="col-md-6">
-                                        <div className="mb-3">
+                                    {experienceError && <div className="alert alert-danger">{experienceError}</div>}
+                                    {experience.map((exp, idx) => (
+                                      <>
+                                        <div className="col-md-6">
+                                          <div className="mb-3">
                                             <label className="form-label">
-                                                Previous Company Name{" "}
-                                                <span className="text-danger"> *</span>
+                                              Previous Company Name <span className="text-danger"> *</span>
                                             </label>
-                                            <input type="text" className="form-control" />
+                                            <input 
+                                              type="text" 
+                                              className="form-control" 
+                                              value={exp.company}
+                                              onChange={(e) => updateExperience(idx, 'company', e.target.value)}
+                                            />
+                                          </div>
                                         </div>
-                                    </div>
-                                    <div className="col-md-6">
-                                        <div className="mb-3">
+                                        <div className="col-md-6">
+                                          <div className="mb-3">
                                             <label className="form-label">
-                                                Designation <span className="text-danger"> *</span>
+                                              Designation <span className="text-danger"> *</span>
                                             </label>
-                                            <input type="text" className="form-control" />
+                                            <input 
+                                              type="text" 
+                                              className="form-control" 
+                                              value={exp.position}
+                                              onChange={(e) => updateExperience(idx, 'position', e.target.value)}
+                                            />
+                                          </div>
                                         </div>
-                                    </div>
-                                    <div className="col-md-6">
-                                        <div className="mb-3">
+                                        <div className="col-md-6">
+                                          <div className="mb-3">
                                             <label className="form-label">
-                                                Start Date <span className="text-danger"> *</span>
-                                            </label>
-                                            <div className="input-icon-end position-relative">
-                                                <DatePicker
-                                                    className="form-control datetimepicker"
-                                                    format={{
-                                                        format: "DD-MM-YYYY",
-                                                        type: "mask",
-                                                    }}
-                                                    getPopupContainer={getModalContainer}
-                                                    placeholder="DD-MM-YYYY"
-                                                />
-                                                <span className="input-icon-addon">
-                                                    <i className="ti ti-calendar text-gray-7" />
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="col-md-6">
-                                        <div className="mb-3">
-                                            <label className="form-label">
-                                                End Date <span className="text-danger"> *</span>
+                                              Start Date <span className="text-danger"> *</span>
                                             </label>
                                             <div className="input-icon-end position-relative">
-                                                <DatePicker
-                                                    className="form-control datetimepicker"
-                                                    format={{
-                                                        format: "DD-MM-YYYY",
-                                                        type: "mask",
-                                                    }}
-                                                    getPopupContainer={getModalContainer}
-                                                    placeholder="DD-MM-YYYY"
-                                                />
-                                                <span className="input-icon-addon">
-                                                    <i className="ti ti-calendar text-gray-7" />
-                                                </span>
+                                              <DatePicker
+                                                className="form-control datetimepicker"
+                                                format={{
+                                                  format: "DD-MM-YYYY",
+                                                  type: "mask",
+                                                }}
+                                                getPopupContainer={getModalContainer}
+                                                placeholder="DD-MM-YYYY"
+                                                value={exp.startDate ? dayjs(exp.startDate, 'DD-MM-YYYY') : null}
+                                                onChange={(date) => updateExperience(idx, 'startDate', date ? date.format('DD-MM-YYYY') : '')}
+                                              />
+                                              <span className="input-icon-addon">
+                                                <i className="ti ti-calendar text-gray-7" />
+                                              </span>
                                             </div>
+                                          </div>
                                         </div>
-                                    </div>
+                                        <div className="col-md-6">
+                                          <div className="mb-3">
+                                            <label className="form-label">
+                                              End Date <span className="text-danger"> *</span>
+                                            </label>
+                                            <div className="input-icon-end position-relative">
+                                              <DatePicker
+                                                className="form-control datetimepicker"
+                                                format={{
+                                                  format: "DD-MM-YYYY",
+                                                  type: "mask",
+                                                }}
+                                                getPopupContainer={getModalContainer}
+                                                placeholder="DD-MM-YYYY"
+                                                value={exp.endDate ? dayjs(exp.endDate, 'DD-MM-YYYY') : null}
+                                                onChange={(date) => updateExperience(idx, 'endDate', date ? date.format('DD-MM-YYYY') : '')}
+                                              />
+                                              <span className="input-icon-addon">
+                                                <i className="ti ti-calendar text-gray-7" />
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="col-md-12">
+                                          <div className="d-flex justify-content-end mb-3">
+                                            {experience.length > 1 && (
+                                              <button type="button" className="btn btn-outline-danger btn-sm me-2" onClick={() => removeExperience(idx)}>
+                                                Remove
+                                              </button>
+                                            )}
+                                            {idx === experience.length - 1 && (
+                                              <button type="button" className="btn btn-outline-primary btn-sm" onClick={addExperience}>
+                                                Add Another
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </>
+                                    ))}
                                     <div className="col-md-12">
                                         <div className="mb-3">
                                             <label className="form-check-label d-flex align-items-center mt-0">
@@ -2438,8 +2735,8 @@ const EmployeeDetails = () => {
                                 >
                                     Cancel
                                 </button>
-                                <button type="button" data-bs-dismiss="modal" className="btn btn-primary">
-                                    Save
+                                <button type="submit" className="btn btn-primary" disabled={experienceSaving}>
+                                    {experienceSaving ? 'Saving...' : 'Save'}
                                 </button>
                             </div>
                         </form>
@@ -2485,7 +2782,7 @@ const EmployeeDetails = () => {
             </div>
             {/* /Add Client Success */}
             {/* Add Statuorty */}
-            <div className="modal fade" id="add_bank_satutory">
+            {/* <div className="modal fade" id="add_bank_satutory">
                 <div className="modal-dialog modal-dialog-centered modal-lg">
                     <div className="modal-content">
                         <div className="modal-header">
@@ -2644,7 +2941,7 @@ const EmployeeDetails = () => {
                         </form>
                     </div>
                 </div>
-            </div>
+            </div> */}
             {/* /Add Statuorty */}
             {/* Asset Information */}
             <div className="modal fade" id="asset_info">
@@ -2662,98 +2959,167 @@ const EmployeeDetails = () => {
                             </button>
                         </div>
                         <div className="modal-body">
+                            {employee?.assets && selectedAssetIndex !== null && employee.assets[selectedAssetIndex] ? (
+                                (() => {
+                                    const asset = employee.assets[selectedAssetIndex];
+                                    return (
+                                        <>
                             <div className="bg-light p-3 rounded d-flex align-items-center mb-3">
                                 <span className="avatar avatar-lg flex-shrink-0 me-2">
                                     <ImageWithBasePath
-                                        src="assets/img/laptop.jpg"
-                                        alt="img"
-                                        className="ig-fluid rounded-circle"
+                                                        src={asset.image ? `/uploads/${asset.image}` : "assets/img/laptop.jpg"}
+                                                        alt="asset"
+                                                        className="img-fluid rounded-circle"
+                                                        style={{ width: '60px', height: '60px', objectFit: 'cover' }}
                                     />
                                 </span>
                                 <div>
-                                    <h6>Dell Laptop - #343556656</h6>
+                                                    <h6>{asset.itemName} - {asset.assetCode}</h6>
                                     <p className="fs-13">
-                                        <span className="text-primary">AST - 001 </span>
-                                        <i className="ti ti-point-filled text-primary" /> Assigned on 22
-                                        Nov, 2022 10:32AM
+                                                        <span className="text-primary">{asset.assetCode} </span>
+                                                        <i className="ti ti-point-filled text-primary" /> Assigned on {dayjs(asset.assignedOn).format('DD MMM, YYYY hh:mm A')}
                                     </p>
                                 </div>
                             </div>
                             <div className="row">
                                 <div className="col-md-6">
                                     <div className="mb-3">
-                                        <p className="fs-13 mb-0">Type</p>
-                                        <p className="text-gray-9">Laptop</p>
+                                                        <p className="fs-13 mb-0">Item Name</p>
+                                                        <p className="text-gray-9">{asset.itemName}</p>
                                     </div>
                                 </div>
                                 <div className="col-md-6">
                                     <div className="mb-3">
-                                        <p className="fs-13 mb-0">Brand</p>
-                                        <p className="text-gray-9">Dell</p>
+                                                        <p className="fs-13 mb-0">Asset Code</p>
+                                                        <p className="text-gray-9">{asset.assetCode}</p>
                                     </div>
                                 </div>
                                 <div className="col-md-6">
                                     <div className="mb-3">
-                                        <p className="fs-13 mb-0">Category</p>
-                                        <p className="text-gray-9">Computer</p>
+                                                                                                                 <p className="fs-13 mb-0">Assigned By</p>
+                                                         <p className="text-gray-9">{asset.assignedBy}</p>
                                     </div>
                                 </div>
                                 <div className="col-md-6">
                                     <div className="mb-3">
-                                        <p className="fs-13 mb-0">Serial No</p>
-                                        <p className="text-gray-9">3647952145678</p>
+                                                        <p className="fs-13 mb-0">Assigned On</p>
+                                                        <p className="text-gray-9">{dayjs(asset.assignedOn).format('DD MMM, YYYY hh:mm A')}</p>
                                     </div>
                                 </div>
-                                <div className="col-md-6">
+                                                {asset.note && (
+                                                    <div className="col-md-12">
                                     <div className="mb-3">
-                                        <p className="fs-13 mb-0">Cost</p>
-                                        <p className="text-gray-9">$800</p>
+                                                            <p className="fs-13 mb-0">Notes</p>
+                                                            <p className="text-gray-9">{asset.note}</p>
                                     </div>
                                 </div>
-                                <div className="col-md-6">
-                                    <div className="mb-3">
-                                        <p className="fs-13 mb-0">Vendor</p>
-                                        <p className="text-gray-9">Compusoft Systems Ltd.,</p>
+                                                )}
                                     </div>
-                                </div>
-                                <div className="col-md-6">
-                                    <div className="mb-3">
-                                        <p className="fs-13 mb-0">Warranty</p>
-                                        <p className="text-gray-9">12 Jan 2022 - 12 Jan 2026</p>
-                                    </div>
-                                </div>
-                                <div className="col-md-6">
-                                    <div className="mb-3">
-                                        <p className="fs-13 mb-0">Location</p>
-                                        <p className="text-gray-9">46 Laurel Lane, TX 79701</p>
-                                    </div>
-                                </div>
-                            </div>
+                                            {asset.image && (
                             <div>
-                                <p className="fs-13 mb-2">Asset Images</p>
+                                                    <p className="fs-13 mb-2">Asset Image</p>
                                 <div className="d-flex align-items-center">
                                     <ImageWithBasePath
-                                        src="assets/img/laptop-01.jpg"
-                                        alt="img"
-                                        className="img-fluid rounded me-2"
-                                    />
-                                    <ImageWithBasePath
-                                        src="assets/img/laptop-2.jpg"
-                                        alt="img"
-                                        className="img-fluid rounded me-2"
-                                    />
-                                    <ImageWithBasePath
-                                        src="assets/img/laptop-3.jpg"
-                                        alt="img"
+                                                            src={`/uploads/${asset.image}`}
+                                                            alt="asset"
                                         className="img-fluid rounded"
+                                                            style={{ maxWidth: '200px', maxHeight: '150px', objectFit: 'cover' }}
                                     />
                                 </div>
                             </div>
+                                            )}
+                                        </>
+                                    );
+                                })()
+                            ) : (
+                                <div className="text-center py-4">
+                                    <div className="mb-3">
+                                        <i className="ti ti-package text-muted" style={{ fontSize: '3rem' }}></i>
+                        </div>
+                                    <h6 className="text-muted">No asset selected</h6>
+                                    <p className="text-muted">Please select an asset to view its details.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
             </div>
             {/* /Asset Information */}
+            {/* Assign Asset (Admin/HR) */}
+            <div className="modal fade" id="assign_asset">
+                <div className="modal-dialog modal-dialog-centered modal-lg">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h4 className="modal-title">Assign Asset</h4>
+                            <button
+                                type="button"
+                                className="btn-close custom-btn-close"
+                                data-bs-dismiss="modal"
+                                aria-label="Close"
+                            >
+                                <i className="ti ti-x" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleAssignAssetSave}>
+                            <div className="modal-body pb-0">
+                                {assetError && <div className="alert alert-danger">{assetError}</div>}
+                                <div className="row">
+                                    <div className="col-md-6">
+                                        <div className="mb-3">
+                                            <label className="form-label">Item Name</label>
+                                            <input type="text" className="form-control" value={assetForm.itemName} onChange={(e) => setAssetForm({ ...assetForm, itemName: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <div className="col-md-6">
+                                        <div className="mb-3">
+                                            <label className="form-label">Asset Code</label>
+                                            <input type="text" className="form-control" value={assetForm.assetCode} onChange={(e) => setAssetForm({ ...assetForm, assetCode: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <div className="col-md-6">
+                                        <div className="mb-3">
+                                            <label className="form-label">Assigned By</label>
+                                            <input type="text" className="form-control" value={assetForm.assignedBy} onChange={(e) => setAssetForm({ ...assetForm, assignedBy: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <div className="col-md-12">
+                                        <div className="mb-3">
+                                            <label className="form-label">Asset Image</label>
+                                            <input 
+                                                type="file" 
+                                                className="form-control" 
+                                                accept="image/*"
+                                                onChange={handleAssetImageChange}
+                                            />
+                                            {assetImagePreview && (
+                                                <div className="mt-2">
+                                                    <img 
+                                                        src={assetImagePreview} 
+                                                        alt="Asset preview" 
+                                                        className="img-thumbnail" 
+                                                        style={{ maxWidth: '200px', maxHeight: '150px', objectFit: 'cover' }}
+                                                    />
+                                            </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="col-md-12">
+                                        <div className="mb-3">
+                                            <label className="form-label">Note</label>
+                                            <textarea className="form-control" rows={3} value={assetForm.note} onChange={(e) => setAssetForm({ ...assetForm, note: e.target.value })} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-white border me-2" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" className="btn btn-primary" disabled={assetSaving}>{assetSaving ? 'Saving...' : 'Save'}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {/* /Assign Asset */}
             {/* Refuse */}
             <div className="modal fade" id="refuse_msg">
                 <div className="modal-dialog modal-dialog-centered modal-md">
@@ -2918,6 +3284,53 @@ const EmployeeDetails = () => {
                 </div>
             </div>
             {/* /Edit Employee Basic Info */}
+            {/* Edit About Employee */}
+            <div className="modal fade" id="edit_about">
+                <div className="modal-dialog modal-dialog-centered modal-lg">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h4 className="modal-title">Edit About Employee</h4>
+                            <button
+                                type="button"
+                                className="btn-close custom-btn-close"
+                                data-bs-dismiss="modal"
+                                aria-label="Close"
+                            >
+                                <i className="ti ti-x" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleAboutSave}>
+                            <div className="modal-body pb-0">
+                                {aboutError && <div className="alert alert-danger">{aboutError}</div>}
+                                <div className="mb-3">
+                                    <label className="form-label">About</label>
+                                    <textarea
+                                        className="form-control"
+                                        rows={4}
+                                        value={aboutText}
+                                        onChange={(e) => setAboutText(e.target.value)}
+                                        placeholder="Enter a brief description about the employee"
+                                    />
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button
+                                    type="button"
+                                    className="btn btn-white border me-2"
+                                    data-bs-dismiss="modal"
+                                    disabled={aboutSaving}
+                                >
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn btn-primary" disabled={aboutSaving}>
+                                    {aboutSaving ? 'Saving...' : 'Save'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {/* /Edit About Employee */}
             {/* Edit Main Employee Info */}
             <div className="modal fade" id="add_employee">
                 <div className="modal-dialog modal-dialog-centered modal-lg">

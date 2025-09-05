@@ -8,7 +8,9 @@ export const getDesignations = async () => {
       Authorization: `Bearer ${localStorage.getItem('token')}`
     }
   });
-  return res.data;
+  // Backend returns { success: boolean, data: Designation[] }
+  // Fallback to res.data if shape differs
+  return (res.data && Array.isArray(res.data.data)) ? res.data.data : res.data;
 };
 
 export default {
