@@ -891,23 +891,22 @@ const EmployeeDetails = () => {
                             <div className="card card-bg-1">
                                 <div className="card-body p-0">
                                     <span className="avatar avatar-xl avatar-rounded border border-2 border-white m-auto d-flex mb-2">
-<img
-  src={
-    employee.profileImage
-      ? employee.profileImage.startsWith('http')
-        ? employee.profileImage
-        : `${BACKEND_URL}/uploads/${employee.profileImage.replace(/^assets\/img\/profiles\//, '')}`
-      : "assets/img/users/user-13.jpg"
-  }
-  className="w-auto rounded-circle"
-  alt="Employee Profile"
-  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-  onError={(e) => {
-    const target = e.target as HTMLImageElement;
-    target.onerror = null; // Prevent infinite loop
-    target.src = "assets/img/users/user-13.jpg";
-  }}
-/>
+                                        <img
+                                            src={employee.profileImage ? 
+                                                (employee.profileImage.startsWith('http') ? 
+                                                    employee.profileImage : 
+                                                    `${BACKEND_URL}/uploads/${employee.profileImage}`
+                                                ) : 
+                                                "assets/img/users/user-13.jpg"
+                                            }
+                                            className="w-auto rounded-circle"
+                                            alt="Employee Profile"
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                            onError={(e) => {
+                                                const target = e.target as HTMLImageElement;
+                                                target.src = "assets/img/users/user-13.jpg";
+                                            }}
+                                        />
                                     </span>
                                     <div className="text-center px-3 pb-3 border-bottom">
                                         <div className="mb-3">
