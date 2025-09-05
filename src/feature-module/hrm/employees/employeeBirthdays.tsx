@@ -244,7 +244,7 @@ const EmployeeBirthdays = () => {
                             <div className="d-flex align-items-center">
                               <Link to={routes.employeedetailsWithId.replace(':id', employee._id)} className="avatar me-3">
                                 <ImageWithBasePath
-                                  src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "assets/img/users/user-1.jpg"}
+                                  src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "/assets/img/users/user-1.jpg"}
                                   className="rounded-circle"
                                   alt="img"
                                   style={{ width: '40px', height: '40px', objectFit: 'cover' }}

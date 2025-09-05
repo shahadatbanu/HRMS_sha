@@ -61,7 +61,7 @@ const EmployeeList = () => {
     JoiningDate: emp.joiningDate ? new Date(emp.joiningDate).toLocaleDateString() : '',
     JoiningDateISO: emp.joiningDate || undefined,
     Status: emp.status || 'Active',
-    Image: emp.profileImage ? `${BACKEND_URL}/uploads/${emp.profileImage}` : 'assets/img/users/user-1.jpg',
+    Image: emp.profileImage ? `${BACKEND_URL}/uploads/${emp.profileImage}` : '/assets/img/users/user-1.jpg',
     CurrentRole: emp.designation || '',
   }));
 
@@ -396,7 +396,7 @@ const EmployeeList = () => {
     setForm(formData);
     
     // Set image preview if available
-    if (employee.Image && employee.Image !== 'assets/img/users/user-1.jpg') {
+    if (employee.Image && employee.Image !== '/assets/img/users/user-1.jpg') {
       setImagePreview(employee.Image);
     } else {
       setImagePreview(null);

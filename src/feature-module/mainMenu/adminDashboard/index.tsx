@@ -4571,10 +4571,10 @@ const AdminDashboard = () => {
                         <span className="avatar avatar-rounded">
                           <img
                             className="border border-white"
-                            src={interview.candidateProfileImage ? `${backend_url}/uploads/candidates/${interview.candidateProfileImage}` : "assets/img/users/user-1.jpg"}
+                            src={interview.candidateProfileImage ? `${backend_url}/uploads/candidates/${interview.candidateProfileImage}` : "/assets/img/users/user-1.jpg"}
                             alt={`${interview.candidateName}`}
                             onError={(e) => {
-                              e.currentTarget.src = "assets/img/users/user-1.jpg";
+                              e.currentTarget.src = "/assets/img/users/user-1.jpg";
                             }}
                           />
                         </span>
@@ -4583,10 +4583,10 @@ const AdminDashboard = () => {
                           <span className="avatar avatar-rounded">
                             <img
                               className="border border-white"
-                              src={interview.recruiter.profileImage ? `${backend_url}/uploads/${interview.recruiter.profileImage}` : "assets/img/users/user-1.jpg"}
+                              src={interview.recruiter.profileImage ? `${backend_url}/uploads/${interview.recruiter.profileImage}` : "/assets/img/users/user-1.jpg"}
                               alt={`${interview.recruiter.firstName} ${interview.recruiter.lastName}`}
                               onError={(e) => {
-                                e.currentTarget.src = "assets/img/users/user-1.jpg";
+                                e.currentTarget.src = "/assets/img/users/user-1.jpg";
                               }}
                             />
                           </span>
@@ -4739,7 +4739,7 @@ const AdminDashboard = () => {
                       <div className="d-flex align-items-center">
                                   <Link to={routes.employeedetailsWithId.replace(':id', employee._id)} className="avatar">
                           <ImageWithBasePath
-                                      src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "assets/img/users/user-1.jpg"}
+                                      src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "/assets/img/users/user-1.jpg"}
                             className="rounded-circle"
                             alt="img"
                           />
@@ -4776,7 +4776,7 @@ const AdminDashboard = () => {
                       <div className="d-flex align-items-center">
                                   <Link to={routes.employeedetailsWithId.replace(':id', employee._id)} className="avatar">
                           <ImageWithBasePath
-                                      src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "assets/img/users/user-1.jpg"}
+                                      src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "/assets/img/users/user-1.jpg"}
                             className="rounded-circle"
                             alt="img"
                           />
@@ -4814,7 +4814,7 @@ const AdminDashboard = () => {
                       <div className="d-flex align-items-center">
                                     <Link to={routes.employeedetailsWithId.replace(':id', employee._id)} className="avatar">
                           <ImageWithBasePath
-                                        src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "assets/img/users/user-1.jpg"}
+                                        src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "/assets/img/users/user-1.jpg"}
                             className="rounded-circle"
                             alt="img"
                           />
