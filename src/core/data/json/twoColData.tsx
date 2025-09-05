@@ -9,37 +9,42 @@ export const TowColData = [
         showMyTab:true,
         separateRoute: false,
         menu: [
-          {
-            menuValue: 'Dashboard',
-            route: routes.adminDashboard,
-            hasSubRoute: true,
-            showSubRoute: false,
-            icon: 'smart-home',
-            base: 'dashboard',
-            materialicons: 'home',
-            subMenus: [
-              {
-                menuValue: 'Admin Dashboard',
-                route: routes.adminDashboard,
-                base: 'index',
-              },
-              {
-                menuValue: 'Employee Dashboard',
-                route: routes.employeeDashboard,
-                base: 'employee',
-              },
-              {
-                menuValue: 'Deals Dashboard',
-                route: routes.dealsDashboard,
-                base: 'deals',
-              },
-              {
-                menuValue: 'Leads Dashboard',
-                route: routes.leadsDashboard,
-                base: 'leads',
-              },
-            ],
-          },
+                  {
+          menuValue: 'Dashboard',
+          route: routes.adminDashboard,
+          hasSubRoute: true,
+          showSubRoute: false,
+          icon: 'smart-home',
+          base: 'dashboard',
+          materialicons: 'home',
+          roles: ['admin'], // Only admin users can see this menu
+          subMenus: [
+            {
+              menuValue: 'Admin Dashboard',
+              route: routes.adminDashboard,
+              base: 'index',
+              roles: ['admin'],
+            },
+            {
+              menuValue: 'Employee Dashboard',
+              route: routes.employeeDashboard,
+              base: 'employee',
+              roles: ['admin', 'hr', 'employee'],
+            },
+            {
+              menuValue: 'Deals Dashboard',
+              route: routes.dealsDashboard,
+              base: 'deals',
+              roles: ['admin'],
+            },
+            {
+              menuValue: 'Leads Dashboard',
+              route: routes.leadsDashboard,
+              base: 'leads',
+              roles: ['admin'],
+            },
+          ],
+        },
           {
             menuValue: 'Application',
             hasSubRouteTwo: true,
