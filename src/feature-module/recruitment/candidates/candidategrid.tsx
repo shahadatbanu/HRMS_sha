@@ -3744,7 +3744,7 @@ const CandidateGrid = () => {
                                                                     style={{ objectFit: 'cover' }}
                                                                     onError={(e) => {
                                                                         // Fallback to default image if profile image fails to load
-                                                                        e.currentTarget.src = '/assets/img/users/user-1.jpg';
+                                                                        e.currentTarget.src = '/assets/img/users/user-01.jpg';
                                                                     }}
                                                                 />
                                                             </div>
