@@ -724,7 +724,7 @@ const AddContact = () => {
                             className="avatar avatar-md border avatar-rounded"
                           >
                             <ImageWithBasePath
-                              src="assets/img/profiles/avatar-12.jpg"
+                              src="/assets/img/profiles/avatar-12.jpg"
                               className="img-fluid"
                               alt="img"
                             />
@@ -1462,7 +1462,7 @@ const AddContact = () => {
                         className="avatar avatar-md border avatar-rounded"
                       >
                         <ImageWithBasePath
-                          src="assets/img/profiles/avatar-12.jpg"
+                          src="/assets/img/profiles/avatar-12.jpg"
                           className="img-fluid"
                           alt="img"
                         />

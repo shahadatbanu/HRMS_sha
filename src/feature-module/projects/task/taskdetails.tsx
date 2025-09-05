@@ -180,7 +180,7 @@ const TaskDetails = () => {
                                                         className="avatar avatar-sm avatar-rounded border border-white flex-shrink-0 me-2"
                                                     >
                                                         <ImageWithBasePath
-                                                            src="assets/img/profiles/avatar-12.jpg"
+                                                            src="/assets/img/profiles/avatar-12.jpg"
                                                             alt="Img"
                                                         />
                                                     </Link>

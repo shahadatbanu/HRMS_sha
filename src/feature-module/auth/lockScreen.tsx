@@ -38,7 +38,7 @@ const LockScreen = () => {
                   <div className=" mb-4 text-center">
                     <h2 className="mb-2">Welcome back! </h2>
                     <ImageWithBasePath
-                      src="assets/img/profiles/avatar-12.jpg"
+                      src="/assets/img/profiles/avatar-12.jpg"
                       alt="img"
                       className="img-fluid avatar avatar-xxl rounded-pill my-3"
                     />

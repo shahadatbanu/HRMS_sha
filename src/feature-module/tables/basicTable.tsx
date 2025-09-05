@@ -960,7 +960,7 @@ const BasicTable = () => {
                     <td>
                       <div className="d-flex align-items-center">
                         <div className="avatar avatar-sm me-2 avatar-rounded">
-                          <ImageWithBasePath src="assets/img/profiles/avatar-12.jpg" alt="img" />
+                          <ImageWithBasePath src="/assets/img/profiles/avatar-12.jpg" alt="img" />
                         </div>
                         <div>
                           <div className="lh-1">
@@ -1094,7 +1094,7 @@ const BasicTable = () => {
                     <td>
                       <div className="d-flex align-items-center">
                         <span className="avatar avatar-xs me-2 online avatar-rounded">
-                          <ImageWithBasePath src="assets/img/profiles/avatar-12.jpg" alt="img" />
+                          <ImageWithBasePath src="/assets/img/profiles/avatar-12.jpg" alt="img" />
                         </span>Andrew Garfield
                       </div>
                     </td>

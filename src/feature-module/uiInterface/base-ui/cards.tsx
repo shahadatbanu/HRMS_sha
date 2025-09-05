@@ -1524,7 +1524,7 @@ const Cards = () => {
                   </span>
                   <span className="avatar avatar-sm avatar-rounded">
                     <ImageWithBasePath
-                      src="assets/img/profiles/avatar-12.jpg"
+                      src="/assets/img/profiles/avatar-12.jpg"
                       alt="img"
                     />
                   </span>

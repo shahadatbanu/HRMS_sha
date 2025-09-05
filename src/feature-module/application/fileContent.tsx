@@ -640,7 +640,7 @@ const FileContent = () => {
                       data-bs-original-title="Member 2"
                     >
                       <ImageWithBasePath
-                        src="assets/img/profiles/avatar-12.jpg"
+                        src="/assets/img/profiles/avatar-12.jpg"
                         className="rounded-circle"
                         alt="Avatar"
                       />

@@ -1080,7 +1080,7 @@ const TaskBoard = () => {
                                                                     <span className="avatar avatar-rounded">
                                                                         <ImageWithBasePath
                                                                             className="border border-white"
-                                                                            src="assets/img/profiles/avatar-12.jpg"
+                                                                            src="/assets/img/profiles/avatar-12.jpg"
                                                                             alt="img"
                                                                         />
                                                                     </span>
@@ -2917,7 +2917,7 @@ const TaskBoard = () => {
                                                                     <span className="avatar avatar-rounded">
                                                                         <ImageWithBasePath
                                                                             className="border border-white"
-                                                                            src="assets/img/profiles/avatar-12.jpg"
+                                                                            src="/assets/img/profiles/avatar-12.jpg"
                                                                             alt="img"
                                                                         />
                                                                     </span>
@@ -4754,7 +4754,7 @@ const TaskBoard = () => {
                                                                     <span className="avatar avatar-rounded">
                                                                         <ImageWithBasePath
                                                                             className="border border-white"
-                                                                            src="assets/img/profiles/avatar-12.jpg"
+                                                                            src="/assets/img/profiles/avatar-12.jpg"
                                                                             alt="img"
                                                                         />
                                                                     </span>
@@ -6591,7 +6591,7 @@ const TaskBoard = () => {
                                                                     <span className="avatar avatar-rounded">
                                                                         <ImageWithBasePath
                                                                             className="border border-white"
-                                                                            src="assets/img/profiles/avatar-12.jpg"
+                                                                            src="/assets/img/profiles/avatar-12.jpg"
                                                                             alt="img"
                                                                         />
                                                                     </span>

@@ -112,12 +112,12 @@ const Header = () => {
       return imagePath;
     }
     // Default avatar image
-    return "assets/img/profiles/avatar-12.jpg";
+    return "/assets/img/profiles/avatar-12.jpg";
   };
 
   // Handle image load error
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    e.currentTarget.src = "assets/img/profiles/avatar-12.jpg";
+    e.currentTarget.src = "/assets/img/profiles/avatar-12.jpg";
   };
 
   // Handle image load success
