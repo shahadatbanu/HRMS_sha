@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import PredefinedDateRanges from '../../../core/common/datePicker'
 import ImageWithBasePath from '../../../core/common/imageWithBasePath'
+import ProfileImage from '../../../core/common/ProfileImage'
 import { all_routes } from '../../router/all_routes'
 import CollapseHeader from '../../../core/common/collapse-header/collapse-header'
 import CommonSelect from '../../../core/common/commonSelect';
@@ -3735,27 +3736,15 @@ const CandidateGrid = () => {
                                                         onClick={() => handleCandidateClick(candidate._id)}
                                                         style={{ cursor: 'pointer' }}
                                                     >
-                                                        {candidate.profileImage ? (
-                                                            <div style={{ width: '48px', height: '48px', overflow: 'hidden', borderRadius: '8px' }}>
-                                                                <img
-                                                                    src={`/uploads/candidates/${candidate.profileImage}`}
-                                                                    className="img-fluid w-100 h-100"
-                                                                    alt={`${candidate.firstName} ${candidate.lastName}`}
-                                                                    style={{ objectFit: 'cover' }}
-                                                                    onError={(e) => {
-                                                                        // Fallback to default image if profile image fails to load
-                                                                        e.currentTarget.src = '/assets/img/users/user-01.jpg';
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        ) : (
-                                                            <div 
-                                                                className="d-flex align-items-center justify-content-center bg-light rounded"
-                                                                style={{ width: '48px', height: '48px' }}
-                                                            >
-                                                                <i className="ti ti-user text-muted fs-20"></i>
-                                                            </div>
-                                                        )}
+                                                        <div style={{ width: '48px', height: '48px', overflow: 'hidden', borderRadius: '8px' }}>
+                                                            <ProfileImage
+                                                                profileImage={candidate.profileImage ? `/uploads/candidates/${candidate.profileImage}` : undefined}
+                                                                alt={`${candidate.firstName} ${candidate.lastName}`}
+                                                                className="img-fluid w-100 h-100"
+                                                                style={{ objectFit: 'cover' }}
+                                                                fallbackSrc="/assets/img/users/user-1.jpg"
+                                                            />
+                                                        </div>
                                                     </div>
                                                     <div className="d-flex flex-column">
                                                         <div className="d-flex flex-wrap mb-1">

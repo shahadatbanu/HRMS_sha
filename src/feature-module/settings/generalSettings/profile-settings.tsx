@@ -7,6 +7,7 @@ import CollapseHeader from "../../../core/common/collapse-header/collapse-header
 import { useUser } from '../../../core/context/UserContext';
 import { backend_url } from "../../../environment";
 import ImageWithBasePath from "../../../core/common/imageWithBasePath";
+import ProfileImage from "../../../core/common/ProfileImage";
 import Swal from 'sweetalert2';
 
 const Profilesettings = () => {
@@ -161,16 +162,7 @@ const Profilesettings = () => {
     }
   };
 
-  // Get profile image source
-  const getProfileImageSrc = () => {
-    if (imagePreview) {
-      return imagePreview;
-    }
-    if (user?.profileImage) {
-      return `${backend_url}/uploads/${user.profileImage}`;
-    }
-    return '/assets/img/profiles/avatar-24.jpg';
-  };
+  // Remove getProfileImageSrc function since we'll use ProfileImage component
 
   return (
     <div>
@@ -265,15 +257,12 @@ const Profilesettings = () => {
                               <div className="d-flex align-items-center flex-wrap row-gap-3 bg-light w-100 rounded p-3 mb-4">
                                 <div className="d-flex align-items-center justify-content-center avatar avatar-xxl rounded-circle border border-dashed me-2 flex-shrink-0 text-dark frames">
                                   {user?.profileImage || imagePreview ? (
-                                    <img
-                                      src={getProfileImageSrc()}
+                                    <ProfileImage
+                                      profileImage={imagePreview ? imagePreview : user?.profileImage}
                                       alt="Profile"
                                       className="img-fluid rounded-circle"
                                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                      onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.src = "/assets/img/profiles/avatar-24.jpg";
-                                      }}
+                                      fallbackSrc="assets/img/profiles/avatar-24.jpg"
                                     />
                                   ) : (
                                     <i className="ti ti-photo text-gray-3 fs-16" />

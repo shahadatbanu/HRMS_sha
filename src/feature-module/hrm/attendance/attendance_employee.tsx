@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { all_routes } from '../../router/all_routes';
 import PredefinedDateRanges from '../../../core/common/datePicker';
 import ImageWithBasePath from '../../../core/common/imageWithBasePath';
+import ProfileImage from '../../../core/common/ProfileImage';
 import Table from "../../../core/common/dataTable/index";
 import CommonSelect from '../../../core/common/commonSelect';
 import CollapseHeader from '../../../core/common/collapse-header/collapse-header';
@@ -854,23 +855,13 @@ const AttendanceEmployee = () => {
                     })}</h4>
                   </div>
                   <div className="profile-square-lg" style={{ width: 140, height: 140, margin: '0 auto', marginBottom: 32 }}>
-                    {user?.profileImage ? (
-                      <img
-                        src={user.profileImage.startsWith('http') ? 
-                          user.profileImage : 
-                          `${BACKEND_URL}/uploads/${user.profileImage}`
-                        }
-                        alt="Employee Profile"
-                        className="img-fluid"
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 12 }}
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = "/assets/img/users/user-13.jpg";
-                        }}
-                      />
-                    ) : (
-                      <ImageWithBasePath src="assets/img/users/user-13.jpg" alt="Default Profile" />
-                    )}
+                    <ProfileImage
+                      profileImage={user?.profileImage}
+                      alt="Employee Profile"
+                      className="img-fluid"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 12 }}
+                      fallbackSrc="assets/img/users/user-13.jpg"
+                    />
                   </div>
                   <div style={{ marginBottom: 24 }}></div>
                   <div className="text-center">

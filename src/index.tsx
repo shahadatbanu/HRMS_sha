@@ -24,7 +24,7 @@ const loadAdditionalStyles = () => {
   import("../src/style/icon/ionic/ionicons.css");
   import("../src/style/icon/tabler-icons/webfont/tabler-icons.css");
   // Import Bootstrap JS as a module
-  import("../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js").catch(() => {
+  import("../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js" as any).catch(() => {
     // Silently handle import error for JS file
   });
 };

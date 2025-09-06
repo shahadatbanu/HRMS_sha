@@ -11,6 +11,22 @@ declare global {
       NODE_ENV: 'development' | 'production' | 'test';
     }
   }
+  
+  var process: {
+    env: NodeJS.ProcessEnv;
+  };
+}
+
+// Declare module for Bootstrap JS to fix TypeScript error
+declare module 'bootstrap/dist/js/bootstrap.bundle.min.js' {
+  const bootstrap: any;
+  export default bootstrap;
+}
+
+// Alternative declaration for relative path
+declare module '../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js' {
+  const bootstrap: any;
+  export default bootstrap;
 }
 
 export {}; 

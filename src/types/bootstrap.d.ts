@@ -1,9 +1,4 @@
-declare module "*/bootstrap.bundle.min.js" {
-  const content: any;
-  export default content;
+declare module "bootstrap/dist/js/bootstrap.bundle.min.js" {
+  const bootstrap: any;
+  export default bootstrap;
 }
-
-declare module "*.js" {
-  const content: any;
-  export default content;
-} 
