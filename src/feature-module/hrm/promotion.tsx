@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Table from "../../core/common/dataTable/index";
 import { all_routes } from '../router/all_routes';
 import ImageWithBasePath from '../../core/common/imageWithBasePath';
+import ProfileImage from '../../core/common/ProfileImage';
 import CommonSelect, { Option } from '../../core/common/commonSelect';
 import { DatePicker, message, Button, Upload, Input, Form } from "antd";
 import { UploadOutlined, DownloadOutlined, FileTextOutlined } from '@ant-design/icons';
@@ -201,15 +202,11 @@ const Promotion = () => {
             title: "Employee",
             dataIndex: "firstName",
             render: (text: string, record: any) => {
-                const defaultImage = `${BACKEND_URL}/uploads/default.jpg`;
-                const profileImage = record.profileImage ? `${BACKEND_URL}/uploads/${record.profileImage}` : defaultImage;
-                const isImageLoaded = imageLoadStates[record._id];
-                
                 return (
                     <div className="d-flex align-items-center">
                         <div className="me-3">
-                            <img
-                                src={profileImage}
+                            <ProfileImage
+                                profileImage={record.profileImage}
                                 alt="user"
                                 className="rounded-circle"
                                 style={{ 
@@ -217,18 +214,9 @@ const Promotion = () => {
                                     height: 40, 
                                     objectFit: 'cover',
                                     backgroundColor: '#f8f9fa',
-                                    border: '1px solid #e9ecef',
-                                    opacity: isImageLoaded ? 1 : 1,
-                                    transition: 'opacity 0.3s ease'
+                                    border: '1px solid #e9ecef'
                                 }}
-                                onLoad={() => handleImageLoad(record._id)}
-                                onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    if (target.src !== defaultImage) {
-                                        target.src = defaultImage;
-                                    }
-                                    handleImageError(record._id);
-                                }}
+                                fallbackSrc={`${BACKEND_URL}/uploads/default.jpg`}
                             />
                         </div>
                         <div>

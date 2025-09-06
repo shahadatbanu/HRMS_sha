@@ -5,6 +5,7 @@ import {
   setDataLayout,
 } from "../../data/redux/themeSettingSlice";
 import ImageWithBasePath from "../imageWithBasePath";
+import ProfileImage from "../ProfileImage";
 import {
   setMobileSidebar,
   toggleMiniSidebar,
@@ -104,16 +105,7 @@ const Header = () => {
     return user?.email || "guest@example.com";
   };
 
-  // Get profile image source
-  const getProfileImageSrc = () => {
-    if (user?.profileImage) {
-      // If profile image exists, use it
-      const imagePath = `${backend_url}/uploads/${user.profileImage}`;
-      return imagePath;
-    }
-    // Default avatar image
-    return "assets/img/profiles/avatar-12.jpg";
-  };
+  // Remove getProfileImageSrc function since we'll use ProfileImage component
 
   // Handle image load error
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
@@ -464,7 +456,12 @@ const Header = () => {
 							<div className="dropdown profile-dropdown">
 								<Link to="#" className="dropdown-toggle d-flex align-items-center" data-bs-toggle="dropdown">
 									<span className="avatar avatar-sm online">
-										<img src={getProfileImageSrc()} alt="Profile" onError={handleImageError} onLoad={handleImageLoad} className="img-fluid rounded-circle"/>
+										<ProfileImage
+											profileImage={user?.profileImage}
+											alt="Profile"
+											className="img-fluid rounded-circle"
+											fallbackSrc="assets/img/profiles/avatar-12.jpg"
+										/>
 									</span>
 								</Link>
 								<div className="dropdown-menu shadow-none">
@@ -472,7 +469,12 @@ const Header = () => {
 										<div className="card-header">
 											<div className="d-flex align-items-center">
 												<span className="avatar avatar-lg me-2 avatar-rounded">
-													<img src={getProfileImageSrc()} alt="Profile" onError={handleImageError} onLoad={handleImageLoad} className="img-fluid rounded-circle"/>
+													<ProfileImage
+														profileImage={user?.profileImage}
+														alt="Profile"
+														className="img-fluid rounded-circle"
+														fallbackSrc="assets/img/profiles/avatar-12.jpg"
+													/>
 												</span>
 												<div>
 													<h5 className="mb-0">{getUserDisplayName()}</h5>

@@ -4,6 +4,7 @@ import PredefinedDateRanges from '../../../core/common/datePicker'
 import Table from "../../../core/common/dataTable/index";
 import { all_routes } from '../../router/all_routes';
 import ImageWithBasePath from '../../../core/common/imageWithBasePath';
+import ProfileImage from '../../../core/common/ProfileImage';
 import { employeereportDetails } from '../../../core/data/json/employeereportDetails';
 import { DatePicker, TimePicker } from "antd";
 import CommonSelect from '../../../core/common/commonSelect';
@@ -160,18 +161,7 @@ const EmployeeDetails = () => {
     fetchCurrentUserProfile();
   }, []);
 
-  // Memoize the profile image URL to prevent unnecessary re-renders
-  const profileImageUrl = useMemo(() => {
-    if (imageError || !employee?.profileImage) {
-      return "assets/img/users/user-13.jpg";
-    }
-    
-    if (employee.profileImage.startsWith('http')) {
-      return employee.profileImage;
-    }
-    
-    return `${BACKEND_URL}/uploads/${employee.profileImage}`;
-  }, [employee?.profileImage, BACKEND_URL, imageError]);
+  // Remove the memoized profile image URL since we'll use ProfileImage component
 
   const fetchCurrentUserProfile = async () => {
     try {
@@ -1170,11 +1160,12 @@ const EmployeeDetails = () => {
                             <div className="card card-bg-1">
                                 <div className="card-body p-0">
                                     <span className="avatar avatar-xl avatar-rounded border border-2 border-white m-auto d-flex mb-2">
-                                        <ImageWithBasePath
-                                            src={profileImageUrl}
+                                        <ProfileImage
+                                            profileImage={employee?.profileImage}
                                             className="w-auto rounded-circle"
                                             alt="Employee Profile"
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                            fallbackSrc="assets/img/users/user-13.jpg"
                                             onError={() => setImageError(true)}
                                         />
                                     </span>

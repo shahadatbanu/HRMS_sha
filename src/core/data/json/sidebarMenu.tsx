@@ -22,6 +22,7 @@ export const SidebarDataTest = [
         submenuItems: [
           { label: "Admin Dashboard", link: routes.adminDashboard, roles: ['admin'] },
           { label: "Employee Dashboard", link: routes.employeeDashboard, roles: ['admin', 'hr', 'employee'] },
+          { label: "Candidate Dashboard", link: routes.candidateDashboard, roles: ['admin', 'hr'] },
           // { label: "Deals Dashboard", link: routes.dealsDashboard },
           // { label: "Leads Dashboard", link: routes.leadsDashboard },
 

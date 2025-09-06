@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { backend_url } from '../../environment';
 
 interface User {
@@ -38,7 +38,10 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchUserProfile = async () => {
+  // Create a stable user object to prevent unnecessary re-renders
+  const stableUser = useMemo(() => user, [user?._id, user?.role, user?.firstName, user?.lastName, user?.email, user?.profileImage]);
+
+  const fetchUserProfile = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       
@@ -69,39 +72,16 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchUserProfile();
 
-    // Create a custom event listener for token changes
-    const handleTokenChange = () => {
-      console.log('Token change detected, refreshing user profile');
-      fetchUserProfile();
-    };
-
     // Listen for storage events (when token is updated from another tab/window)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'token') {
-        handleTokenChange();
-      }
-    };
-
-    // Override localStorage.setItem to detect token changes in the same tab
-    const originalSetItem = localStorage.setItem;
-    const originalRemoveItem = localStorage.removeItem;
-
-    localStorage.setItem = function(key, value) {
-      originalSetItem.call(this, key, value);
-      if (key === 'token') {
-        handleTokenChange();
-      }
-    };
-
-    localStorage.removeItem = function(key) {
-      originalRemoveItem.call(this, key);
-      if (key === 'token') {
-        handleTokenChange();
+        console.log('Token change detected from another tab, refreshing user profile');
+        fetchUserProfile();
       }
     };
 
@@ -122,10 +102,6 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     window.addEventListener('storage', handleStorageChange);
 
     return () => {
-      // Restore original localStorage methods
-      localStorage.setItem = originalSetItem;
-      localStorage.removeItem = originalRemoveItem;
-      
       // Remove event listeners
       window.removeEventListener('userLogin', handleLoginEvent);
       window.removeEventListener('userLogout', handleLogoutEvent);
@@ -133,7 +109,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     };
   }, []);
 
-  const hasPermission = (action: string, module?: string): boolean => {
+  const hasPermission = useCallback((action: string, module?: string): boolean => {
     if (!user) {
       return false;
     }
@@ -157,14 +133,14 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     }
 
     return false;
-  };
+  }, [user]);
 
-  const value: UserContextType = {
-    user,
+  const value: UserContextType = useMemo(() => ({
+    user: stableUser,
     setUser,
     isLoading,
     hasPermission,
-  };
+  }), [stableUser, isLoading, hasPermission]);
 
   return (
     <UserContext.Provider value={value}>

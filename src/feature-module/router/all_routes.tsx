@@ -2,6 +2,7 @@ export const all_routes = {
   // dashboard routes
   adminDashboard: "/index",
   employeeDashboard: "/employee-dashboard",
+  candidateDashboard: "/candidate-dashboard",
   leadsDashboard: "/leads-dashboard",
   dealsDashboard: "/deals-dashboard",
 

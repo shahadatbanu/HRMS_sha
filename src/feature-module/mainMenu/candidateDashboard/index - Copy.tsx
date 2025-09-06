@@ -7,7 +7,6 @@ import leaveService from "../../../core/services/leaveService";
 import todoService, { Todo } from "../../../core/services/todoService";
 import TodoModal from "./TodoModal";
 import ImageWithBasePath from "../../../core/common/imageWithBasePath";
-import ProfileImage from "../../../core/common/ProfileImage";
 import { Chart } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -71,7 +70,7 @@ ChartJS.register(
 // Add CSS styles for todo strike-through effect
 
 
-const AdminDashboard = () => {
+const CandidateDashboard = () => {
   const routes = all_routes;
   const { user, isLoading } = useUser();
   const navigate = useNavigate();
@@ -82,6 +81,14 @@ const AdminDashboard = () => {
 
   const [attendanceStats, setAttendanceStats] = useState<{ present: number; totalEmployees: number } | null>(null);
   const [attendanceLoading, setAttendanceLoading] = useState(true);
+  
+  // Add state for candidate statistics
+  const [candidateStats, setCandidateStats] = useState({
+    totalCandidates: 0,
+    newCandidates: 0,
+    interviewedCandidates: 0,
+    hiredCandidates: 0
+  });
   
   // Add state for leave requests
   const [leaveRequestsCount, setLeaveRequestsCount] = useState(0);
@@ -355,7 +362,7 @@ const AdminDashboard = () => {
       fetchEmployees();
       fetchTodos(1);
     }
-  }, [user?._id, isLoading]); // Only depend on user ID, not the entire user object
+  }, [user, isLoading]);
 
   // Update chart data when attendance overview changes
   useEffect(() => {
@@ -1390,7 +1397,7 @@ const AdminDashboard = () => {
       
       return () => clearInterval(interval);
     }
-  }, [user?.role]); // Only depend on user role, not the entire user object
+  }, [user]);
 
   // Fetch performance data when component mounts
   useEffect(() => {
@@ -1399,7 +1406,7 @@ const AdminDashboard = () => {
       fetchKpiSettings();
       fetchPerformanceData('all', performanceDataType);
     }
-  }, [user?._id, isLoading]); // Only depend on user ID, not the entire user object
+  }, [user, isLoading]);
 
   // Calculate top performer when employees are loaded
   useEffect(() => {
@@ -1584,7 +1591,7 @@ const AdminDashboard = () => {
     });
   };
 
-  // Remove profileImg variable since we'll use ProfileImage component
+  const profileImg = user && user.profileImage ? `${backend_url}/uploads/${user.profileImage}` : 'assets/img/profiles/avatar-31.jpg';
 
   // Function to fetch submissions data from backend
   const fetchSubmissionsData = async (selectedEmployee: string = 'All Employees', dataType: string = 'submissions') => {
@@ -1831,14 +1838,14 @@ const AdminDashboard = () => {
       fetchBirthdays();
       fetchInterviews();
     }
-  }, [user?._id, isLoading]); // Only depend on user ID, not the entire user object
+  }, [user, isLoading]);
 
   // Update submissions data when employee filter changes
   useEffect(() => {
     if (user && !isLoading) {
       fetchSubmissionsData(selectedSubmissionEmployee, submissionsDataType);
     }
-  }, [selectedSubmissionEmployee, submissionsDataType, user?._id, isLoading]);
+  }, [selectedSubmissionEmployee, submissionsDataType, user, isLoading]);
 
   // Auto-refresh activities every 30 seconds
   useEffect(() => {
@@ -1854,7 +1861,7 @@ const AdminDashboard = () => {
       // Cleanup interval on unmount
       return () => clearInterval(interval);
     }
-  }, [user?._id, isLoading]); // Only depend on user ID, not the entire user object
+  }, [user, isLoading]);
 
   // Check if user is admin, if not redirect to appropriate page
   useEffect(() => {
@@ -1891,8 +1898,8 @@ const AdminDashboard = () => {
     );
   }
 
-  // Show access denied if user is not admin
-  if (!user || user.role !== 'admin') {
+  // Show access denied if user is not admin or hr
+  if (!user || (user.role !== 'admin' && user.role !== 'hr')) {
     return (
       <div className="page-wrapper">
         <div className="content container-fluid">
@@ -1920,7 +1927,7 @@ const AdminDashboard = () => {
           {/* Breadcrumb */}
           <div className="d-md-flex d-block align-items-center justify-content-between page-breadcrumb mb-3">
             <div className="my-auto mb-2">
-              <h2 className="mb-1">Employee Dashboard</h2>
+              <h2 className="mb-1">Candidate Dashboard</h2>
               <nav>
                 <ol className="breadcrumb mb-0">
                   <li className="breadcrumb-item">
@@ -1930,7 +1937,7 @@ const AdminDashboard = () => {
                   </li>
                   <li className="breadcrumb-item">Dashboard</li>
                   <li className="breadcrumb-item active" aria-current="page">
-                    Employee Dashboard
+                    Candidate Dashboard
                   </li>
                 </ol>
               </nav>
@@ -1986,16 +1993,23 @@ const AdminDashboard = () => {
             <div className="card-body d-flex align-items-center justify-content-between flex-wrap pb-1">
               <div className="d-flex align-items-center mb-3">
                 <span className="avatar avatar-xl flex-shrink-0">
-                  <ProfileImage
-                    profileImage={user?.profileImage}
-                    className="rounded-circle"
-                    alt="img"
-                    fallbackSrc="assets/img/profiles/avatar-31.jpg"
-                  />
+                  {user && user.profileImage ? (
+                    <img
+                      src={profileImg}
+                      className="rounded-circle"
+                      alt="img"
+                    />
+                  ) : (
+                    <ImageWithBasePath
+                      src="assets/img/profiles/avatar-31.jpg"
+                      className="rounded-circle"
+                      alt="img"
+                    />
+                  )}
                 </span>
                 <div className="ms-3">
                   <h3 className="mb-2">
-                    Welcome Back, {isLoading ? '...' : (user ? `${user.firstName} ${user.lastName}` : 'Admin')}{" "}
+                    Welcome Back, {isLoading ? '...' : (user ? `${user.firstName} ${user.lastName}` : 'Recruiter')}{" "}
                     {/* <Link to="#" className="edit-icon">
                       <i className="ti ti-edit fs-14" />
                     </Link> */}
@@ -2003,13 +2017,12 @@ const AdminDashboard = () => {
                   <p>
                     You have{" "}
                     <Link 
-                      to={routes.leaveadmin} 
+                      to={routes.candidatesGrid} 
                       className={`text-decoration-underline cursor-pointer position-relative ${
-                        leaveRequestsCount > 0 ? 'text-danger fw-bold' : 'text-primary'
+                        candidateStats.totalCandidates > 0 ? 'text-primary fw-bold' : 'text-muted'
                       }`}
                       style={{ cursor: 'pointer' }}
-                      title={leaveRequestsCount > 0 ? `Click to view ${leaveRequestsCount} new leave requests` : 'No new leave requests'}
-                      onClick={handleLeaveRequestsClick}
+                      title={`Click to view ${candidateStats.totalCandidates} total candidates`}
                     >
                       {leaveRequestsLoading ? (
                         <span className="spinner-border spinner-border-sm text-primary" role="status" />
@@ -4934,7 +4947,7 @@ const AdminDashboard = () => {
   );
 };
 
-export default AdminDashboard;
+export default CandidateDashboard;
 
 
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import ImageWithBasePath from "../../../core/common/imageWithBasePath";
+import ProfileImage from "../../../core/common/ProfileImage";
 import { all_routes } from "../../router/all_routes";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -459,23 +460,13 @@ const EmployeeDashboard = () => {
                 <div className="card-header bg-dark">
                   <div className="d-flex align-items-center">
                     <span className="avatar avatar-lg avatar-rounded border border-white border-2 flex-shrink-0 me-2">
-                      {user?.profileImage ? (
-                        <img
-                          src={user.profileImage.startsWith('http') ? 
-                            user.profileImage : 
-                            `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'}/uploads/${user.profileImage}`
-                          }
-                          alt="Employee Profile"
-                          className="img-fluid rounded-circle"
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = "/assets/img/users/user-01.jpg";
-                          }}
-                        />
-                      ) : (
-                        <ImageWithBasePath src="assets/img/users/user-01.jpg" alt="Img" />
-                      )}
+                      <ProfileImage
+                        profileImage={user?.profileImage}
+                        alt="Employee Profile"
+                        className="img-fluid rounded-circle"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        fallbackSrc="assets/img/users/user-01.jpg"
+                      />
                     </span>
                     <div>
                       <h5 className="text-white mb-1">{user?.firstName} {user?.lastName}</h5>
@@ -1627,7 +1618,7 @@ const EmployeeDashboard = () => {
               <div className="card flex-fill">
                 <div className="card-header">
                   <div className="d-flex align-items-center justify-content-between flex-wrap row-gap-2">
-                    <h5>Performance yhi he</h5>
+                    <h5>Performance</h5>
                     <div className="dropdown">
                       <Link
                         to="#"

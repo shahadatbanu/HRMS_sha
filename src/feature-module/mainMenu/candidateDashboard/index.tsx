@@ -7,7 +7,6 @@ import leaveService from "../../../core/services/leaveService";
 import todoService, { Todo } from "../../../core/services/todoService";
 import TodoModal from "./TodoModal";
 import ImageWithBasePath from "../../../core/common/imageWithBasePath";
-import ProfileImage from "../../../core/common/ProfileImage";
 import { Chart } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -71,7 +70,7 @@ ChartJS.register(
 // Add CSS styles for todo strike-through effect
 
 
-const AdminDashboard = () => {
+const CandidateDashboard = () => {
   const routes = all_routes;
   const { user, isLoading } = useUser();
   const navigate = useNavigate();
@@ -82,6 +81,41 @@ const AdminDashboard = () => {
 
   const [attendanceStats, setAttendanceStats] = useState<{ present: number; totalEmployees: number } | null>(null);
   const [attendanceLoading, setAttendanceLoading] = useState(true);
+  
+  // Add state for candidate dashboard statistics
+  const [candidateDashboardStats, setCandidateDashboardStats] = useState({
+    totalCandidates: { count: 0, change: 0, changeType: 'increase' as 'increase' | 'decrease' },
+    activeCandidates: { count: 0, change: 0, changeType: 'increase' as 'increase' | 'decrease' },
+    inactiveCandidates: { count: 0, change: 0, changeType: 'increase' as 'increase' | 'decrease' },
+    avgPipelineTime: { days: 0, change: 0, changeType: 'increase' as 'increase' | 'decrease' },
+    conversionRate: { percentage: 0, change: 0, changeType: 'increase' as 'increase' | 'decrease' },
+    topRecruiter: { name: '', conversionRate: 0 }
+  });
+  const [candidateStatsLoading, setCandidateStatsLoading] = useState(true);
+  
+  // Add state for candidates per recruiter
+  const [candidatesPerRecruiter, setCandidatesPerRecruiter] = useState<{
+    recruiter: string;
+    count: number;
+    percentage: number;
+  }[]>([]);
+  const [candidatesPerRecruiterLoading, setCandidatesPerRecruiterLoading] = useState(true);
+  const [showAllRecruiters, setShowAllRecruiters] = useState(false);
+  const [recruiterPage, setRecruiterPage] = useState(1);
+  const recruitersPerPage = 8;
+  
+  // Add state for candidate activity leaderboard
+  const [candidateLeaderboard, setCandidateLeaderboard] = useState<{
+    rank: number;
+    name: string;
+    submissions: number;
+    interviews: number;
+    offers: number;
+    activityScore: number;
+    status: string;
+    statusClass: string;
+  }[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   
   // Add state for leave requests
   const [leaveRequestsCount, setLeaveRequestsCount] = useState(0);
@@ -346,6 +380,9 @@ const AdminDashboard = () => {
     fetchClockInOutData(); // Fetch clock-in/out data on component mount
     fetchEmployeeDesignations(); // Fetch employee designations on component mount
     fetchDesignationStats(); // Fetch designation statistics on component mount
+    fetchCandidateDashboardStats(); // Fetch candidate dashboard statistics
+    fetchCandidatesPerRecruiter(); // Fetch candidates per recruiter data
+    fetchCandidateLeaderboard(); // Fetch candidate activity leaderboard data
     // fetchEmployees(); // Fetch employees data on component mount - moved to user effect
   }, []);
 
@@ -355,7 +392,7 @@ const AdminDashboard = () => {
       fetchEmployees();
       fetchTodos(1);
     }
-  }, [user?._id, isLoading]); // Only depend on user ID, not the entire user object
+  }, [user, isLoading]);
 
   // Update chart data when attendance overview changes
   useEffect(() => {
@@ -400,6 +437,55 @@ const AdminDashboard = () => {
       }));
     }
   }, [designationStats]);
+
+  // Update candidates per recruiter chart when data changes
+  useEffect(() => {
+    if (candidatesPerRecruiter && candidatesPerRecruiter.length > 0) {
+      // For large numbers of recruiters, show top 10 + "Others" category
+      const maxChartItems = 10;
+      let chartData = candidatesPerRecruiter;
+      
+      if (candidatesPerRecruiter.length > maxChartItems) {
+        const topRecruiters = candidatesPerRecruiter.slice(0, maxChartItems);
+        const others = candidatesPerRecruiter.slice(maxChartItems);
+        const othersTotal = others.reduce((sum, item) => sum + item.count, 0);
+        const othersPercentage = others.reduce((sum, item) => sum + item.percentage, 0);
+        
+        chartData = [
+          ...topRecruiters,
+          {
+            recruiter: `Others (${others.length} more)`,
+            count: othersTotal,
+            percentage: othersPercentage
+          }
+        ];
+      }
+      
+      const labels = chartData.map((item: any) => item.recruiter || 'Unknown');
+      const series = chartData.map((item: any) => item.count || 0);
+      
+      setCandidatesPerRecruiterChart((prev: any) => ({
+        ...prev,
+        labels: labels,
+        series: series,
+        dataLabels: {
+          ...prev.dataLabels,
+          enabled: candidatesPerRecruiter.length <= maxChartItems
+        }
+      }));
+    } else {
+      // Reset chart data when no data is available
+      setCandidatesPerRecruiterChart((prev: any) => ({
+        ...prev,
+        labels: [],
+        series: [],
+        dataLabels: {
+          ...prev.dataLabels,
+          enabled: false // Disable dataLabels when no data
+        }
+      }));
+    }
+  }, [candidatesPerRecruiter]);
 
   // Function to fetch pending leave requests count
   const fetchPendingLeaveRequests = async () => {
@@ -539,6 +625,105 @@ const AdminDashboard = () => {
       setNewHiresCount(0);
     } finally {
       setNewHiresLoading(false);
+    }
+  };
+
+  // Function to fetch candidate dashboard statistics
+  const fetchCandidateDashboardStats = async () => {
+    try {
+      setCandidateStatsLoading(true);
+      
+      const response = await fetch(`${backend_url}/api/candidates/dashboard/stats`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Candidate dashboard stats:', data.data);
+        setCandidateDashboardStats(data.data);
+      } else {
+        console.error('Error fetching candidate dashboard stats');
+        // Set default values on error
+        setCandidateDashboardStats({
+          totalCandidates: { count: 0, change: 0, changeType: 'increase' },
+          activeCandidates: { count: 0, change: 0, changeType: 'increase' },
+          inactiveCandidates: { count: 0, change: 0, changeType: 'increase' },
+          avgPipelineTime: { days: 0, change: 0, changeType: 'increase' },
+          conversionRate: { percentage: 0, change: 0, changeType: 'increase' },
+          topRecruiter: { name: 'N/A', conversionRate: 0 }
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching candidate dashboard stats:', error);
+      // Set default values on error
+      setCandidateDashboardStats({
+        totalCandidates: { count: 0, change: 0, changeType: 'increase' },
+        activeCandidates: { count: 0, change: 0, changeType: 'increase' },
+        inactiveCandidates: { count: 0, change: 0, changeType: 'increase' },
+        avgPipelineTime: { days: 0, change: 0, changeType: 'increase' },
+        conversionRate: { percentage: 0, change: 0, changeType: 'increase' },
+        topRecruiter: { name: 'N/A', conversionRate: 0 }
+      });
+    } finally {
+      setCandidateStatsLoading(false);
+    }
+  };
+
+  // Function to fetch candidates per recruiter data
+  const fetchCandidatesPerRecruiter = async () => {
+    try {
+      setCandidatesPerRecruiterLoading(true);
+      
+      const response = await fetch(`${backend_url}/api/candidates/dashboard/candidates-per-recruiter`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Candidates per recruiter data:', data.data);
+        setCandidatesPerRecruiter(data.data || []);
+      } else {
+        console.error('Error fetching candidates per recruiter data');
+        setCandidatesPerRecruiter([]);
+      }
+    } catch (error) {
+      console.error('Error fetching candidates per recruiter data:', error);
+      setCandidatesPerRecruiter([]);
+    } finally {
+      setCandidatesPerRecruiterLoading(false);
+    }
+  };
+
+  const fetchCandidateLeaderboard = async () => {
+    try {
+      setLeaderboardLoading(true);
+      
+      const response = await fetch(`${backend_url}/api/candidates/dashboard/activity-leaderboard`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Candidate leaderboard data:', data.data);
+        setCandidateLeaderboard(data.data || []);
+      } else {
+        console.error('Error fetching candidate leaderboard data');
+        setCandidateLeaderboard([]);
+      }
+    } catch (error) {
+      console.error('Error fetching candidate leaderboard data:', error);
+      setCandidateLeaderboard([]);
+    } finally {
+      setLeaderboardLoading(false);
     }
   };
 
@@ -1390,7 +1575,7 @@ const AdminDashboard = () => {
       
       return () => clearInterval(interval);
     }
-  }, [user?.role]); // Only depend on user role, not the entire user object
+  }, [user]);
 
   // Fetch performance data when component mounts
   useEffect(() => {
@@ -1399,7 +1584,7 @@ const AdminDashboard = () => {
       fetchKpiSettings();
       fetchPerformanceData('all', performanceDataType);
     }
-  }, [user?._id, isLoading]); // Only depend on user ID, not the entire user object
+  }, [user, isLoading]);
 
   // Calculate top performer when employees are loaded
   useEffect(() => {
@@ -1471,6 +1656,65 @@ const AdminDashboard = () => {
       }
     }
   })
+
+  // Pie chart configuration for candidates per recruiter
+  const [candidatesPerRecruiterChart, setCandidatesPerRecruiterChart] = useState<any>({
+    chart: {
+      height: 300,
+      type: 'pie',
+      toolbar: {
+        show: false,
+      }
+    },
+    colors: [
+      '#8B5CF6', '#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#06B6D4', '#84CC16', '#F97316',
+      '#EC4899', '#8B5A2B', '#059669', '#DC2626', '#7C3AED', '#EA580C', '#0891B2', '#65A30D',
+      '#BE185D', '#92400E', '#047857', '#B91C1C', '#6D28D9', '#C2410C', '#0E7490', '#4D7C0F',
+      '#9D174D', '#78350F', '#065F46', '#991B1B', '#5B21B6', '#9A3412', '#155E75', '#365314',
+      '#831843', '#451A03', '#064E3B', '#7F1D1D', '#4C1D95', '#7C2D12', '#0C4A6E', '#1A2E05',
+      '#500724', '#292524', '#022C22', '#450A0A', '#3C1A78', '#5C1910', '#0A3A52', '#0F172A'
+    ],
+    labels: [],
+    series: [],
+    dataLabels: {
+      enabled: false, // Disable by default to prevent errors
+      formatter: function (val: any, opts: any) {
+        if (opts && opts.w && opts.w.config && opts.w.config.labels && opts.seriesIndex !== undefined) {
+          return opts.w.config.labels[opts.seriesIndex] + ': ' + val.toFixed(1) + '%'
+        }
+        return val.toFixed(1) + '%'
+      },
+      style: {
+        fontSize: '12px',
+        fontWeight: 'bold',
+        colors: ['#fff']
+      }
+    },
+    legend: {
+      show: false
+    },
+    tooltip: {
+      y: {
+        formatter: function (val: any, opts: any) {
+          if (opts && opts.w && opts.w.config && opts.w.config.labels && opts.seriesIndex !== undefined) {
+            return opts.w.config.labels[opts.seriesIndex] + ': ' + val + ' candidates'
+          }
+          return val + ' candidates'
+        }
+      }
+    },
+    responsive: [{
+      breakpoint: 480,
+      options: {
+        chart: {
+          height: 250
+        },
+        legend: {
+          position: 'bottom'
+        }
+      }
+    }]
+  });
 
   const [salesIncome] = useState<any>({
     chart: {
@@ -1584,7 +1828,7 @@ const AdminDashboard = () => {
     });
   };
 
-  // Remove profileImg variable since we'll use ProfileImage component
+  const profileImg = user && user.profileImage ? `${backend_url}/uploads/${user.profileImage}` : 'assets/img/profiles/avatar-31.jpg';
 
   // Function to fetch submissions data from backend
   const fetchSubmissionsData = async (selectedEmployee: string = 'All Employees', dataType: string = 'submissions') => {
@@ -1831,14 +2075,14 @@ const AdminDashboard = () => {
       fetchBirthdays();
       fetchInterviews();
     }
-  }, [user?._id, isLoading]); // Only depend on user ID, not the entire user object
+  }, [user, isLoading]);
 
   // Update submissions data when employee filter changes
   useEffect(() => {
     if (user && !isLoading) {
       fetchSubmissionsData(selectedSubmissionEmployee, submissionsDataType);
     }
-  }, [selectedSubmissionEmployee, submissionsDataType, user?._id, isLoading]);
+  }, [selectedSubmissionEmployee, submissionsDataType, user, isLoading]);
 
   // Auto-refresh activities every 30 seconds
   useEffect(() => {
@@ -1854,7 +2098,7 @@ const AdminDashboard = () => {
       // Cleanup interval on unmount
       return () => clearInterval(interval);
     }
-  }, [user?._id, isLoading]); // Only depend on user ID, not the entire user object
+  }, [user, isLoading]);
 
   // Check if user is admin, if not redirect to appropriate page
   useEffect(() => {
@@ -1891,8 +2135,8 @@ const AdminDashboard = () => {
     );
   }
 
-  // Show access denied if user is not admin
-  if (!user || user.role !== 'admin') {
+  // Show access denied if user is not admin or hr
+  if (!user || (user.role !== 'admin' && user.role !== 'hr')) {
     return (
       <div className="page-wrapper">
         <div className="content container-fluid">
@@ -1920,7 +2164,7 @@ const AdminDashboard = () => {
           {/* Breadcrumb */}
           <div className="d-md-flex d-block align-items-center justify-content-between page-breadcrumb mb-3">
             <div className="my-auto mb-2">
-              <h2 className="mb-1">Employee Dashboard</h2>
+              <h2 className="mb-1">Candidate Dashboard</h2>
               <nav>
                 <ol className="breadcrumb mb-0">
                   <li className="breadcrumb-item">
@@ -1930,7 +2174,7 @@ const AdminDashboard = () => {
                   </li>
                   <li className="breadcrumb-item">Dashboard</li>
                   <li className="breadcrumb-item active" aria-current="page">
-                    Employee Dashboard
+                    Candidate Dashboard
                   </li>
                 </ol>
               </nav>
@@ -1986,16 +2230,23 @@ const AdminDashboard = () => {
             <div className="card-body d-flex align-items-center justify-content-between flex-wrap pb-1">
               <div className="d-flex align-items-center mb-3">
                 <span className="avatar avatar-xl flex-shrink-0">
-                  <ProfileImage
-                    profileImage={user?.profileImage}
-                    className="rounded-circle"
-                    alt="img"
-                    fallbackSrc="assets/img/profiles/avatar-31.jpg"
-                  />
+                  {user && user.profileImage ? (
+                    <img
+                      src={profileImg}
+                      className="rounded-circle"
+                      alt="img"
+                    />
+                  ) : (
+                    <ImageWithBasePath
+                      src="assets/img/profiles/avatar-31.jpg"
+                      className="rounded-circle"
+                      alt="img"
+                    />
+                  )}
                 </span>
                 <div className="ms-3">
                   <h3 className="mb-2">
-                    Welcome Back, {isLoading ? '...' : (user ? `${user.firstName} ${user.lastName}` : 'Admin')}{" "}
+                    Welcome Back, {isLoading ? '...' : (user ? `${user.firstName} ${user.lastName}` : 'Recruiter')}{" "}
                     {/* <Link to="#" className="edit-icon">
                       <i className="ti ti-edit fs-14" />
                     </Link> */}
@@ -2003,13 +2254,12 @@ const AdminDashboard = () => {
                   <p>
                     You have{" "}
                     <Link 
-                      to={routes.leaveadmin} 
+                      to={routes.candidatesGrid} 
                       className={`text-decoration-underline cursor-pointer position-relative ${
-                        leaveRequestsCount > 0 ? 'text-danger fw-bold' : 'text-primary'
+                        candidateDashboardStats.totalCandidates.count > 0 ? 'text-primary fw-bold' : 'text-muted'
                       }`}
                       style={{ cursor: 'pointer' }}
-                      title={leaveRequestsCount > 0 ? `Click to view ${leaveRequestsCount} new leave requests` : 'No new leave requests'}
-                      onClick={handleLeaveRequestsClick}
+                      title={`Click to view ${candidateDashboardStats.totalCandidates.count} total candidates`}
                     >
                       {leaveRequestsLoading ? (
                         <span className="spinner-border spinner-border-sm text-primary" role="status" />
@@ -2069,256 +2319,322 @@ const AdminDashboard = () => {
           {/* /Welcome Wrap */}
           <div className="row">
             {/* Widget Info */}
-            <div className="col-xxl-4 d-flex">
+            <div className="col-xxl-8 d-flex">
               <div className="row flex-fill">
-                <div className="col-md-6 d-flex">
+                <div className="col-md-4 d-flex">
                   <div className="card flex-fill">
-                    <div className="card-body">
-                      <span className="avatar rounded-circle bg-primary mb-2">
-                        <i className="ti ti-calendar-share fs-16" />
+                    <div className="card-body d-flex flex-column">
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <span className="avatar rounded-circle bg-primary">
+                          <i className="ti ti-users-group fs-16" />
                       </span>
+                        <Link to="candidates.html" className="link-default">
+                          View All
+                        </Link>
+                      </div>
                       <h6 className="fs-13 fw-medium text-default mb-1">
-                        Total Present
+                        Total Candidates
                       </h6>
-                      <h3 className="mb-3">
-                        {attendanceLoading ? (
+                      <h3 className="mb-0">
+                        {candidateStatsLoading ? (
                           <span className="spinner-border spinner-border-sm text-primary" role="status" />
-                        ) : attendanceStats ? (
-                          `${attendanceStats.present}/${attendanceStats.totalEmployees}`
                         ) : (
-                          '0/0'
+                          <>
+                            {candidateDashboardStats.totalCandidates.count.toLocaleString()}{" "}
+                            <span className={`fs-12 fw-medium ${candidateDashboardStats.totalCandidates.changeType === 'increase' ? 'text-success' : 'text-danger'}`}>
+                              <i className={`fa-solid fa-caret-${candidateDashboardStats.totalCandidates.changeType === 'increase' ? 'up' : 'down'} me-1`} />
+                              {Math.abs(candidateDashboardStats.totalCandidates.change)}%
+                            </span>
+                          </>
                         )}
-                        {" "}
-                        {/* <span className="fs-12 fw-medium text-success">
-                          <i className="fa-solid fa-caret-up me-1" />
-                          +2.1%
-                        </span> */}
                       </h3>
-                      <Link to="attendance-employee.html" className="link-default">
-                        View Details
-                      </Link>
                     </div>
                   </div>
                 </div>
-                <div className="col-md-6 d-flex">
+                <div className="col-md-4 d-flex">
                   <div className="card flex-fill">
-                    <div className="card-body">
-                      <span className="avatar rounded-circle bg-warning mb-2">
-                        <i className="ti ti-clock-exclamation fs-16" />
+                    <div className="card-body d-flex flex-column">
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <span className="avatar rounded-circle bg-success">
+                          <i className="ti ti-user-check fs-16" />
                       </span>
+                        <Link to="candidates.html" className="link-default">
+                          View All
+                        </Link>
+                      </div>
                       <h6 className="fs-13 fw-medium text-default mb-1">
-                        Total Late
+                        Active Candidates
                       </h6>
-                      <h3 className="mb-3">
-                        {lateEmployeesLoading ? (
+                      <h3 className="mb-1">
+                        {candidateStatsLoading ? (
                           <span className="spinner-border spinner-border-sm text-primary" role="status" />
-                        ) : lateEmployeesCount > 0 ? (
-                          `${lateEmployeesCount}`
                         ) : (
-                          '0'
-                        )}
-                        {" "}
-                        <span className="fs-12 fw-medium text-warning">
-                          <i className="fa-solid fa-clock me-1" />
-                          Today
+                          <>
+                            {candidateDashboardStats.activeCandidates.count.toLocaleString()}{" "}
+                            <span className={`fs-12 fw-medium ${candidateDashboardStats.activeCandidates.changeType === 'increase' ? 'text-success' : 'text-danger'}`}>
+                              <i className={`fa-solid fa-caret-${candidateDashboardStats.activeCandidates.changeType === 'increase' ? 'up' : 'down'} me-1`} />
+                              {Math.abs(candidateDashboardStats.activeCandidates.change)}%
                         </span>
+                          </>
+                        )}
                       </h3>
-                      <Link to="attendance-report.html" className="link-default">
-                        View All
-                      </Link>
+                      <span className="fs-12 fw-medium text-muted">Last 30 days</span>
                     </div>
                   </div>
                 </div>
-                {/* <div className="col-md-3 d-flex">
+                <div className="col-md-4 d-flex">
                   <div className="card flex-fill">
-                    <div className="card-body">
-                      <span className="avatar rounded-circle bg-purple mb-2">
-                        <i className="ti ti-moneybag fs-16" />
+                    <div className="card-body d-flex flex-column">
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <span className="avatar rounded-circle bg-danger">
+                          <i className="ti ti-user-x fs-16" />
                       </span>
-                      <h6 className="fs-13 fw-medium text-default mb-1">
-                        Earnings
-                      </h6>
-                      <h3 className="mb-3">
-                        $2144{" "}
-                        <span className="fs-12 fw-medium text-success">
-                          <i className="fa-solid fa-caret-up me-1" />
-                          +10.2%
-                        </span>
-                      </h3>
-                      <Link to="expenses.html" className="link-default">
+                        <Link to="candidates.html" className="link-default">
                         View All
                       </Link>
                     </div>
-                  </div>
-                </div> */}
-                {/* <div className="col-md-3 d-flex">
-                  <div className="card flex-fill">
-                    <div className="card-body">
-                      <span className="avatar rounded-circle bg-danger mb-2">
-                        <i className="ti ti-browser fs-16" />
-                      </span>
                       <h6 className="fs-13 fw-medium text-default mb-1">
-                        Profit This Week
+                        Inactive/Dead
                       </h6>
-                      <h3 className="mb-3">
-                        $5,544{" "}
-                        <span className="fs-12 fw-medium text-success">
-                          <i className="fa-solid fa-caret-up me-1" />
-                          +2.1%
-                        </span>
-                      </h3>
-                      <Link to="purchase-transaction.html" className="link-default">
-                        View All
-                      </Link>
-                    </div>
-                  </div>
-                </div> */}
-                <div className="col-md-6 d-flex">
-                  <div className="card flex-fill">
-                    <div className="card-body">
-                      <span className="avatar rounded-circle bg-danger mb-2">
-                        <i className="ti ti-user-x fs-16" />
-                      </span>
-                      <h6 className="fs-13 fw-medium text-default mb-1">
-                        Total Absent
-                      </h6>
-                      <h3 className="mb-3">
-                        {absentEmployeesLoading ? (
+                      <h3 className="mb-1">
+                        {candidateStatsLoading ? (
                           <span className="spinner-border spinner-border-sm text-primary" role="status" />
-                        ) : absentEmployeesCount > 0 ? (
-                          `${absentEmployeesCount}`
                         ) : (
-                          '0'
-                        )}
-                        {" "}
-                        <span className="fs-12 fw-medium text-danger">
-                          <i className="fa-solid fa-user-slash me-1" />
-                          Today
+                          <>
+                            {candidateDashboardStats.inactiveCandidates.count.toLocaleString()}{" "}
+                            <span className={`fs-12 fw-medium ${candidateDashboardStats.inactiveCandidates.changeType === 'increase' ? 'text-success' : 'text-danger'}`}>
+                              <i className={`fa-solid fa-caret-${candidateDashboardStats.inactiveCandidates.changeType === 'increase' ? 'up' : 'down'} me-1`} />
+                              {Math.abs(candidateDashboardStats.inactiveCandidates.change)}%
                         </span>
+                          </>
+                        )}
                       </h3>
-                      <Link to="attendance-report.html" className="link-default">
-                        View All
-                      </Link>
+                      <span className="fs-12 fw-medium text-muted">30+ days</span>
                     </div>
                   </div>
                 </div>
-                <div className="col-md-6 d-flex">
+                <div className="col-md-4 d-flex">
                   <div className="card flex-fill">
-                    <div className="card-body">
-                      <span className="avatar rounded-circle bg-dark mb-2">
-                        <i className="ti ti-user-star fs-16" />
+                    <div className="card-body d-flex flex-column">
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <span className="avatar rounded-circle bg-primary">
+                          <i className="ti ti-clock fs-16" />
                       </span>
+                        <Link to="candidates.html" className="link-default">
+                          View All
+                        </Link>
+                      </div>
                       <h6 className="fs-13 fw-medium text-default mb-1">
-                        New Hire
+                        Avg. Pipeline Time
                       </h6>
-                      <h3 className="mb-3">
-                        {newHiresLoading ? (
+                      <h3 className="mb-1">
+                        {candidateStatsLoading ? (
                           <span className="spinner-border spinner-border-sm text-primary" role="status" />
-                        ) : newHiresCount > 0 ? (
-                          `${newHiresCount}`
                         ) : (
-                          '0'
-                        )}
-                        {" "}
-                        <span className="fs-12 fw-medium text-success">
-                          <i className="fa-solid fa-calendar me-1" />
-                          This Month
+                          <>
+                            {candidateDashboardStats.avgPipelineTime.days}{" "}
+                            <span className={`fs-12 fw-medium ${candidateDashboardStats.avgPipelineTime.changeType === 'increase' ? 'text-success' : 'text-danger'}`}>
+                              <i className={`fa-solid fa-caret-${candidateDashboardStats.avgPipelineTime.changeType === 'increase' ? 'up' : 'down'} me-1`} />
+                              {Math.abs(candidateDashboardStats.avgPipelineTime.change)}%
                         </span>
+                          </>
+                        )}
                       </h3>
-                      <Link to="employees.html" className="link-default">
-                        View All
-                      </Link>
+                      <span className="fs-12 fw-medium text-muted">days</span>
                     </div>
                   </div>
                 </div>
-                {/* <div className="col-md-3 d-flex">
+                <div className="col-md-4 d-flex">
                   <div className="card flex-fill">
-                    <div className="card-body">
-                      <span className="avatar rounded-circle bg-success mb-2">
-                        <i className="ti ti-users-group fs-16" />
+                    <div className="card-body d-flex flex-column">
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <span className="avatar rounded-circle bg-warning">
+                          <i className="ti ti-trending-up fs-16" />
                       </span>
+                        <Link to="candidates.html" className="link-default">
+                          View All
+                        </Link>
+                      </div>
                       <h6 className="fs-13 fw-medium text-default mb-1">
-                        Job Applicants
+                        Conversion Rate
                       </h6>
-                      <h3 className="mb-3">
-                        98{" "}
-                        <span className="fs-12 fw-medium text-success">
-                          <i className="fa-solid fa-caret-up me-1" />
-                          +2.1%
+                      <h3 className="mb-1">
+                        {candidateStatsLoading ? (
+                          <span className="spinner-border spinner-border-sm text-primary" role="status" />
+                        ) : (
+                          <>
+                            {candidateDashboardStats.conversionRate.percentage}%{" "}
+                            <span className={`fs-12 fw-medium ${candidateDashboardStats.conversionRate.changeType === 'increase' ? 'text-success' : 'text-danger'}`}>
+                              <i className={`fa-solid fa-caret-${candidateDashboardStats.conversionRate.changeType === 'increase' ? 'up' : 'down'} me-1`} />
+                              {Math.abs(candidateDashboardStats.conversionRate.change)}%
                         </span>
+                          </>
+                        )}
                       </h3>
-                      <Link to="job-list.html" className="link-default">
+                      <span className="fs-12 fw-medium text-muted">Hired</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="col-md-4 d-flex">
+                  <div className="card flex-fill">
+                    <div className="card-body d-flex flex-column">
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <span className="avatar rounded-circle bg-success">
+                          <i className="ti ti-medal fs-16" />
+                      </span>
+                        <Link to="candidates.html" className="link-default">
                         View All
                       </Link>
                     </div>
-                  </div>
-                </div> */}
-                {/* <div className="col-md-3 d-flex">
-                  <div className="card flex-fill">
-                    <div className="card-body">
-                      <span className="avatar rounded-circle bg-pink mb-2">
-                        <i className="ti ti-checklist fs-16" />
-                      </span>
                       <h6 className="fs-13 fw-medium text-default mb-1">
-                        Total Tasks
+                        Top Recruiter
                       </h6>
-                      <h3 className="mb-3">
-                        25/28{" "}
-                        <span className="fs-12 fw-medium text-success">
-                          <i className="fa-solid fa-caret-down me-1" />
-                          +11.2%
-                        </span>
+                      <h3 className="mb-1">
+                        {candidateStatsLoading ? (
+                          <span className="spinner-border spinner-border-sm text-primary" role="status" />
+                        ) : (
+                          candidateDashboardStats.topRecruiter.name || 'N/A'
+                        )}
                       </h3>
-                      <Link to="tasks.html" className="link-default">
-                        View All
-                      </Link>
+                      <span className="fs-12 fw-medium text-muted">
+                        {candidateStatsLoading ? '' : `${candidateDashboardStats.topRecruiter.conversionRate}% rate`}
+                      </span>
                     </div>
                   </div>
-                </div> */}
+                </div>
               </div>
             </div>
             {/* /Widget Info */}
-            {/* Employees By Department */}
+            {/* Candidates per Recruiter */}
             <div className="col-xxl-4 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2">
-                  <h5 className="mb-2">Employees By Designation</h5>
+                  <h5 className="mb-1">Candidates per Recruiter</h5>
+                  <p className="fs-13 text-muted mb-0">Distribution of managed candidates</p>
                 </div>
                 <div className="card-body">
-                  {designationStatsLoading ? (
+                  {candidatesPerRecruiterLoading ? (
                     <div className="text-center py-4">
                       <div className="spinner-border text-primary" role="status">
                         <span className="visually-hidden">Loading...</span>
                       </div>
-                      <p className="mt-2 text-muted">Loading designation data...</p>
+                      <p className="mt-2 text-muted">Loading recruiter data...</p>
                     </div>
-                  ) : designationStats.length > 0 ? (
+                  ) : candidatesPerRecruiter && 
+                       candidatesPerRecruiter.length > 0 && 
+                       candidatesPerRecruiterChart && 
+                       candidatesPerRecruiterChart.series && 
+                       candidatesPerRecruiterChart.series.length > 0 &&
+                       candidatesPerRecruiterChart.labels &&
+                       candidatesPerRecruiterChart.labels.length > 0 ? (
                     <>
                       <ReactApexChart
-                        id="emp-department"
-                        options={empDepartment}
-                        series={empDepartment.series}
-                        type="bar"
-                        height={250}
+                        key={`candidates-per-recruiter-${candidatesPerRecruiter.length}`}
+                        id="candidates-per-recruiter"
+                        options={candidatesPerRecruiterChart}
+                        series={candidatesPerRecruiterChart.series}
+                        type="pie"
+                        height={300}
                       />
-                      <p className="fs-13">
-                        <i className="ti ti-circle-filled me-2 fs-8 text-primary" />
-                        No of Employees {designationPercentageChange >= 0 ? 'increased' : 'decreased'} by{" "}
-                        <span className={`fw-bold ${designationPercentageChange >= 0 ? 'text-success' : 'text-danger'}`}>
-                          {designationPercentageChange >= 0 ? '+' : ''}{designationPercentageChange}%
-                        </span> from last month
-                      </p>
+                      <div className="mt-3">
+                        <div className="row g-2">
+                          {candidatesPerRecruiter
+                            .slice(0, showAllRecruiters ? 
+                              Math.min(recruiterPage * recruitersPerPage, candidatesPerRecruiter.length) : 4)
+                            .map((item, index) => (
+                            <div key={index} className="col-12">
+                              <div className="d-flex align-items-center justify-content-between">
+                                <div className="d-flex align-items-center">
+                                  <div 
+                                    className="rounded-circle me-2" 
+                                    style={{
+                                      width: '12px',
+                                      height: '12px',
+                                      backgroundColor: candidatesPerRecruiterChart.colors?.[index] || '#6B7280'
+                                    }}
+                                  ></div>
+                                  <span 
+                                    className="fs-13 fw-medium d-flex align-items-center"
+                                    style={{
+                                      color: candidatesPerRecruiterChart.colors?.[index] || '#374151',
+                                      fontWeight: '600'
+                                    }}
+                                    title={item?.recruiter === 'Unassigned' ? 'Candidates not assigned to any recruiter' : ''}
+                                  >
+                                    {item?.recruiter === 'Unassigned' ? 'Unassigned' : item?.recruiter || 'Unknown'}
+                                    {item?.recruiter === 'Unassigned' && (
+                                      <i className="ti ti-info-circle ms-1 fs-12" title="Candidates not assigned to any recruiter"></i>
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="text-end">
+                                  <span className="fs-13 fw-bold text-default">{item?.count || 0}</span>
+                                  <span className="fs-12 text-muted ms-1">({item?.percentage || 0}%)</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* Show More/Less Button for large lists */}
+                        {candidatesPerRecruiter.length > 4 && (
+                          <div className="text-center mt-3">
+                            {!showAllRecruiters ? (
+                              <button
+                                className="btn btn-sm btn-outline-primary"
+                                onClick={() => setShowAllRecruiters(true)}
+                              >
+                                <i className="ti ti-chevron-down me-1"></i>
+                                Show All ({candidatesPerRecruiter.length} recruiters)
+                              </button>
+                            ) : (
+                              <div className="d-flex justify-content-center align-items-center gap-2">
+                                <button
+                                  className="btn btn-sm btn-outline-secondary"
+                                  onClick={() => setShowAllRecruiters(false)}
+                                >
+                                  <i className="ti ti-chevron-up me-1"></i>
+                                  Show Less
+                                </button>
+                                
+                                {/* Pagination for large lists */}
+                                {candidatesPerRecruiter.length > recruitersPerPage && (
+                                  <div className="d-flex align-items-center gap-2">
+                                    <button
+                                      className="btn btn-sm btn-outline-primary"
+                                      onClick={() => setRecruiterPage(Math.max(1, recruiterPage - 1))}
+                                      disabled={recruiterPage === 1}
+                                    >
+                                      <i className="ti ti-chevron-left"></i>
+                                    </button>
+                                    <span className="fs-12 text-muted">
+                                      Page {recruiterPage} of {Math.ceil(candidatesPerRecruiter.length / recruitersPerPage)}
+                                    </span>
+                                    <button
+                                      className="btn btn-sm btn-outline-primary"
+                                      onClick={() => setRecruiterPage(Math.min(Math.ceil(candidatesPerRecruiter.length / recruitersPerPage), recruiterPage + 1))}
+                                      disabled={recruiterPage >= Math.ceil(candidatesPerRecruiter.length / recruitersPerPage)}
+                                    >
+                                      <i className="ti ti-chevron-right"></i>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </>
                   ) : (
                     <div className="text-center py-4">
                       <i className="ti ti-users-off fs-1 text-muted mb-3"></i>
-                      <p className="text-muted">No employee data available.</p>
+                      <p className="text-muted">No recruiter data available.</p>
                     </div>
                   )}
                 </div>
               </div>
             </div>
-            {/* /Employees By Department */}
+            {/* /Candidates per Recruiter */}
              {/* Todo */}
              <div className="col-xxl-4 col-xl-6 d-flex">
               <div className="card flex-fill">
@@ -3395,74 +3711,90 @@ const AdminDashboard = () => {
               </div>
             </div> */}
             {/* /Jobs Applicants */}
-            {/* Employees */}
-            {/* <div className="col-xxl-4 col-xl-6 d-flex">
+            {/* Candidate Activity Leaderboard */}
+            <div className="col-xxl-4 col-xl-6 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
-                  <h5 className="mb-2">Employees</h5>
-                  <Link to="employees.html" className="btn btn-light btn-md mb-2">
+                  <h5 className="mb-2">Candidate Activity Leaderboard</h5>
+                  <Link to="candidates.html" className="btn btn-light btn-md mb-2">
                     View All
                   </Link>
                 </div>
                 <div className="card-body p-0">
-                  {employeesLoading ? (
+                  {leaderboardLoading ? (
                     <div className="text-center py-4">
                       <div className="spinner-border text-primary" role="status">
                         <span className="visually-hidden">Loading...</span>
                       </div>
-                      <p className="mt-2 text-muted">Loading employees...</p>
+                      <p className="mt-2 text-muted">Loading leaderboard...</p>
                     </div>
-                  ) : employees.length > 0 ? (
-                  <div className="table-responsive">
-                    <table className="table table-nowrap mb-0">
-                      <thead>
-                        <tr>
-                          <th>Name</th>
-                            <th>Designation</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                          {employees.slice(0, 5).map((employee: any, index: number) => (
-                            <tr key={employee._id || index}>
-                              <td className={index === Math.min(4, employees.length - 1) ? 'border-0' : ''}>
-                            <div className="d-flex align-items-center">
-                              <Link to="#" className="avatar">
-                                <ImageWithBasePath
-                                      src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "assets/img/users/user-32.jpg"}
-                                  className="img-fluid rounded-circle"
-                                      alt={`${employee.firstName} ${employee.lastName}`}
-                                />
-                              </Link>
-                              <div className="ms-2">
-                                <h6 className="fw-medium">
-                                      <Link to={`${routes.employeedetailsWithId.replace(':id', employee._id)}`}>
-                                        {employee.firstName} {employee.lastName}
-                              </Link>
-                                </h6>
-                                    <span className="fs-12">{employee.designation || 'Employee'}</span>
-                              </div>
-                            </div>
-                          </td>
-                              <td className={index === Math.min(4, employees.length - 1) ? 'border-0' : ''}>
-                                <span className={`badge badge-${getDepartmentBadgeColor(employee.designation)}-transparent badge-xs`}>
-                                  {employee.designation || 'General'}
-                            </span>
-                          </td>
-                        </tr>
+                  ) : candidateLeaderboard.length > 0 ? (
+                    <div className="table-responsive">
+                      <table className="table table-nowrap mb-0">
+                        <thead>
+                          <tr>
+                            <th>Rank</th>
+                            <th>Name</th>
+                            <th>Activity</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {candidateLeaderboard.map((candidate, index) => (
+                            <tr key={candidate.rank || index}>
+                              <td className={index === candidateLeaderboard.length - 1 ? 'border-0' : ''}>
+                                <div className="d-flex align-items-center">
+                                  <span className="badge bg-primary rounded-circle me-2" style={{ width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>
+                                    {candidate.rank}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className={index === candidateLeaderboard.length - 1 ? 'border-0' : ''}>
+                                <div className="d-flex align-items-center">
+                                  <div className="ms-2">
+                                    <h6 className="fw-medium mb-0">{candidate.name}</h6>
+                                    <div className="fs-12 text-muted">
+                                      <span className="me-2">Submissions: {candidate.submissions}</span>
+                                      <span className="me-2">Interviews: {candidate.interviews}</span>
+                                      <span>Offers: {candidate.offers}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className={index === candidateLeaderboard.length - 1 ? 'border-0' : ''}>
+                                <div className="d-flex align-items-center">
+                                  <div className="progress flex-grow-1 me-2" style={{ height: '8px' }}>
+                                    <div 
+                                      className="progress-bar bg-primary" 
+                                      role="progressbar" 
+                                      style={{ 
+                                        width: `${Math.min((candidate.activityScore / Math.max(...candidateLeaderboard.map(c => c.activityScore))) * 100, 100)}%` 
+                                      }}
+                                    ></div>
+                                  </div>
+                                  <span className="fs-12 fw-medium">{candidate.activityScore}</span>
+                                </div>
+                              </td>
+                              <td className={index === candidateLeaderboard.length - 1 ? 'border-0' : ''}>
+                                <span className={`badge badge-${candidate.statusClass} badge-xs`}>
+                                  {candidate.status}
+                                </span>
+                              </td>
+                            </tr>
                           ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </tbody>
+                      </table>
+                    </div>
                   ) : (
                     <div className="text-center py-4">
                       <i className="ti ti-users-off fs-1 text-muted mb-3"></i>
-                      <p className="text-muted">No employees found.</p>
+                      <p className="text-muted">No candidate activity data found.</p>
                     </div>
                   )}
                 </div>
               </div>
-            </div> */}
-            {/* /Employees */}
+            </div>
+            {/* /Candidate Activity Leaderboard */}
             {/* Todo */}
            
             {/* /Todo */}
@@ -4934,7 +5266,7 @@ const AdminDashboard = () => {
   );
 };
 
-export default AdminDashboard;
+export default CandidateDashboard;
 
 
 
