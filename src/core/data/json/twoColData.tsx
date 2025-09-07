@@ -26,12 +26,6 @@ export const TowColData = [
               roles: ['admin'],
             },
             {
-              menuValue: 'Employee Dashboard',
-              route: routes.employeeDashboard,
-              base: 'employee',
-              roles: ['admin', 'hr', 'employee'],
-            },
-            {
               menuValue: 'Deals Dashboard',
               route: routes.dealsDashboard,
               base: 'deals',

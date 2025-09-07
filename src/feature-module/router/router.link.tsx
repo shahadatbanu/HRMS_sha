@@ -144,7 +144,6 @@ const Profile = React.lazy(() => import("../pages/profile"));
 const LockScreen = React.lazy(() => import("../auth/lockScreen"));
 const EmailVerification2 = React.lazy(() => import("../auth/emailVerification/emailVerification-2"));
 const EmailVerification3 = React.lazy(() => import("../auth/emailVerification/emailVerification-3"));
-const EmployeeDashboard = React.lazy(() => import("../mainMenu/employeeDashboard/employee-dashboard"));
 const LeadsDasboard = React.lazy(() => import("../mainMenu/leadsDashboard"));
 const DealsDashboard = React.lazy(() => import("../mainMenu/dealsDashboard"));
 const Leaflet = React.lazy(() => import("../uiInterface/map/leaflet"));
@@ -210,6 +209,8 @@ const JobList = React.lazy(() => import("../recruitment/joblist/joblist"));
 const CandidateGrid = React.lazy(() => import("../recruitment/candidates/candidategrid"));
 const CandidateKanban = React.lazy(() => import("../recruitment/candidates/candidatekanban"));
 const CandidatesList = React.lazy(() => import("../recruitment/candidates/candidatelist"));
+const TopActiveCandidates = React.lazy(() => import("../recruitment/candidates/top-active-candidates"));
+const DeadLowCandidates = React.lazy(() => import("../recruitment/candidates/dead-low-candidates"));
 const RefferalList = React.lazy(() => import("../recruitment/refferal/refferallist"));
 const ClienttGrid = React.lazy(() => import("../projects/clinet/clienttgrid"));
 const ClientList = React.lazy(() => import("../projects/clinet/clientlist"));
@@ -311,11 +312,6 @@ export const publicRoutes = [
   {
     path: routes.adminDashboard,
     element: <AdminDashboard />,
-    route: Route,
-  },
-  {
-    path: routes.employeeDashboard,
-    element: <EmployeeDashboard />,
     route: Route,
   },
   {
@@ -1414,6 +1410,16 @@ export const publicRoutes = [
   {
     path: routes.candidateskanban,
     element: <CandidateKanban />,
+    route: Route,
+  },
+  {
+    path: routes.topActiveCandidates,
+    element: <TopActiveCandidates />,
+    route: Route,
+  },
+  {
+    path: routes.deadLowCandidates,
+    element: <DeadLowCandidates />,
     route: Route,
   },
   {

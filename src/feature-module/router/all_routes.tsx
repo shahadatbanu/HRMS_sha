@@ -1,7 +1,6 @@
 export const all_routes = {
   // dashboard routes
   adminDashboard: "/index",
-  employeeDashboard: "/employee-dashboard",
   candidateDashboard: "/candidate-dashboard",
   leadsDashboard: "/leads-dashboard",
   dealsDashboard: "/deals-dashboard",
@@ -372,6 +371,9 @@ export const all_routes = {
   candidatesGrid: "/candidates",
   candidateslist: "/candidates/list",
   candidateskanban: "/candidates-kanban",
+  candidateDetails: "/candidates/details/:id",
+  topActiveCandidates: "/candidates/top-active",
+  deadLowCandidates: "/candidates/dead-low",
   refferal: "/refferals",
   //FINANCE & ACCOUNTS
   estimate: "/estimates",

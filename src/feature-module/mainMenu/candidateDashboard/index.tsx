@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { backend_url } from "../../../environment";
 import { all_routes } from "../../../feature-module/router/all_routes";
@@ -7,6 +7,7 @@ import leaveService from "../../../core/services/leaveService";
 import todoService, { Todo } from "../../../core/services/todoService";
 import TodoModal from "./TodoModal";
 import ImageWithBasePath from "../../../core/common/imageWithBasePath";
+import ProfileImage from "../../../core/common/ProfileImage";
 import { Chart } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -108,6 +109,7 @@ const CandidateDashboard = () => {
   const [candidateLeaderboard, setCandidateLeaderboard] = useState<{
     rank: number;
     name: string;
+    profileImage?: string;
     submissions: number;
     interviews: number;
     offers: number;
@@ -116,6 +118,24 @@ const CandidateDashboard = () => {
     statusClass: string;
   }[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
+  
+  // Add state for dead and low candidates
+  const [deadLowCandidates, setDeadLowCandidates] = useState<{
+    rank: number;
+    name: string;
+    profileImage?: string;
+    submissions: number;
+    interviews: number;
+    offers: number;
+    activityScore: number;
+    status: string;
+    statusClass: string;
+  }[]>([]);
+  const [deadLowLoading, setDeadLowLoading] = useState(true);
+  
+  // Add state for candidate activity filters
+  const [activeCandidatesFilter, setActiveCandidatesFilter] = useState('monthly');
+  const [deadLowCandidatesFilter, setDeadLowCandidatesFilter] = useState('monthly');
   
   // Add state for leave requests
   const [leaveRequestsCount, setLeaveRequestsCount] = useState(0);
@@ -197,6 +217,143 @@ const CandidateDashboard = () => {
   const [selectedEmployeeName, setSelectedEmployeeName] = useState<string>('All Employees');
   const [topPerformer, setTopPerformer] = useState<{name: string, submissions: number} | null>(null);
   const [performanceDataType, setPerformanceDataType] = useState<string>('submissions');
+
+  // Hiring Pipeline State
+  const [hiringPipelineData, setHiringPipelineData] = useState<any[]>([]);
+  const [hiringPipelineLoading, setHiringPipelineLoading] = useState(false);
+  const [hiringPipelineChart, setHiringPipelineChart] = useState<any>({
+    series: [],
+    chart: {
+      height: 300,
+      type: 'pie',
+      zoom: {
+        enabled: false
+      }
+    },
+    colors: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#6B7280'], // Blue, Green, Orange, Red, Purple, Gray
+    dataLabels: {
+      enabled: true,
+      formatter: function(val: number, opts: any) {
+        return opts.w.config.series[opts.seriesIndex] + '%'
+      },
+      style: {
+        colors: ['#fff']
+      }
+    },
+    labels: [],
+    legend: {
+      position: 'bottom',
+      horizontalAlign: 'center'
+    },
+    tooltip: {
+      y: {
+        formatter: function(val: number, opts: any) {
+          return val + ' candidates'
+        }
+      }
+    }
+  });
+
+  // Interview Outcomes State
+  const [interviewOutcomesData, setInterviewOutcomesData] = useState<any[]>([]);
+  const [interviewOutcomesLoading, setInterviewOutcomesLoading] = useState(false);
+  const [interviewOutcomesChart, setInterviewOutcomesChart] = useState<any>({
+    series: [],
+    chart: {
+      height: 300,
+      type: 'pie',
+      zoom: {
+        enabled: false
+      }
+    },
+    colors: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'], // Blue, Green, Orange, Red, Purple
+    dataLabels: {
+      enabled: true,
+      formatter: function(val: number, opts: any) {
+        return opts.w.config.series[opts.seriesIndex] + '%'
+      },
+      style: {
+        colors: ['#fff']
+      }
+    },
+    labels: [],
+    legend: {
+      position: 'bottom',
+      horizontalAlign: 'center'
+    },
+    tooltip: {
+      y: {
+        formatter: function(val: number, opts: any) {
+          return val + ' interviews'
+        }
+      }
+    }
+  });
+
+  // Submissions vs Job Offers vs Interview Schedules Trend State
+  const [submissionsHiresData, setSubmissionsHiresData] = useState<any[]>([]);
+  const [submissionsHiresLoading, setSubmissionsHiresLoading] = useState(false);
+  const [submissionsHiresChart, setSubmissionsHiresChart] = useState<any>({
+    series: [
+      {
+        name: 'Submissions',
+        data: []
+      },
+      {
+        name: 'Job Offers',
+        data: []
+      },
+      {
+        name: 'Interview Schedules',
+        data: []
+      }
+    ],
+    chart: {
+      height: 288,
+      type: 'line',
+      zoom: {
+        enabled: false
+      }
+    },
+    colors: ['#3B82F6', '#10B981', '#F59E0B'], // Blue for submissions, green for job offers, orange for interview schedules
+    dataLabels: {
+      enabled: false
+    },
+    stroke: {
+      curve: 'smooth',
+      width: 3
+    },
+    markers: {
+      size: 6,
+      hover: {
+        size: 8
+      }
+    },
+    xaxis: {
+      categories: []
+    },
+    yaxis: {
+      min: 0,
+      labels: {
+        formatter: (val: number) => {
+          return val.toString()
+        }
+      }
+    },
+    legend: {
+      position: 'top',
+      horizontalAlign: 'right'
+    },
+    tooltip: {
+      shared: true,
+      intersect: false,
+      y: {
+        formatter: function(val: number) {
+          return val + " candidates"
+        }
+      }
+    }
+  });
 
   const [performance_chart2, setPerformanceChart2] = useState<any>({
     series: [{
@@ -383,6 +540,7 @@ const CandidateDashboard = () => {
     fetchCandidateDashboardStats(); // Fetch candidate dashboard statistics
     fetchCandidatesPerRecruiter(); // Fetch candidates per recruiter data
     fetchCandidateLeaderboard(); // Fetch candidate activity leaderboard data
+    fetchDeadLowCandidates(); // Fetch dead and low candidates data
     // fetchEmployees(); // Fetch employees data on component mount - moved to user effect
   }, []);
 
@@ -393,6 +551,28 @@ const CandidateDashboard = () => {
       fetchTodos(1);
     }
   }, [user, isLoading]);
+
+  // Refetch active candidates when filter changes (with debounce)
+  useEffect(() => {
+    if (activeCandidatesFilter) {
+      const timeoutId = setTimeout(() => {
+        fetchCandidateLeaderboard(activeCandidatesFilter);
+      }, 300); // 300ms debounce
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [activeCandidatesFilter]);
+
+  // Refetch dead/low candidates when filter changes (with debounce)
+  useEffect(() => {
+    if (deadLowCandidatesFilter) {
+      const timeoutId = setTimeout(() => {
+        fetchDeadLowCandidates(deadLowCandidatesFilter);
+      }, 300); // 300ms debounce
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [deadLowCandidatesFilter]);
 
   // Update chart data when attendance overview changes
   useEffect(() => {
@@ -700,11 +880,11 @@ const CandidateDashboard = () => {
     }
   };
 
-  const fetchCandidateLeaderboard = async () => {
+  const fetchCandidateLeaderboard = useCallback(async (filter: string = activeCandidatesFilter) => {
     try {
       setLeaderboardLoading(true);
       
-      const response = await fetch(`${backend_url}/api/candidates/dashboard/activity-leaderboard`, {
+      const response = await fetch(`${backend_url}/api/candidates/dashboard/activity-leaderboard?filter=${filter}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
@@ -725,7 +905,34 @@ const CandidateDashboard = () => {
     } finally {
       setLeaderboardLoading(false);
     }
-  };
+  }, [activeCandidatesFilter]);
+
+  const fetchDeadLowCandidates = useCallback(async (filter: string = deadLowCandidatesFilter) => {
+    try {
+      setDeadLowLoading(true);
+      
+      const response = await fetch(`${backend_url}/api/candidates/dashboard/dead-low-candidates?filter=${filter}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Dead and low candidates data:', data.data);
+        setDeadLowCandidates(data.data || []);
+      } else {
+        console.error('Error fetching dead and low candidates data');
+        setDeadLowCandidates([]);
+      }
+    } catch (error) {
+      console.error('Error fetching dead and low candidates data:', error);
+      setDeadLowCandidates([]);
+    } finally {
+      setDeadLowLoading(false);
+    }
+  }, [deadLowCandidatesFilter]);
 
   // Function to fetch attendance overview data
   const fetchAttendanceOverview = async (date: string = selectedDate) => {
@@ -1583,6 +1790,9 @@ const CandidateDashboard = () => {
       fetchPerformanceEmployees();
       fetchKpiSettings();
       fetchPerformanceData('all', performanceDataType);
+      fetchSubmissionsHiresTrend();
+      fetchInterviewOutcomes();
+      fetchHiringPipeline();
     }
   }, [user, isLoading]);
 
@@ -1923,6 +2133,126 @@ const CandidateDashboard = () => {
     fetchPerformanceData(selectedEmployee, dataType);
   };
 
+  // Fetch Hiring Pipeline Data
+  const fetchHiringPipeline = async () => {
+    try {
+      setHiringPipelineLoading(true);
+      const response = await fetch(`${backend_url}/api/candidates/dashboard/hiring-pipeline`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setHiringPipelineData(data.data.pipeline);
+        
+        // Update chart data
+        const series = data.data.pipeline.map((status: any) => status.count);
+        const labels = data.data.pipeline.map((status: any) => status.status);
+        
+        setHiringPipelineChart((prev: any) => ({
+          ...prev,
+          series: series,
+          labels: labels
+        }));
+      } else {
+        console.error('Error fetching hiring pipeline data');
+      }
+    } catch (error) {
+      console.error('Error fetching hiring pipeline data:', error);
+    } finally {
+      setHiringPipelineLoading(false);
+    }
+  };
+
+  // Fetch Interview Outcomes Data
+  const fetchInterviewOutcomes = async () => {
+    try {
+      setInterviewOutcomesLoading(true);
+      const response = await fetch(`${backend_url}/api/candidates/dashboard/interview-outcomes`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setInterviewOutcomesData(data.data.outcomes);
+        
+        // Update chart data
+        const series = data.data.outcomes.map((outcome: any) => outcome.count);
+        const labels = data.data.outcomes.map((outcome: any) => outcome.status);
+        
+        setInterviewOutcomesChart((prev: any) => ({
+          ...prev,
+          series: series,
+          labels: labels
+        }));
+      } else {
+        console.error('Error fetching interview outcomes data');
+      }
+    } catch (error) {
+      console.error('Error fetching interview outcomes data:', error);
+    } finally {
+      setInterviewOutcomesLoading(false);
+    }
+  };
+
+  // Fetch Submissions vs Job Offers vs Interview Schedules Trend Data
+  const fetchSubmissionsHiresTrend = async () => {
+    try {
+      setSubmissionsHiresLoading(true);
+      const response = await fetch(`${backend_url}/api/candidates/dashboard/submissions-vs-hires-trend`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSubmissionsHiresData(data.data);
+        
+        // Update chart data
+        const months = data.data.map((item: any) => item.month);
+        const submissions = data.data.map((item: any) => item.submissions);
+        const jobOffers = data.data.map((item: any) => item.jobOffers);
+        const interviewSchedules = data.data.map((item: any) => item.interviewSchedules);
+        
+        setSubmissionsHiresChart((prev: any) => ({
+          ...prev,
+          series: [
+            {
+              name: 'Submissions',
+              data: submissions
+            },
+            {
+              name: 'Job Offers',
+              data: jobOffers
+            },
+            {
+              name: 'Interview Schedules',
+              data: interviewSchedules
+            }
+          ],
+          xaxis: {
+            ...prev.xaxis,
+            categories: months
+          }
+        }));
+      } else {
+        console.error('Error fetching submissions vs job offers vs interview schedules trend data');
+      }
+    } catch (error) {
+      console.error('Error fetching submissions vs job offers vs interview schedules trend data:', error);
+    } finally {
+      setSubmissionsHiresLoading(false);
+    }
+  };
+
   // Function to fetch employees for submissions filter
   const fetchSubmissionEmployees = async () => {
     try {
@@ -2108,7 +2438,7 @@ const CandidateDashboard = () => {
         if (user.role === 'hr') {
           navigate(routes.adminDashboard); // HR can access admin dashboard
         } else if (user.role === 'employee') {
-          navigate(routes.employeeDashboard);
+          navigate(routes.attendanceemployee); // Employees redirected to attendance employee page
         } else {
           navigate('/login');
         }
@@ -2117,7 +2447,7 @@ const CandidateDashboard = () => {
       // No user logged in, redirect to login
       navigate('/login');
     }
-  }, [user, isLoading, navigate, routes.adminDashboard, routes.employeeDashboard]);
+  }, [user, isLoading, navigate, routes.adminDashboard, routes.attendanceemployee]);
 
   // Show loading while checking authentication
   if (isLoading) {
@@ -2251,7 +2581,7 @@ const CandidateDashboard = () => {
                       <i className="ti ti-edit fs-14" />
                     </Link> */}
                   </h3>
-                  <p>
+                  {/* <p>
                     You have{" "}
                     <Link 
                       to={routes.candidatesGrid} 
@@ -2291,7 +2621,8 @@ const CandidateDashboard = () => {
                     {leaveRequestsCount > 0 && (
                       <span className="text-danger ms-1">(New)</span>
                     )}
-                  </p>
+                  </p> */}
+                <p> Track candidate marketing and hiring progress.</p>
                 </div>
               </div>
               <div className="d-flex align-items-center flex-wrap mb-1">
@@ -2636,7 +2967,7 @@ const CandidateDashboard = () => {
             </div>
             {/* /Candidates per Recruiter */}
              {/* Todo */}
-             <div className="col-xxl-4 col-xl-6 d-flex">
+             {/* <div className="col-xxl-4 col-xl-6 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <div className="d-flex align-items-center">
@@ -2788,7 +3119,7 @@ const CandidateDashboard = () => {
                             </button>
                           </div>
                           
-                          {/* Description section */}
+                         
                           {expandedTodoId === todo._id && todo.description && (
                             <div className="px-3 pb-2 border-top">
                               <div className="mt-2">
@@ -2811,7 +3142,7 @@ const CandidateDashboard = () => {
                     </div>
                   )}
                   
-                  {/* Pagination */}
+                 
                   {totalTodoPages > 1 && (
                     <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top todo-pagination">
                       <div className="text-muted small">
@@ -2842,7 +3173,7 @@ const CandidateDashboard = () => {
                   )}
                 </div>
               </div>
-            </div>
+            </div> */}
             {/* /Todo */}
           </div>
           <div className="row">
@@ -3011,7 +3342,7 @@ const CandidateDashboard = () => {
             </div> */}
             {/* /Total Employee */}
             {/* Employees */}
-            <div className="col-xxl-4 col-xl-6 d-flex">
+            {/* <div className="col-xxl-4 col-xl-6 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Employees</h5>
@@ -3076,10 +3407,10 @@ const CandidateDashboard = () => {
                   )}
                 </div>
               </div>
-            </div>
+            </div> */}
             {/* /Employees */}
             {/* Attendance Overview */}
-            <div className="col-xxl-4 col-xl-6 d-flex">
+            {/* <div className="col-xxl-4 col-xl-6 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Attendance Overview</h5>
@@ -3191,7 +3522,7 @@ const CandidateDashboard = () => {
                     <div className="d-flex align-items-center">
                       <p className="mb-2 me-2">Total Absenties: {attendanceOverviewLoading ? '...' : attendanceOverview.absent}</p>
                       <div className="avatar-list-stacked avatar-group-sm mb-2">
-                        {/* Dynamic avatar placeholders - only show when there are absent employees */}
+                       
                         {!attendanceOverviewLoading && absentEmployees.length > 0 && (
                           <>
                             {absentEmployees.slice(0, 4).map((attendance: any, index: number) => (
@@ -3223,15 +3554,15 @@ const CandidateDashboard = () => {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> */}
             {/* /Attendance Overview */}
             {/* Clock-In/Out */}
-            <div className="col-xxl-4 col-xl-6 d-flex">
+            {/* <div className="col-xxl-4 col-xl-6 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Clock-In/Out</h5>
                   <div className="d-flex align-items-center">
-                    {/* Commented out designation dropdown for simplicity
+                    
                     <div className="dropdown mb-2">
                       <Link
                         to="#"
@@ -3267,7 +3598,7 @@ const CandidateDashboard = () => {
                         ))}
                       </ul>
                     </div>
-                    */}
+                   
                     <div className="dropdown mb-2">
                       <Link
                         to="#"
@@ -3325,7 +3656,7 @@ const CandidateDashboard = () => {
                     </div>
                   ) : (
                   <div>
-                      {/* Present Employees */}
+                    
                       {clockInOutData.present.map((attendance: any, index: number) => (
                         <div key={index} className="d-flex align-items-center justify-content-between mb-3 p-2 border border-dashed br-5">
                       <div className="d-flex align-items-center">
@@ -3374,7 +3705,7 @@ const CandidateDashboard = () => {
                     </div>
                       ))}
                       
-                      {/* Late Employees */}
+                   
                       {clockInOutData.late.length > 0 && (
                         <>
                   <h6 className="mb-2">Late</h6>
@@ -3432,7 +3763,7 @@ const CandidateDashboard = () => {
                         </>
                       )}
                       
-                      {/* No Data Message */}
+                 
                       {clockInOutData.present.length === 0 && clockInOutData.late.length === 0 && (
                         <div className="text-center py-4">
                           <i className="ti ti-clock-off fs-1 text-muted mb-3"></i>
@@ -3443,7 +3774,7 @@ const CandidateDashboard = () => {
                   )}
                 </div>
                 
-                {/* View All Attendance Button - At the very bottom of the card */}
+               
                 <div className="card-footer">
                   <Link to={routes.attendanceadmin}
                     className="btn btn-light btn-md w-100"
@@ -3452,7 +3783,7 @@ const CandidateDashboard = () => {
                   </Link>
                 </div>
               </div>
-            </div>
+            </div> */}
             {/* /Clock-In/Out */}
           </div>
           <div className="row">
@@ -3712,13 +4043,77 @@ const CandidateDashboard = () => {
             </div> */}
             {/* /Jobs Applicants */}
             {/* Candidate Activity Leaderboard */}
-            <div className="col-xxl-4 col-xl-6 d-flex">
+            <div className="col-xxl-6 col-xl-6 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
-                  <h5 className="mb-2">Candidate Activity Leaderboard</h5>
-                  <Link to="candidates.html" className="btn btn-light btn-md mb-2">
+                  <h5 className="mb-2">Top Active Candidates</h5>
+                  {/* <p className="text-muted fs-12 mb-0">Super Active and Active candidates based on selected time period</p> */}
+                  <div className="d-flex align-items-center">
+                    <div className="dropdown mb-2 me-2">
+                      <Link
+                        to="#"
+                        className="dropdown-toggle btn btn-white border-0 btn-sm d-inline-flex align-items-center fs-13"
+                        data-bs-toggle="dropdown"
+                      >
+                        <i className="ti ti-calendar me-1" />
+                        {activeCandidatesFilter === 'all' ? 'All' :
+                         activeCandidatesFilter === 'weekly' ? 'Weekly' : 
+                         activeCandidatesFilter === 'monthly' ? 'Monthly' : 
+                         activeCandidatesFilter === '3months' ? 'Last 3 Months' : 
+                         activeCandidatesFilter === '6months' ? 'Last 6 Months' : 'Monthly'}
+                      </Link>
+                      <ul className="dropdown-menu dropdown-menu-end p-3">
+                        <li>
+                          <Link
+                            to="#"
+                            className="dropdown-item rounded-1"
+                            onClick={() => setActiveCandidatesFilter('all')}
+                          >
+                            All
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to="#"
+                            className="dropdown-item rounded-1"
+                            onClick={() => setActiveCandidatesFilter('weekly')}
+                          >
+                            Weekly
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to="#"
+                            className="dropdown-item rounded-1"
+                            onClick={() => setActiveCandidatesFilter('monthly')}
+                          >
+                            Monthly
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to="#"
+                            className="dropdown-item rounded-1"
+                            onClick={() => setActiveCandidatesFilter('3months')}
+                          >
+                            Last 3 Months
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to="#"
+                            className="dropdown-item rounded-1"
+                            onClick={() => setActiveCandidatesFilter('6months')}
+                          >
+                            Last 6 Months
+                          </Link>
+                        </li>
+                      </ul>
+                    </div>
+                    <Link to={all_routes.topActiveCandidates} className="btn btn-light btn-md mb-2">
                     View All
                   </Link>
+                  </div>
                 </div>
                 <div className="card-body p-0">
                   {leaderboardLoading ? (
@@ -3729,29 +4124,37 @@ const CandidateDashboard = () => {
                       <p className="mt-2 text-muted">Loading leaderboard...</p>
                     </div>
                   ) : candidateLeaderboard.length > 0 ? (
-                    <div className="table-responsive">
-                      <table className="table table-nowrap mb-0">
-                        <thead>
-                          <tr>
-                            <th>Rank</th>
-                            <th>Name</th>
+                  <div className="table-responsive">
+                    <table className="table table-nowrap mb-0">
+                      <thead>
+                        <tr>
+                            {/* <th>Rank</th> */}
+                          <th>Name</th>
                             <th>Activity</th>
                             <th>Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                        </tr>
+                      </thead>
+                      <tbody>
                           {candidateLeaderboard.map((candidate, index) => (
                             <tr key={candidate.rank || index}>
-                              <td className={index === candidateLeaderboard.length - 1 ? 'border-0' : ''}>
-                                <div className="d-flex align-items-center">
+                              {/* <td className={index === candidateLeaderboard.length - 1 ? 'border-0' : ''}>
+                            <div className="d-flex align-items-center">
                                   <span className="badge bg-primary rounded-circle me-2" style={{ width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>
                                     {candidate.rank}
                                   </span>
                                 </div>
-                              </td>
+                              </td> */}
                               <td className={index === candidateLeaderboard.length - 1 ? 'border-0' : ''}>
                                 <div className="d-flex align-items-center">
-                                  <div className="ms-2">
+                                  <Link to="#" className="avatar me-2">
+                                    <ProfileImage
+                                      profileImage={candidate.profileImage ? `candidates/${candidate.profileImage}` : undefined}
+                                      alt={candidate.name}
+                                  className="img-fluid rounded-circle"
+                                      fallbackSrc="assets/img/users/user-32.jpg"
+                                />
+                              </Link>
+                                  <div>
                                     <h6 className="fw-medium mb-0">{candidate.name}</h6>
                                     <div className="fs-12 text-muted">
                                       <span className="me-2">Submissions: {candidate.submissions}</span>
@@ -3788,20 +4191,173 @@ const CandidateDashboard = () => {
                   ) : (
                     <div className="text-center py-4">
                       <i className="ti ti-users-off fs-1 text-muted mb-3"></i>
-                      <p className="text-muted">No candidate activity data found.</p>
+                      <p className="text-muted">No active candidates found.</p>
+                      <p className="text-muted fs-12">Only Super Active and Active candidates are shown here.</p>
                     </div>
                   )}
                 </div>
               </div>
             </div>
             {/* /Candidate Activity Leaderboard */}
+            
+            {/* Dead and Low Candidates */}
+            <div className="col-xxl-6 col-xl-6 d-flex">
+              <div className="card flex-fill">
+                <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
+                  <h5 className="mb-2">Dead & Low Candidates</h5>
+                  {/* <p className="text-muted fs-12 mb-0">Dead and Low activity candidates based on selected time period</p> */}
+                  <div className="d-flex align-items-center">
+                    <div className="dropdown mb-2 me-2">
+                      <Link
+                        to="#"
+                        className="dropdown-toggle btn btn-white border-0 btn-sm d-inline-flex align-items-center fs-13"
+                        data-bs-toggle="dropdown"
+                      >
+                        <i className="ti ti-calendar me-1" />
+                        {deadLowCandidatesFilter === 'all' ? 'All' :
+                         deadLowCandidatesFilter === 'weekly' ? 'Weekly' : 
+                         deadLowCandidatesFilter === 'monthly' ? 'Monthly' : 
+                         deadLowCandidatesFilter === '3months' ? 'Last 3 Months' : 
+                         deadLowCandidatesFilter === '6months' ? 'Last 6 Months' : 'Monthly'}
+                              </Link>
+                      <ul className="dropdown-menu dropdown-menu-end p-3">
+                        <li>
+                          <Link
+                            to="#"
+                            className="dropdown-item rounded-1"
+                            onClick={() => setDeadLowCandidatesFilter('all')}
+                          >
+                            All
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to="#"
+                            className="dropdown-item rounded-1"
+                            onClick={() => setDeadLowCandidatesFilter('weekly')}
+                          >
+                            Weekly
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to="#"
+                            className="dropdown-item rounded-1"
+                            onClick={() => setDeadLowCandidatesFilter('monthly')}
+                          >
+                            Monthly
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to="#"
+                            className="dropdown-item rounded-1"
+                            onClick={() => setDeadLowCandidatesFilter('3months')}
+                          >
+                            Last 3 Months
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to="#"
+                            className="dropdown-item rounded-1"
+                            onClick={() => setDeadLowCandidatesFilter('6months')}
+                          >
+                            Last 6 Months
+                          </Link>
+                        </li>
+                      </ul>
+                    </div>
+                    <Link to={all_routes.deadLowCandidates} className="btn btn-light btn-md mb-2">
+                      View All
+                    </Link>
+                  </div>
+                </div>
+                <div className="card-body p-0">
+                  {deadLowLoading ? (
+                    <div className="text-center py-4">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                      <p className="mt-2 text-muted">Loading candidates...</p>
+                    </div>
+                  ) : deadLowCandidates.length > 0 ? (
+                    <div className="table-responsive">
+                      <table className="table table-nowrap mb-0">
+                        <thead>
+                          <tr>
+                            <th>Name</th>
+                            <th>Activity</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {deadLowCandidates.map((candidate, index) => (
+                            <tr key={candidate.rank || index}>
+                              <td className={index === deadLowCandidates.length - 1 ? 'border-0' : ''}>
+                                <div className="d-flex align-items-center">
+                                  <Link to="#" className="avatar me-2">
+                                    <ProfileImage
+                                      key={`${candidate.rank}-${candidate.profileImage}`}
+                                      profileImage={candidate.profileImage ? `candidates/${candidate.profileImage}` : undefined}
+                                      alt={candidate.name}
+                                      className="img-fluid rounded-circle"
+                                      fallbackSrc="assets/img/users/user-32.jpg"
+                                    />
+                                  </Link>
+                                  <div>
+                                    <h6 className="fw-medium mb-0">{candidate.name}</h6>
+                                    <div className="fs-12 text-muted">
+                                      <span className="me-2">Submissions: {candidate.submissions}</span>
+                                      <span className="me-2">Interviews: {candidate.interviews}</span>
+                                      <span>Offers: {candidate.offers}</span>
+                                    </div>
+                              </div>
+                            </div>
+                          </td>
+                              <td className={index === deadLowCandidates.length - 1 ? 'border-0' : ''}>
+                                <div className="d-flex align-items-center">
+                                  <div className="progress flex-grow-1 me-2" style={{ height: '8px' }}>
+                                    <div 
+                                      className="progress-bar bg-danger" 
+                                      role="progressbar" 
+                                      style={{ 
+                                        width: `${Math.min((candidate.activityScore / Math.max(...deadLowCandidates.map(c => c.activityScore), 1)) * 100, 100)}%` 
+                                      }}
+                                    ></div>
+                                  </div>
+                                  <span className="fs-12 fw-medium">{candidate.activityScore}</span>
+                                </div>
+                              </td>
+                              <td className={index === deadLowCandidates.length - 1 ? 'border-0' : ''}>
+                                <span className={`badge badge-${candidate.statusClass} badge-xs`}>
+                                  {candidate.status}
+                            </span>
+                          </td>
+                        </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <i className="ti ti-users-off fs-1 text-muted mb-3"></i>
+                      <p className="text-muted">No dead or low candidates found.</p>
+                      <p className="text-muted fs-12">Only Dead and Low activity candidates are shown here.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            {/* /Dead and Low Candidates */}
+            
             {/* Todo */}
            
             {/* /Todo */}
           </div>
           <div className="row">
             {/* Dynamic Overview Card */}
-            <div className="col-xl-7 d-flex">
+            {/* <div className="col-xl-7 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">
@@ -3918,7 +4474,7 @@ const CandidateDashboard = () => {
                   )}
               </div>
             </div>
-            </div>
+            </div> */}
             {/* /Dynamic Overview Card */}
             {/* Invoices */}
             {/* <div className="col-xl-5 d-flex">
@@ -4184,103 +4740,19 @@ const CandidateDashboard = () => {
               </div>
             </div> */}
             {/* /Invoices */}
-            <div className="col-xl-5 d-flex">
+            <div className="col-xl-12 d-flex">
               <div className="card flex-fill">
                 <div className="card-header">
                   <div className="d-flex align-items-center justify-content-between flex-wrap row-gap-2">
-                    <h5>Performance</h5>
-                    <div className="d-flex align-items-center">
-                      <div className="dropdown mb-2 me-2">
-                        <Link
-                          to="#"
-                          className="dropdown-toggle btn btn-white border-0 btn-sm d-inline-flex align-items-center fs-13"
-                          data-bs-toggle="dropdown"
-                          style={{ pointerEvents: performanceLoading ? 'none' : 'auto' }}
-                        >
-                          {performanceLoading ? (
-                            <div className="spinner-border spinner-border-sm me-1" role="status">
-                              <span className="visually-hidden">Loading...</span>
-                            </div>
-                          ) : null}
-                          {performanceDataType === 'submissions' ? 'Submissions' : 
-                           performanceDataType === 'job-offers' ? 'Job Offers' : 'Interview Schedules'}
-                        </Link>
-                        <ul className="dropdown-menu dropdown-menu-end p-3">
-                          <li>
-                            <Link to="#"
-                              className="dropdown-item rounded-1"
-                              onClick={() => handlePerformanceDataTypeChange('submissions')}
-                            >
-                              Submissions
-                            </Link>
-                          </li>
-                          <li>
-                            <Link to="#"
-                              className="dropdown-item rounded-1"
-                              onClick={() => handlePerformanceDataTypeChange('job-offers')}
-                            >
-                              Job Offers
-                            </Link>
-                          </li>
-                          <li>
-                            <Link to="#"
-                              className="dropdown-item rounded-1"
-                              onClick={() => handlePerformanceDataTypeChange('interview-schedules')}
-                            >
-                              Interview Schedules
-                            </Link>
-                          </li>
-                        </ul>
-                      </div>
-                      <div className="dropdown mb-2">
-                        <Link
-                          to="#"
-                          className="dropdown-toggle btn btn-white border-0 btn-sm d-inline-flex align-items-center fs-13"
-                          data-bs-toggle="dropdown"
-                          style={{ pointerEvents: performanceLoading ? 'none' : 'auto' }}
-                        >
-                          {performanceLoading ? (
-                            <div className="spinner-border spinner-border-sm me-1" role="status">
-                              <span className="visually-hidden">Loading...</span>
-                            </div>
-                          ) : null}
-                          {selectedEmployeeName}
-                        </Link>
-                        <ul className="dropdown-menu dropdown-menu-end p-3">
-                          <li>
-                            <Link to="#"
-                              className="dropdown-item rounded-1"
-                              onClick={() => handleEmployeeChange('all')}
-                            >
-                              All Employees
-                            </Link>
-                          </li>
-                          {performanceEmployees.map((employee) => (
-                            <li key={employee._id}>
-                              <Link to="#"
-                                className="dropdown-item rounded-1"
-                                onClick={() => handleEmployeeChange(employee._id)}
-                              >
-                                {employee.firstName} {employee.lastName}
-                              </Link>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
+                    <h5>Submissions vs Job Offers vs Interview Schedules</h5>
                   </div>
                   <div className="d-flex align-items-center mt-2">
-                    <span className="badge badge-soft-success me-2">
-                      <i className="ti ti-crown me-1"></i>
-                      Top Performer
+                    <span className="badge badge-soft-info me-2">
+                      <i className="ti ti-trending-up me-1"></i>
+                      Month-over-month comparison
                     </span>
                     <small className="text-muted">
-                      {topPerformer ? (
-                        `${topPerformer.name} (${topPerformer.submissions} ${performanceDataType === 'submissions' ? 'submissions' : 
-                                                                        performanceDataType === 'job-offers' ? 'job offers' : 'interview schedules'} this month)`
-                      ) : (
-                        'Loading...'
-                      )}
+                      {submissionsHiresLoading ? 'Loading...' : 'Submissions, job offers, and interview schedules'}
                     </small>
                   </div>
                 </div>
@@ -4288,44 +4760,46 @@ const CandidateDashboard = () => {
                   <div>
                     <div className="bg-light d-flex align-items-center rounded p-2 mb-3">
                       <h3 className="me-2">
-                        {performanceLoading ? (
+                        {submissionsHiresLoading ? (
                           <div className="spinner-border spinner-border-sm" role="status">
                             <span className="visually-hidden">Loading...</span>
                           </div>
-                        ) : performanceData.length > 0 ? (
-                          `${Math.round(performanceData[performanceData.length - 1])}%`
+                        ) : submissionsHiresData.length > 0 ? (
+                          `${submissionsHiresData[submissionsHiresData.length - 1]?.submissions || 0}`
                         ) : (
-                          '0%'
+                          '0'
                         )}
                       </h3>
-                      {performanceData.length > 1 && !performanceLoading && (
+                      <span className="text-muted me-2">submissions this month</span>
+                      {submissionsHiresData.length > 1 && !submissionsHiresLoading && (
                         <span className={`badge rounded-pill me-1 ${
-                          performanceData[performanceData.length - 1] > performanceData[performanceData.length - 2]
+                          (submissionsHiresData[submissionsHiresData.length - 1]?.submissions || 0) > (submissionsHiresData[submissionsHiresData.length - 2]?.submissions || 0)
                             ? 'badge-outline-success bg-success-transparent'
                             : 'badge-outline-danger bg-danger-transparent'
                         }`}>
-                          {performanceData[performanceData.length - 1] > performanceData[performanceData.length - 2] ? '+' : ''}
-                          {Math.round(performanceData[performanceData.length - 1] - performanceData[performanceData.length - 2])}%
+                          {(submissionsHiresData[submissionsHiresData.length - 1]?.submissions || 0) > (submissionsHiresData[submissionsHiresData.length - 2]?.submissions || 0) ? '+' : ''}
+                          {(submissionsHiresData[submissionsHiresData.length - 1]?.submissions || 0) - (submissionsHiresData[submissionsHiresData.length - 2]?.submissions || 0)}
                         </span>
                       )}
                       <span>vs last month</span>
                     </div>
                     <div className="mb-2">
                       <small className="text-muted">
-                        {performanceLoading ? 'Loading...' : selectedEmployeeName}
+                        {submissionsHiresLoading ? 'Loading...' : 'Submissions vs Job Offers vs Interview Schedules Trend'}
                       </small>
                     </div>
                     <ReactApexChart
-                      id="performance_chart2"
-                      options={performance_chart2}
-                      series={performance_chart2.series}
-                      type="area"
+                      id="submissions-hires-chart"
+                      options={submissionsHiresChart}
+                      series={submissionsHiresChart.series}
+                      type="line"
                       height={288}
                     />
                   </div>
                 </div>
               </div>
             </div>
+            
           </div>
           <div className="row">
             {/* Projects */}
@@ -4923,6 +5397,98 @@ const CandidateDashboard = () => {
             {/* /Tasks Statistics */}
           </div>
           <div className="row">
+             {/* Hiring Pipeline */}
+            <div className="col-xl-4 d-flex">
+              <div className="card flex-fill">
+                <div className="card-header">
+                  <div className="d-flex align-items-center justify-content-between flex-wrap row-gap-2">
+                    <h5>Hiring Pipeline</h5>
+                  </div>
+                  <div className="d-flex align-items-center mt-2">
+                    <span className="badge badge-soft-success me-2">
+                      <i className="ti ti-users me-1"></i>
+                      Distribution of candidate statuses
+                    </span>
+                  </div>
+                </div>
+                <div className="card-body">
+                  <div className="row">
+                    <div className="col-md-6">
+                      {hiringPipelineLoading ? (
+                        <div className="d-flex justify-content-center align-items-center" style={{ height: '300px' }}>
+                          <div className="spinner-border text-primary" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                        </div>
+                      ) : hiringPipelineData && hiringPipelineData.length > 0 ? (
+                        <ReactApexChart
+                          id="hiring-pipeline-chart"
+                          options={hiringPipelineChart}
+                          series={hiringPipelineChart.series}
+                          type="pie"
+                          height={300}
+                        />
+                      ) : (
+                        <div className="d-flex justify-content-center align-items-center" style={{ height: '300px' }}>
+                          <div className="text-center">
+                            <i className="ti ti-users fs-48 text-muted"></i>
+                            <p className="text-muted mt-2">No candidate data available</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-6">
+                      <div className="d-flex flex-column justify-content-center h-100">
+                        {hiringPipelineLoading ? (
+                          <div className="text-center">
+                            <div className="spinner-border spinner-border-sm text-primary" role="status">
+                              <span className="visually-hidden">Loading...</span>
+                            </div>
+                            <p className="text-muted mt-2">Loading pipeline...</p>
+                          </div>
+                        ) : hiringPipelineData && hiringPipelineData.length > 0 ? (
+                          <>
+                            {hiringPipelineData.map((status: any, index: number) => (
+                              <div key={status.status} className="d-flex align-items-center mb-3">
+                                <div 
+                                  className="rounded-circle me-2" 
+                                  style={{ 
+                                    width: '12px', 
+                                    height: '12px', 
+                                    backgroundColor: hiringPipelineChart.colors?.[index] || '#6B7280' 
+                                  }}
+                                ></div>
+                                <div className="flex-grow-1">
+                                  <div className="d-flex justify-content-between align-items-center">
+                                    <span className="fs-13 fw-medium text-dark">{status.status}</span>
+                                    <span className="fs-13 fw-bold text-dark">{status.count}</span>
+                                  </div>
+                                  <div className="fs-12 text-muted">{status.percentage}%</div>
+                                </div>
+                              </div>
+                            ))}
+                            <div className="border-top pt-3 mt-3">
+                              <div className="d-flex justify-content-between align-items-center">
+                                <span className="fs-14 fw-semibold text-dark">Total Candidates</span>
+                                <span className="fs-14 fw-bold text-primary">
+                                  {hiringPipelineData.reduce((sum: number, status: any) => sum + status.count, 0)}
+                                </span>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-center">
+                            <i className="ti ti-users fs-48 text-muted"></i>
+                            <p className="text-muted mt-2">No candidate data available</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+             {/* Hiring Pipeline */}
             {/* Schedules */}
             <div className="col-xxl-4 d-flex">
               <div className="card flex-fill">
@@ -5006,8 +5572,99 @@ const CandidateDashboard = () => {
               </div>
             </div>
             {/* /Schedules */}
+            {/* Interview Outcomes */}
+            <div className="col-xl-4 d-flex">
+              <div className="card flex-fill">
+                <div className="card-header">
+                  <div className="d-flex align-items-center justify-content-between flex-wrap row-gap-2">
+                    <h5>Interview Outcomes</h5>
+                  </div>
+                  <div className="d-flex align-items-center mt-2">
+                    <span className="badge badge-soft-info me-2">
+                      <i className="ti ti-chart-pie me-1"></i>
+                      Distribution of interview results
+                    </span>
+                  </div>
+                </div>
+                <div className="card-body">
+                  <div className="row">
+                    <div className="col-md-6">
+                      {interviewOutcomesLoading ? (
+                        <div className="d-flex justify-content-center align-items-center" style={{ height: '300px' }}>
+                          <div className="spinner-border text-primary" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                        </div>
+                      ) : interviewOutcomesData && interviewOutcomesData.length > 0 ? (
+                        <ReactApexChart
+                          id="interview-outcomes-chart"
+                          options={interviewOutcomesChart}
+                          series={interviewOutcomesChart.series}
+                          type="pie"
+                          height={300}
+                        />
+                      ) : (
+                        <div className="d-flex justify-content-center align-items-center" style={{ height: '300px' }}>
+                          <div className="text-center">
+                            <i className="ti ti-chart-pie fs-48 text-muted"></i>
+                            <p className="text-muted mt-2">No interview data available</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-6">
+                      <div className="d-flex flex-column justify-content-center h-100">
+                        {interviewOutcomesLoading ? (
+                          <div className="text-center">
+                            <div className="spinner-border spinner-border-sm text-primary" role="status">
+                              <span className="visually-hidden">Loading...</span>
+                            </div>
+                            <p className="text-muted mt-2">Loading outcomes...</p>
+                          </div>
+                        ) : interviewOutcomesData && interviewOutcomesData.length > 0 ? (
+                          <>
+                            {interviewOutcomesData.map((outcome: any, index: number) => (
+                              <div key={outcome.status} className="d-flex align-items-center mb-3">
+                                <div 
+                                  className="rounded-circle me-2" 
+                                  style={{ 
+                                    width: '12px', 
+                                    height: '12px', 
+                                    backgroundColor: interviewOutcomesChart.colors?.[index] || '#6B7280' 
+                                  }}
+                                ></div>
+                                <div className="flex-grow-1">
+                                  <div className="d-flex justify-content-between align-items-center">
+                                    <span className="fs-13 fw-medium text-dark">{outcome.status}</span>
+                                    <span className="fs-13 fw-bold text-dark">{outcome.count}</span>
+                                  </div>
+                                  <div className="fs-12 text-muted">{outcome.percentage}%</div>
+                                </div>
+                              </div>
+                            ))}
+                            <div className="border-top pt-3 mt-3">
+                              <div className="d-flex justify-content-between align-items-center">
+                                <span className="fs-14 fw-semibold text-dark">Total Interviews</span>
+                                <span className="fs-14 fw-bold text-primary">
+                                  {interviewOutcomesData.reduce((sum: number, outcome: any) => sum + outcome.count, 0)}
+                                </span>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-center">
+                            <i className="ti ti-chart-pie fs-48 text-muted"></i>
+                            <p className="text-muted mt-2">No interview data available</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             {/* Recent Activities */}
-            <div className="col-xxl-4 col-xl-6 d-flex">
+            {/* <div className="col-xxl-4 col-xl-6 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <div>
@@ -5101,10 +5758,10 @@ const CandidateDashboard = () => {
                   )}
                 </div>
               </div>
-            </div>
+            </div> */}
             {/* /Recent Activities */}
             {/* Birthdays */}
-            <div className="col-xxl-4 col-xl-6 d-flex">
+            {/* <div className="col-xxl-4 col-xl-6 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Birthdays</h5>
@@ -5123,7 +5780,7 @@ const CandidateDashboard = () => {
                     </div>
                   ) : (
                     <>
-                                            {/* Today's Birthdays */}
+                                            
                       {birthdays.today.length > 0 && (
                         <>
                   <h6 className="mb-2">Today</h6>
@@ -5147,20 +5804,14 @@ const CandidateDashboard = () => {
                                     <p className="fs-13">{employee.designation}</p>
                         </div>
                       </div>
-                                {/* <Link
-                        to="#"
-                        className="btn btn-secondary btn-xs"
-                      >
-                        <i className="ti ti-cake me-1" />
-                        Send
-                                </Link> */}
+                                
                     </div>
                   </div>
                           ))}
                         </>
                       )}
 
-                                            {/* Tomorrow's Birthdays */}
+                                            
                       {birthdays.tomorrow.length > 0 && (
                         <>
                           <h6 className="mb-2">Tomorrow</h6>
@@ -5184,20 +5835,14 @@ const CandidateDashboard = () => {
                                     <p className="fs-13">{employee.designation}</p>
                         </div>
                       </div>
-                                {/* <Link
-                        to="#"
-                        className="btn btn-secondary btn-xs"
-                      >
-                        <i className="ti ti-cake me-1" />
-                        Send
-                                </Link> */}
+                               
                     </div>
                   </div>
                           ))}
                         </>
                       )}
 
-                                            {/* Upcoming Birthdays */}
+                                           
                       {birthdays.upcoming.length > 0 && (
                         <>
                           {birthdays.upcoming.slice(0, 3).map((employee, index) => (
@@ -5237,7 +5882,7 @@ const CandidateDashboard = () => {
                         </>
                       )}
 
-                      {/* No birthdays message */}
+                      
                       {birthdays.today.length === 0 && birthdays.tomorrow.length === 0 && birthdays.upcoming.length === 0 && (
                         <div className="text-center py-3">
                           <p className="text-muted mb-0">No upcoming birthdays in the next 30 days</p>
@@ -5247,7 +5892,7 @@ const CandidateDashboard = () => {
                   )}
                 </div>
               </div>
-            </div>
+            </div> */}
             {/* /Birthdays */}
           </div>
         </div>
