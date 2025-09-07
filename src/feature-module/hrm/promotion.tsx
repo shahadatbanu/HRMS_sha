@@ -44,7 +44,7 @@ const Promotion = () => {
     const fetchDesignations = async () => {
         try {
             const res = await designationService.getDesignations();
-            setDesignations(res.data.filter((d: any) => d.status === 'Active'));
+            setDesignations(res.filter((d: any) => d.status === 'Active'));
         } catch (err) {
             message.error('Failed to fetch designations');
         }
