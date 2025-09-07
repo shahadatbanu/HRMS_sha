@@ -3759,7 +3759,7 @@ const CandidateGrid = () => {
                                                                 alt={`${candidate.firstName} ${candidate.lastName}`}
                                                                 className="img-fluid w-100 h-100"
                                                                 style={{ objectFit: 'cover' }}
-                                                                fallbackSrc="/assets/img/users/user-1.jpg"
+                                                                fallbackSrc="/assets/img/users/user-01.jpg"
                                                             />
                                                         </div>
                                                     </div>
@@ -3908,7 +3908,11 @@ const CandidateGrid = () => {
                                                 className="img-fluid rounded"
                                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                 onError={(e) => {
-                                                    e.currentTarget.src = '/assets/img/users/user-03.jpg';
+                                                    if (e.currentTarget.src !== '/assets/img/users/user-03.jpg') {
+                                                        e.currentTarget.src = '/assets/img/users/user-03.jpg';
+                                                    } else {
+                                                        e.currentTarget.style.display = 'none';
+                                                    }
                                                 }}
                                             />
                                         ) : (
@@ -3959,7 +3963,11 @@ const CandidateGrid = () => {
                                                                     className="img-fluid rounded"
                                                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                                                                         onError={(e) => {
-                                        e.currentTarget.src = '/assets/img/users/user-01.jpg';
+                                        if (e.currentTarget.src !== '/assets/img/users/user-01.jpg') {
+                                            e.currentTarget.src = '/assets/img/users/user-01.jpg';
+                                        } else {
+                                            e.currentTarget.style.display = 'none';
+                                        }
                                     }}
                                                                 />
                                                             ) : (
@@ -4485,7 +4493,11 @@ const CandidateGrid = () => {
                                                                         className="img-fluid rounded"
                                                                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                                         onError={(e) => {
-                                                                            e.currentTarget.src = '/assets/img/users/user-01.jpg';
+                                                                            if (e.currentTarget.src !== '/assets/img/users/user-01.jpg') {
+                                                                                e.currentTarget.src = '/assets/img/users/user-01.jpg';
+                                                                            } else {
+                                                                                e.currentTarget.style.display = 'none';
+                                                                            }
                                                                         }}
                                                                     />
                                                                 ) : (
@@ -4653,7 +4665,11 @@ const CandidateGrid = () => {
                                                                         className="img-fluid rounded"
                                                                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                                         onError={(e) => {
-                                                                            e.currentTarget.src = '/assets/img/users/user-01.jpg';
+                                                                            if (e.currentTarget.src !== '/assets/img/users/user-01.jpg') {
+                                                                                e.currentTarget.src = '/assets/img/users/user-01.jpg';
+                                                                            } else {
+                                                                                e.currentTarget.style.display = 'none';
+                                                                            }
                                                                         }}
                                                                     />
                                                                 ) : (

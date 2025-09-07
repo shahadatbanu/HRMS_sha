@@ -109,7 +109,11 @@ const Header = () => {
 
   // Handle image load error
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    e.currentTarget.src = "assets/img/profiles/avatar-12.jpg";
+    if (e.currentTarget.src !== "assets/img/profiles/avatar-12.jpg") {
+      e.currentTarget.src = "assets/img/profiles/avatar-12.jpg";
+    } else {
+      e.currentTarget.style.display = 'none';
+    }
   };
 
   // Handle image load success

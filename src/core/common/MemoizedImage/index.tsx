@@ -27,8 +27,15 @@ const MemoizedImage = memo<MemoizedImageProps>((props) => {
 
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     const target = e.currentTarget;
-    if (target.src !== fallbackSrc && fallbackSrc) {
-      target.src = fallbackSrc;
+    const fullFallbackSrc = fallbackSrc.startsWith('/') || fallbackSrc.startsWith('http') 
+      ? fallbackSrc 
+      : `${img_path}${fallbackSrc}`;
+    
+    if (target.src !== fullFallbackSrc && fallbackSrc) {
+      target.src = fullFallbackSrc;
+    } else {
+      // If fallback also fails, hide the image to prevent infinite loops
+      target.style.display = 'none';
     }
     props.onError?.();
   };

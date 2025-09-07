@@ -44,8 +44,11 @@ const Promotion = () => {
     const fetchDesignations = async () => {
         try {
             const res = await designationService.getDesignations();
-            setDesignations(res.data.filter((d: any) => d.status === 'Active'));
+            // The service now returns the data directly, not wrapped in res.data
+            const designations = Array.isArray(res) ? res : [];
+            setDesignations(designations.filter((d: any) => d.status === 'Active'));
         } catch (err) {
+            console.error('Error fetching designations:', err);
             message.error('Failed to fetch designations');
         }
     };
@@ -372,11 +375,12 @@ const Promotion = () => {
                                         <div className="mb-3">
                                             <label className="form-label fw-semibold">New Designation</label>
                                             <div style={{ position: 'relative' }}>
-                                                <CommonSelect
-                                                    options={designations.map((d: any) => ({ label: d.name, value: d.name }))}
-                                                    value={selectedDesignation}
-                                                    onChange={handleDesignationChange}
-                                                />
+                                            <CommonSelect
+                                                options={designations.map((d: any) => ({ label: d.name, value: d.name }))}
+                                                value={selectedDesignation}
+                                                onChange={handleDesignationChange}
+                                                placeholder="Select new designation"
+                                            />
                                             </div>
                                         </div>
                                     </div>
