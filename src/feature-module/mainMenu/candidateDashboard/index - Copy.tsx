@@ -1871,7 +1871,7 @@ const CandidateDashboard = () => {
         if (user.role === 'hr') {
           navigate(routes.adminDashboard); // HR can access admin dashboard
         } else if (user.role === 'employee') {
-          navigate(routes.employeeDashboard);
+          navigate(routes.attendanceemployee); // Employees redirected to attendance employee page
         } else {
           navigate('/login');
         }
@@ -1880,7 +1880,7 @@ const CandidateDashboard = () => {
       // No user logged in, redirect to login
       navigate('/login');
     }
-  }, [user, isLoading, navigate, routes.adminDashboard, routes.employeeDashboard]);
+  }, [user, isLoading, navigate, routes.adminDashboard, routes.attendanceemployee]);
 
   // Show loading while checking authentication
   if (isLoading) {

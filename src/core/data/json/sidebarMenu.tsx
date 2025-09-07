@@ -17,11 +17,12 @@ export const SidebarDataTest = [
         icon: 'smart-home',
         base: 'dashboard',
         materialicons: 'start',
-        roles: ['admin'], // Only admin users can see this menu
+        roles: ['admin', 'employee'], // Admin and employee users can see this menu
         // dot: true,
         submenuItems: [
           { label: "Admin Dashboard", link: routes.adminDashboard, roles: ['admin'] },
           { label: "Candidate Dashboard", link: routes.candidateDashboard, roles: ['admin', 'hr'] },
+           { label: "Employee Dashboard", link: routes.attendanceemployee, roles: ['employee'] },
           // { label: "Deals Dashboard", link: routes.dealsDashboard },
           // { label: "Leads Dashboard", link: routes.leadsDashboard },
 
@@ -466,51 +467,53 @@ export const SidebarDataTest = [
     showAsTab: false,
     separateRoute: false,
     submenuItems: [
-      {
-        label: 'Employees',
-        link: routes.employeeList,
-        submenu: true,
-        showSubRoute: false,
-        icon: 'users',
-        base: 'employees',
-        materialicons: 'people',
-        submenuItems: [
-          {
-            label: 'Employees List',
-            link: routes.employeeList,
-            base: 'employees',
-            base2: 'employee-list',
-          },
-          // {
-          //   label: 'Employees Grid',
-          //   link: routes.employeeGrid,
-          //   base: 'employees',
-          //   base2: 'employee-grid',
-          // },
-          // {
-          //   label: 'Employees Details',
-          //   link: routes.employeedetails,
-          //   base: 'employees',
-          //   base2: 'employee-details',
-          // },
-          // {
-          //   label: 'Departments',
-          //   link: routes.departments,
-          //   base: 'departments',
-          // },
-          // {
-          //   label: 'Designations',
-          //   link: routes.designations,
-          //   base: 'designations',
-          // },
-          // {
-          //   label: 'Policies',
-          //   link: routes.policy,
-          //   base: 'employees',
-          //   base2: 'policy',
-          // },
-        ],
-      },
+       {
+         label: 'Employees',
+         link: routes.employeeList,
+         submenu: true,
+         showSubRoute: false,
+         icon: 'users',
+         base: 'employees',
+         materialicons: 'people',
+         roles: ['admin', 'hr'], // Only admin and hr can see this menu
+         submenuItems: [
+           {
+             label: 'Employees List',
+             link: routes.employeeList,
+             base: 'employees',
+             base2: 'employee-list',
+             roles: ['admin', 'hr'], // Only admin and hr can access
+           },
+           // {
+           //   label: 'Employees Grid',
+           //   link: routes.employeeGrid,
+           //   base: 'employees',
+           //   base2: 'employee-grid',
+           // },
+           // {
+           //   label: 'Employees Details',
+           //   link: routes.employeedetails,
+           //   base: 'employees',
+           //   base2: 'employee-details',
+           // },
+           // {
+           //   label: 'Departments',
+           //   link: routes.departments,
+           //   base: 'departments',
+           // },
+           // {
+           //   label: 'Designations',
+           //   link: routes.designations,
+           //   base: 'designations',
+           // },
+           // {
+           //   label: 'Policies',
+           //   link: routes.policy,
+           //   base: 'employees',
+           //   base2: 'policy',
+           // },
+         ],
+       },
       // {
       //   label: 'Tickets',
       //   link: 'ticketList',
@@ -572,102 +575,101 @@ export const SidebarDataTest = [
           // },
         ],
       },
-      {
-        label: 'Attendance',
-        link: 'sales',
-        submenu: true,
-        showSubRoute: false,
-        icon: 'file-time',
-        base: 'sales',
-        materialicons: 'track_changes',
-        submenuItems: [
-        
-          {
-            label: 'Attendance (Admin)',
-            link: routes.attendanceadmin,
-            base: 'attendance-admin',
-            customSubmenuTwo: false,
-          },
-          {
-            label: 'Attendance (Employee)',
-            link: routes.attendanceemployee,
-            base: 'attendance-employee',
-            customSubmenuTwo: false,
-          },
-
-          // {
-          //   label: 'Timesheet',
-          //   link: routes.timesheet,
-          //   base: 'timesheet',
-          //   customSubmenuTwo: false,
-          // },
-          // {
-          //   label: 'Shift & Schedule',
-          //   link: routes.scheduletiming,
-          //   base: 'shift-schedule',
-          //   customSubmenuTwo: false,
-          // },
-          // {
-          //   label: 'Overtime',
-          //   link: routes.overtime,
-          //   base: 'overtime',
-          //   customSubmenuTwo: false,
-          // },
-          {
-            label: 'Attendance Settings',
-            link: routes.attendanceSettings,
-            base: 'attendance-settings',
-            customSubmenuTwo: false,
-            roles: ['admin', 'hr'], // Only admin and hr can access
-          },
-        ],
-      },
-      {
-        label: 'Performance',
-        link: 'performanceIndicator',
-        submenu: true,
-        showSubRoute: false,
-        icon: 'school',
-        base: 'performance',
-        materialicons: 'work_outline',
-        submenuItems: [
-          {
-            label: 'Performance Indicator',
-            link: routes.performanceIndicator,
-            base: 'indicator',
-          },
-          // {
-          //   label: 'Performance Review',
-          //   link: routes.performanceReview,
-          //   base: 'review',
-          // },
-          // {
-          //   label: 'Performance Appraisal',
-          //   link: routes.performanceAppraisal,
-          //   base: 'appraisal',
-          // },
-          // {
-          //   label: 'Goal List',
-          //   link: routes.goalTracking,
-          //   base: 'appraisal',
-          // },
-          // {
-          //   label: 'Goal Type',
-          //   link: routes.goalType,
-          //   base: 'appraisal',
-          // },
-        ],
-      },
-      {
-        label: 'Promotion',
-        link: routes.promotion,
-        submenu: false,
-        showSubRoute: false,
-        icon: 'speakerphone',
-        base: 'promotion',
-        materialicons: 'group_add',
-        submenuItems: [],
-      },
+       {
+         label: 'Attendance',
+         link: 'sales',
+         submenu: true,
+         showSubRoute: false,
+         icon: 'file-time',
+         base: 'sales',
+         materialicons: 'track_changes',
+         roles: ['admin', 'hr'], // Only admin and hr can see this menu
+         submenuItems: [
+         
+           {
+             label: 'Attendance (Admin)',
+             link: routes.attendanceadmin,
+             base: 'attendance-admin',
+             customSubmenuTwo: false,
+             roles: ['admin'], // Only admin can access
+           },
+ 
+           // {
+           //   label: 'Timesheet',
+           //   link: routes.timesheet,
+           //   base: 'timesheet',
+           //   customSubmenuTwo: false,
+           // },
+           // {
+           //   label: 'Shift & Schedule',
+           //   link: routes.scheduletiming,
+           //   base: 'shift-schedule',
+           //   customSubmenuTwo: false,
+           // },
+           // {
+           //   label: 'Overtime',
+           //   link: routes.overtime,
+           //   base: 'overtime',
+           //   customSubmenuTwo: false,
+           // },
+           {
+             label: 'Attendance Settings',
+             link: routes.attendanceSettings,
+             base: 'attendance-settings',
+             customSubmenuTwo: false,
+             roles: ['admin', 'hr'], // Only admin and hr can access
+           },
+         ],
+       },
+       {
+         label: 'Performance',
+         link: 'performanceIndicator',
+         submenu: true,
+         showSubRoute: false,
+         icon: 'school',
+         base: 'performance',
+         materialicons: 'work_outline',
+         roles: ['admin', 'hr'], // Only admin and hr can see this menu
+         submenuItems: [
+           {
+             label: 'Performance Indicator',
+             link: routes.performanceIndicator,
+             base: 'indicator',
+             roles: ['admin', 'hr'], // Only admin and hr can access
+           },
+           // {
+           //   label: 'Performance Review',
+           //   link: routes.performanceReview,
+           //   base: 'review',
+           // },
+           // {
+           //   label: 'Performance Appraisal',
+           //   link: routes.performanceAppraisal,
+           //   base: 'appraisal',
+           // },
+           // {
+           //   label: 'Goal List',
+           //   link: routes.goalTracking,
+           //   base: 'appraisal',
+           // },
+           // {
+           //   label: 'Goal Type',
+           //   link: routes.goalType,
+           //   base: 'appraisal',
+           // },
+         ],
+       },
+       {
+         label: 'Promotion',
+         link: routes.promotion,
+         submenu: false,
+         showSubRoute: false,
+         icon: 'speakerphone',
+         base: 'promotion',
+         materialicons: 'group_add',
+         roles: ['admin', 'hr'], // Only admin and hr can access
+         submenuItems: [],
+       },
       // {
       //   label: 'Resignation',
       //   link: routes.resignation,
@@ -678,16 +680,17 @@ export const SidebarDataTest = [
       //   materialicons: 'settings',
       //   submenuItems: [],
       // },
-      {
-        label: 'Termination',
-        link: routes.termination,
-        submenu: false,
-        showSubRoute: false,
-        icon: 'circle-x',
-        base: 'termination',
-        materialicons: 'manage_accounts',
-        submenuItems: [],
-      },
+       {
+         label: 'Termination',
+         link: routes.termination,
+         submenu: false,
+         showSubRoute: false,
+         icon: 'circle-x',
+         base: 'termination',
+         materialicons: 'manage_accounts',
+         roles: ['admin', 'hr'], // Only admin and hr can access
+         submenuItems: [],
+       },
     ],
   },
   {
@@ -706,16 +709,17 @@ export const SidebarDataTest = [
       //   materialicons: 'confirmation_number',
       //   submenuItems: [],
       // },
-      {
-        label: 'Candidates',
-        link: routes.candidatesGrid,
-        submenu: false,
-        showSubRoute: false,
-        icon: 'user-shield',
-        base: 'candidates',
-        materialicons: 'shopping_bag',
-        submenuItems: [],
-      },
+       {
+         label: 'Candidates',
+         link: routes.candidatesGrid,
+         submenu: false,
+         showSubRoute: false,
+         icon: 'user-shield',
+         base: 'candidates',
+         materialicons: 'shopping_bag',
+         roles: ['admin', 'hr', 'employee'], // Admin, hr, and employee can access
+         submenuItems: [],
+       },
       {
         // label: 'Refferals',
         // link: routes.refferal,

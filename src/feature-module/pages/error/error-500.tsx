@@ -12,7 +12,7 @@ const Error500 = () => {
           <div className="col-md-4 d-flex justify-content-center align-items-center">
             <div>
               <div className="mb-5">
-                <ImageWithBasePath src="assets/img/logo.svg" alt="logo" className="img-fluid" />
+                <ImageWithBasePath src="assets/img/Final.jpg" alt="logo" className="img-fluid" />
               </div>
               <div>
                 <h1 className="mb-3">Oops, something went wrong</h1>

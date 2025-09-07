@@ -32,7 +32,7 @@ const TwoStepVerification2 = () => {
                   <div>
                     <div className=" mx-auto mb-5 text-center">
                       <ImageWithBasePath
-                        src="assets/img/logo.svg"
+                        src="assets/img/Final.jpg"
                         className="img-fluid"
                         alt="Logo"
                       />
@@ -111,7 +111,7 @@ const TwoStepVerification2 = () => {
                       </div>
                     </div>
                     <div className="mt-5 text-center">
-                      <p className="mb-0 text-gray-9">Copyright © 2024 - Smarthr</p>
+                      <p className="mb-0 text-gray-9">Copyright © 2024 - Insight Talent Solution</p>
                     </div>
                   </div>
                 </form>

@@ -219,7 +219,7 @@ const Bussinesssettings = () => {
                                                         <div className="d-flex align-items-center flex-wrap row-gap-3 bg-light w-100 rounded p-3 mb-4">
                                                             <div className="d-flex align-items-center justify-content-center avatar avatar-xxl bg-white rounded border border-dashed me-2 flex-shrink-0 text-dark frames px-2">
                                                                 <ImageWithBasePath
-                                                                    src="assets/img/logo.svg"
+                                                                    src="assets/img/Final.jpg"
                                                                     className="img-fluid"
                                                                     alt="logo"
                                                                 />
@@ -254,7 +254,7 @@ const Bussinesssettings = () => {
                                                         <div className="d-flex align-items-center flex-wrap row-gap-3 bg-light w-100 rounded p-3 mb-4">
                                                             <div className="d-flex align-items-center justify-content-center avatar bg-dark avatar-xxl rounded border border-dashed me-2 px-2 flex-shrink-0 text-dark frames">
                                                                 <ImageWithBasePath
-                                                                    src="assets/img/logo-white.svg"
+                                                                    src="assets/img/Final.jpg"
                                                                     className="img-fluid text-white"
                                                                     alt="logo"
                                                                 />
@@ -289,7 +289,7 @@ const Bussinesssettings = () => {
                                                         <div className="d-flex align-items-center flex-wrap row-gap-3 bg-light w-100 rounded p-3 mb-4">
                                                             <div className="d-flex align-items-center justify-content-center avatar avatar-xxl bg-white rounded border border-dashed me-2 p-3 flex-shrink-0 text-dark frames">
                                                                 <ImageWithBasePath
-                                                                    src="assets/img/logo-small.svg"
+                                                                    src="assets/img/Final.jpg"
                                                                     className="img-fluid"
                                                                     alt="logo"
                                                                 />
@@ -355,7 +355,7 @@ const Bussinesssettings = () => {
                                                         <div className="d-flex align-items-center flex-wrap row-gap-3 bg-light w-100 rounded p-3 mb-4">
                                                             <div className="d-flex align-items-center justify-content-center avatar avatar-xxl rounded bg-white p-3 border border-dashed me-2 flex-shrink-0 text-dark frames">
                                                                 <ImageWithBasePath
-                                                                    src="assets/img/logo-small.svg"
+                                                                    src="assets/img/Final.jpg"
                                                                     className="img-fluid"
                                                                     alt="logo"
                                                                 />
@@ -390,7 +390,7 @@ const Bussinesssettings = () => {
                                                         <div className="d-flex align-items-center flex-wrap row-gap-3 bg-light w-100 rounded p-3 mb-4">
                                                             <div className="d-flex align-items-center justify-content-center avatar avatar-xxl rounded bg-white p-3 border border-dashed me-2 flex-shrink-0 text-dark frames">
                                                                 <ImageWithBasePath
-                                                                    src="assets/img/logo-small.svg"
+                                                                    src="assets/img/Final.jpg"
                                                                     className="img-fluid"
                                                                     alt="logo"
                                                                 />
@@ -511,11 +511,11 @@ const Bussinesssettings = () => {
                         </div>
                     </div>
                     <div className="footer d-sm-flex align-items-center justify-content-between border-top bg-white p-3">
-                        <p className="mb-0">2014 - 2025 © SmartHR.</p>
+                        <p className="mb-0">2014 - 2025 © Insight Talent Solution.</p>
                         <p>
                             Designed &amp; Developed By{" "}
                             <Link to="#" className="text-primary">
-                                Dreams
+                                Yogesh
                             </Link>
                         </p>
                     </div>

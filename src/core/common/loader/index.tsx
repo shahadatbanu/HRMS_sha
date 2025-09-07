@@ -11,7 +11,7 @@ const Loader = () => {
       
 
     if (location.pathname === routes.adminDashboard || location.pathname === routes.dealsDashboard 
-      || location.pathname === routes.leadsDashboard || location.pathname === routes.employeeDashboard 
+      || location.pathname === routes.leadsDashboard
     ) {
       
       // Show the loader when navigating to a new route

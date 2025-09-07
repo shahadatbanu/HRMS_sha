@@ -26,9 +26,26 @@
         padding: 16px 16px 0;
         .logo {
             display: block;
+            img {
+                max-height: 30px;
+                width: auto;
+                object-fit: contain;
+            }
         }
         .logo-small {
             display: none;
+            img {
+                max-height: 25px;
+                width: auto;
+                object-fit: contain;
+            }
+        }
+        .dark-logo {
+            img {
+                max-height: 30px;
+                width: auto;
+                object-fit: contain;
+            }
         }
         
         @include respond-below(lg) {

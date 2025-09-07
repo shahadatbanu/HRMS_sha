@@ -27,7 +27,7 @@ const ComingSoon = () => {
           <div className="col-md-8 d-flex justify-content-end align-items-center mx-auto">
             <div className="comming-soon-pg d-flex flex-column align-items-center justify-content-center">
               <div className="mb-4 p-4">
-                <ImageWithBasePath src="assets/img/logo.svg" alt="logo" className="img-fluid" />
+                <ImageWithBasePath src="assets/img/Final.jpg" alt="logo" className="img-fluid" />
               </div>
               <div>
                 <ImageWithBasePath

@@ -91,6 +91,7 @@ const Ribbon = React.lazy(() => import("../uiInterface/advanced-ui/ribbon"));
 const AdminDashboard = React.lazy(() => import("../mainMenu/adminDashboard"));
 const CandidateDashboard = React.lazy(() => import("../mainMenu/candidateDashboard"));
 const CandidateDashboardPrototype = React.lazy(() => import("../mainMenu/candidateDashboard/prototype - Copy"));
+const DashboardRedirect = React.lazy(() => import("./DashboardRedirect"));
 const AlertUi = React.lazy(() => import("../uiInterface/base-ui/alert-ui"));
 
 const Login2 = React.lazy(() => import("../auth/login/login-2"));
@@ -306,7 +307,13 @@ export const publicRoutes = [
   {
     path: "/",
     name: "Root",
-    element: <Navigate to="/login" />,
+    element: <DashboardRedirect />,
+    route: Route,
+  },
+  {
+    path: "/dashboard",
+    name: "Dashboard",
+    element: <DashboardRedirect />,
     route: Route,
   },
   {

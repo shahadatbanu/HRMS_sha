@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import PredefinedDateRanges from '../../../core/common/datePicker'
 import ImageWithBasePath from '../../../core/common/imageWithBasePath'
 import ProfileImage from '../../../core/common/ProfileImage'
+import { backend_url } from '../../../environment'
 import { all_routes } from '../../router/all_routes'
 import CollapseHeader from '../../../core/common/collapse-header/collapse-header'
 import CommonSelect from '../../../core/common/commonSelect';
@@ -616,6 +617,15 @@ const CandidateGrid = () => {
         fetchCandidates(1, filters);
     }, []);
 
+    // Cleanup timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current);
+            }
+        };
+    }, []);
+
     // Add event listener for offcanvas close
     useEffect(() => {
         const offcanvas = document.getElementById('candidate_details');
@@ -761,6 +771,8 @@ const CandidateGrid = () => {
     };
 
     // Filter handling functions
+    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    
     const handleFilterChange = (filterName: string, value: string) => {
         const newFilters = { ...filters, [filterName]: value };
         setFilters(newFilters);
@@ -769,11 +781,16 @@ const CandidateGrid = () => {
         
         // Debounce search input for better UX
         if (filterName === 'search') {
-            const timeoutId = setTimeout(() => {
+            // Clear existing timeout
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current);
+            }
+            
+            // Set new timeout
+            searchTimeoutRef.current = setTimeout(() => {
                 fetchCandidates(1, newFilters);
                 setFiltering(false);
             }, 500);
-            return () => clearTimeout(timeoutId);
         } else {
             fetchCandidates(1, newFilters);
             setFiltering(false);
@@ -3689,16 +3706,16 @@ const CandidateGrid = () => {
                                             <option value="10+">10+ years</option>
                                         </select>
                                     </div>
-                                    {/* <div className="me-3">
-                                        <button
+                                    <div className="me-3">
+                                        {/* <button
                                             className="btn btn-outline-secondary btn-sm"
                                             onClick={clearFilters}
                                             disabled={!filters.search && !filters.status && !filters.experience}
                                         >
                                             <i className="ti ti-x me-1"></i>
                                             Clear Filters
-                                        </button>
-                                    </div> */}
+                                        </button> */}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -3738,7 +3755,7 @@ const CandidateGrid = () => {
                                                     >
                                                         <div style={{ width: '48px', height: '48px', overflow: 'hidden', borderRadius: '8px' }}>
                                                             <ProfileImage
-                                                                profileImage={candidate.profileImage ? `/uploads/candidates/${candidate.profileImage}` : undefined}
+                                                                profileImage={candidate.profileImage ? `candidates/${candidate.profileImage}` : undefined}
                                                                 alt={`${candidate.firstName} ${candidate.lastName}`}
                                                                 className="img-fluid w-100 h-100"
                                                                 style={{ objectFit: 'cover' }}
@@ -3843,7 +3860,7 @@ const CandidateGrid = () => {
                     <p>
                         Designed &amp; Developed By{" "}
                         <Link to="#" className="text-primary">
-                            Dreams
+                            Yogesh
                         </Link>
                     </p>
                 </div>
@@ -3886,7 +3903,7 @@ const CandidateGrid = () => {
                                     <span className="avatar avatar-xxxl candidate-img flex-shrink-0 me-3">
                                         {selectedCandidate.profileImage ? (
                                             <img
-                                                src={`/uploads/candidates/${selectedCandidate.profileImage}`}
+                                                src={`${backend_url}/uploads/candidates/${selectedCandidate.profileImage}`}
                                                 alt={`${selectedCandidate.firstName} ${selectedCandidate.lastName}`}
                                                 className="img-fluid rounded"
                                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -7322,7 +7339,7 @@ const CandidateGrid = () => {
                                                                 />
                                                             ) : editingCandidate.profileImage ? (
                                                                 <img 
-                                                                    src={`/uploads/candidates/${editingCandidate.profileImage}`} 
+                                                                    src={`${backend_url}/uploads/candidates/${editingCandidate.profileImage}`} 
                                                                     alt="Profile" 
                                                                     className="rounded"
                                                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}

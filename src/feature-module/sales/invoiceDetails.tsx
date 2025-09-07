@@ -56,7 +56,7 @@ const InvoiceDetails = () => {
                                             <div className="col-md-6">
                                                 <div className="mb-2">
                                                     <ImageWithBasePath
-                                                        src="assets/img/logo.svg"
+                                                        src="assets/img/Final.jpg"
                                                         className="img-fluid"
                                                         alt="logo"
                                                     />
@@ -278,7 +278,7 @@ const InvoiceDetails = () => {
                                         <div className="text-center">
                                             <div className="mb-3">
                                                 <ImageWithBasePath
-                                                    src="assets/img/logo.svg"
+                                                    src="assets/img/Final.jpg"
                                                     className="img-fluid"
                                                     alt="logo"
                                                 />
@@ -325,11 +325,11 @@ const InvoiceDetails = () => {
                 </div>
                 {/* Footer */}
                 <div className="footer d-sm-flex align-items-center justify-content-between bg-white border-top p-3">
-                    <p className="mb-0">2014 - 2025 © SmartHR.</p>
+                    <p className="mb-0">2014 - 2025 © Insight Talent Solution.</p>
                     <p>
                         Designed &amp; Developed By{" "}
                         <Link to="#" className="text-primary">
-                            Dreams
+                            Yogesh
                         </Link>
                     </p>
                 </div>
