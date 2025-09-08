@@ -14,7 +14,7 @@ const UnderMaintenance = () => {
             <div className="col-md-8 d-flex justify-content-center align-items-center mx-auto">
               <div>
                 <div className="p-4 text-center">
-                  <ImageWithBasePath src="assets/img/logo.svg" alt="logo" className="img-fluid" />
+                  <ImageWithBasePath src="assets/img/Final.jpg" alt="logo" className="img-fluid" />
                 </div>
                 <div className="error-images">
                   <ImageWithBasePath

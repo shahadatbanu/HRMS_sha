@@ -1871,7 +1871,7 @@ const CandidateDashboard = () => {
         if (user.role === 'hr') {
           navigate(routes.adminDashboard); // HR can access admin dashboard
         } else if (user.role === 'employee') {
-          navigate(routes.employeeDashboard);
+          navigate(routes.attendanceemployee); // Employees redirected to attendance employee page
         } else {
           navigate('/login');
         }
@@ -1880,7 +1880,7 @@ const CandidateDashboard = () => {
       // No user logged in, redirect to login
       navigate('/login');
     }
-  }, [user, isLoading, navigate, routes.adminDashboard, routes.employeeDashboard]);
+  }, [user, isLoading, navigate, routes.adminDashboard, routes.attendanceemployee]);
 
   // Show loading while checking authentication
   if (isLoading) {
@@ -4646,10 +4646,14 @@ const CandidateDashboard = () => {
                         <span className="avatar avatar-rounded">
                           <img
                             className="border border-white"
-                            src={interview.candidateProfileImage ? `${backend_url}/uploads/candidates/${interview.candidateProfileImage}` : "assets/img/users/user-1.jpg"}
+                            src={interview.candidateProfileImage ? `${backend_url}/uploads/candidates/${interview.candidateProfileImage}` : "assets/img/users/user-01.jpg"}
                             alt={`${interview.candidateName}`}
                             onError={(e) => {
-                              e.currentTarget.src = "assets/img/users/user-1.jpg";
+                              if (e.currentTarget.src !== "assets/img/users/user-01.jpg") {
+                                e.currentTarget.src = "assets/img/users/user-01.jpg";
+                              } else {
+                                e.currentTarget.style.display = 'none';
+                              }
                             }}
                           />
                         </span>
@@ -4658,10 +4662,10 @@ const CandidateDashboard = () => {
                           <span className="avatar avatar-rounded">
                             <img
                               className="border border-white"
-                              src={interview.recruiter.profileImage ? `${backend_url}/uploads/${interview.recruiter.profileImage}` : "assets/img/users/user-1.jpg"}
+                              src={interview.recruiter.profileImage ? `${backend_url}/uploads/${interview.recruiter.profileImage}` : "assets/img/users/user-01.jpg"}
                               alt={`${interview.recruiter.firstName} ${interview.recruiter.lastName}`}
                               onError={(e) => {
-                                e.currentTarget.src = "assets/img/users/user-1.jpg";
+                                e.currentTarget.src = "assets/img/users/user-01.jpg";
                               }}
                             />
                           </span>
@@ -4814,7 +4818,7 @@ const CandidateDashboard = () => {
                       <div className="d-flex align-items-center">
                                   <Link to={routes.employeedetailsWithId.replace(':id', employee._id)} className="avatar">
                           <ImageWithBasePath
-                                      src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "assets/img/users/user-1.jpg"}
+                                      src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "assets/img/users/user-01.jpg"}
                             className="rounded-circle"
                             alt="img"
                           />
@@ -4851,7 +4855,7 @@ const CandidateDashboard = () => {
                       <div className="d-flex align-items-center">
                                   <Link to={routes.employeedetailsWithId.replace(':id', employee._id)} className="avatar">
                           <ImageWithBasePath
-                                      src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "assets/img/users/user-1.jpg"}
+                                      src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "assets/img/users/user-01.jpg"}
                             className="rounded-circle"
                             alt="img"
                           />
@@ -4889,7 +4893,7 @@ const CandidateDashboard = () => {
                       <div className="d-flex align-items-center">
                                     <Link to={routes.employeedetailsWithId.replace(':id', employee._id)} className="avatar">
                           <ImageWithBasePath
-                                        src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "assets/img/users/user-1.jpg"}
+                                        src={employee.profileImage ? `${backend_url}/uploads/${employee.profileImage}` : "assets/img/users/user-01.jpg"}
                             className="rounded-circle"
                             alt="img"
                           />

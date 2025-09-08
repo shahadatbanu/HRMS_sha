@@ -32,7 +32,9 @@ const ProfileImage = memo<ProfileImageProps>((props) => {
       return profileImage;
     }
     
-    return `${backend_url}/uploads/${profileImage}`;
+    const fullUrl = `${backend_url}/uploads/${profileImage}`;
+    console.log('🖼️ ProfileImage URL constructed:', fullUrl);
+    return fullUrl;
   }, [profileImage, fallbackSrc]);
 
   return (

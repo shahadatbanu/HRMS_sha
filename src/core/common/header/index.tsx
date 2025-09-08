@@ -118,7 +118,11 @@ const Header = () => {
 
   // Handle image load error
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    e.currentTarget.src = "/assets/img/profiles/avatar-12.jpg";
+    if (e.currentTarget.src !== "assets/img/profiles/avatar-12.jpg") {
+      e.currentTarget.src = "assets/img/profiles/avatar-12.jpg";
+    } else {
+      e.currentTarget.style.display = 'none';
+    }
   };
 
   // Handle image load success
@@ -134,10 +138,10 @@ const Header = () => {
 
 				<div className="header-left">
 					<Link to={routes.adminDashboard} className="logo">
-						<ImageWithBasePath src="assets/img/logo.svg" alt="Logo"/>
+						<ImageWithBasePath src="assets/img/Final.jpg" alt="Logo"/>
 					</Link>
 					<Link to={routes.adminDashboard} className="dark-logo">
-						<ImageWithBasePath src="assets/img/logo-white.svg" alt="Logo"/>
+						<ImageWithBasePath src="assets/img/Final.jpg" alt="Logo"/>
 					</Link>
 				</div>
 
@@ -153,9 +157,9 @@ const Header = () => {
 					<div className="nav user-menu nav-list">
 
 						<div className="me-auto d-flex align-items-center" id="header-search">
-							<Link id="toggle_btn" to="#" onClick={handleToggleMiniSidebar} className="btn btn-menubar me-1">
+							{/* <Link id="toggle_btn" to="#" onClick={handleToggleMiniSidebar} className="btn btn-menubar me-1">
 								<i className="ti ti-arrow-bar-to-left"></i>
-							</Link>
+							</Link> */}
 							{/*
 							<div className="input-group input-group-flat d-inline-flex me-1">
 								<span className="input-icon-addon">
@@ -167,7 +171,7 @@ const Header = () => {
 								</span>
 							</div>
 							*/}
-							<div className="dropdown crm-dropdown">
+							{/* <div className="dropdown crm-dropdown">
 								<Link to="#" className="btn btn-menubar me-1" data-bs-toggle="dropdown">
 									<i className="ti ti-layout-grid"></i>
 								</Link>
@@ -222,7 +226,7 @@ const Header = () => {
 										</div>
 									</div>
 								</div>
-							</div>
+							</div> */}
 							{/*
 							<Link to={routes.profilesettings} className="btn btn-menubar">
 								<i className="ti ti-settings-cog"></i>
@@ -295,15 +299,15 @@ const Header = () => {
 						</div>
 
 						<div className="d-flex align-items-center">
-							<div className="me-1">
+							{/* <div className="me-1">
 								<Link to="#" onClick={toggleFullscreen} className="btn btn-menubar btnFullscreen">
 									<i className="ti ti-maximize"></i>
 								</Link>
-							</div>
+							</div> */}
 							<div className="dropdown me-1">
-								<Link to="#" className="btn btn-menubar" data-bs-toggle="dropdown">
+								{/* <Link to="#" className="btn btn-menubar" data-bs-toggle="dropdown">
 									<i className="ti ti-layout-grid-remove"></i>
-								</Link>
+								</Link> */}
 								<div className="dropdown-menu dropdown-menu-end">
 									<div className="card mb-0 border-0 shadow-none">
 										<div className="card-header">

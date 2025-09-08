@@ -132,13 +132,13 @@ const Sidebar = () => {
       >
   <div className="sidebar-logo">
     <Link to="routes.index" className="logo logo-normal">
-      <ImageWithBasePath src="assets/img/logo.svg" alt="Logo" />
+      <ImageWithBasePath src="assets/img/Final.jpg" alt="Logo" />
     </Link>
     <Link to="routes.index" className="logo-small">
-      <ImageWithBasePath src="assets/img/logo-small.svg" alt="Logo" />
+      <ImageWithBasePath src="assets/img/Final.jpg" alt="Logo" />
     </Link>
     <Link to="routes.index" className="dark-logo">
-      <ImageWithBasePath src="assets/img/logo-white.svg" alt="Logo" />
+      <ImageWithBasePath src="assets/img/Final.jpg" alt="Logo" />
     </Link>
   </div>
   <div className="modern-profile p-3 pb-0">
@@ -242,7 +242,12 @@ const Sidebar = () => {
                     </li>
                     <li>
                     <ul>
-                        {mainLabel?.submenuItems?.map((title: any, i) => {
+                        {(mainLabel?.submenuItems as any[])?.filter((item: any) => {
+                          if (!item.roles || !user) {
+                            return true; // If no roles specified or no user, show the item
+                          }
+                          return item.roles.includes(user.role);
+                        }).map((title: any, i: number) => {
                         let link_array: any = [];
                         if ("submenuItems" in title) {
                             title.submenuItems?.forEach((link: any) => {

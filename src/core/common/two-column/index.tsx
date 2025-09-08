@@ -70,7 +70,7 @@ const TwoColumnSidebar = () => {
         <div className="sidebar sidebar-twocol">
             <div className="twocol-mini">
                 <Link to={routes.adminDashboard} className="logo-small">
-                    <ImageWithBasePath src="assets/img/logo-small.svg" alt="Logo"/>
+                    <ImageWithBasePath src="assets/img/Final.jpg" alt="Logo"/>
                 </Link>
                 <Scrollbars>
                 <div className="sidebar-left slimscroll">
@@ -103,14 +103,14 @@ const TwoColumnSidebar = () => {
             <div className="sidebar-right">
                 <div className="sidebar-logo mb-4">
                     <Link to={routes.adminDashboard} className="logo logo-normal">
-                        <ImageWithBasePath src="assets/img/logo.svg" alt="Logo"/>
+                        <ImageWithBasePath src="assets/img/Final.jpg" alt="Logo"/>
                     </Link>
                     <Link to={routes.adminDashboard} className="dark-logo">
-                        <ImageWithBasePath src="assets/img/logo-white.svg" alt="Logo"/>
+                        <ImageWithBasePath src="assets/img/Final.jpg" alt="Logo"/>
                     </Link>
                 </div>
                 <div className="sidebar-scroll">
-                    <h6 className="mb-3">Welcome to SmartHR</h6>
+                    <h6 className="mb-3">Welcome to Insight Talent Solution</h6>
                     <div className="text-center rounded bg-light p-3 mb-4">
                         <div className="avatar avatar-lg online mb-3">
                             <ImageWithBasePath src="assets/img/profiles/avatar-02.jpg" alt="Img" className="img-fluid rounded-circle"/>

@@ -23,6 +23,8 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import holidayService, { Holiday } from '../../../core/services/holidayService';
 import leaveService, { LeaveRecord } from '../../../core/services/leaveService';
+import ReactApexChart from "react-apexcharts";
+import { backend_url } from '../../../environment';
 
 const AttendanceEmployee = () => {
   const { user } = useUser();
@@ -50,6 +52,116 @@ const AttendanceEmployee = () => {
   const [locationName, setLocationName] = useState<string | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const today = new Date();
+
+  // State for Submissions Overview card
+  const [submissionsData, setSubmissionsData] = useState<any[]>([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState(true);
+  const [submissionsDataType, setSubmissionsDataType] = useState<string>('submissions');
+  const [submissionsChartData, setSubmissionsChartData] = useState<any>({
+    chart: {
+      height: 290,
+      type: 'bar',
+      stacked: false,
+      toolbar: {
+        show: false,
+      }
+    },
+    colors: ['#FF6F28'],
+    responsive: [{
+      breakpoint: 480,
+      options: {
+        legend: {
+          position: 'bottom',
+          offsetX: -10,
+          offsetY: 0
+        }
+      }
+    }],
+    plotOptions: {
+      bar: {
+        borderRadius: 5,
+        horizontal: false,
+        endingShape: 'rounded'
+      },
+    },
+    series: [{
+      name: 'Monthly Data',
+      data: []
+    }],
+    xaxis: {
+      categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      labels: {
+        style: {
+          colors: '#6B7280',
+          fontSize: '13px',
+        }
+      }
+    },
+    yaxis: {
+      labels: {
+        style: {
+          colors: '#6B7280',
+          fontSize: '13px',
+        }
+      }
+    },
+    legend: {
+      show: false
+    },
+    tooltip: {
+      enabled: true,
+      style: {
+        fontSize: '12px',
+      }
+    }
+  });
+
+  // State for Performance card
+  const [performanceData, setPerformanceData] = useState<number[]>([]);
+  const [performanceLoading, setPerformanceLoading] = useState(false);
+  const [performanceDataType, setPerformanceDataType] = useState<string>('submissions');
+  const [topPerformer, setTopPerformer] = useState<{name: string, submissions: number} | null>(null);
+  const [performance_chart2, setPerformanceChart2] = useState<any>({
+    series: [{
+      name: "performance",
+      data: [20, 20, 35, 35, 40, 60, 60]
+    }],
+    chart: {
+      height: 288,
+      type: 'area',
+      zoom: {
+        enabled: false
+      }
+    },
+    colors: ['#03C95A'],
+    dataLabels: {
+      enabled: false
+    },
+    stroke: {
+      curve: 'straight'
+    },
+    title: {
+      text: '',
+      align: 'left'
+    },
+    xaxis: {
+      categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    },
+    yaxis: {
+      min: 0,
+      max: 100,
+      tickAmount: 5,
+      labels: {
+        formatter: (val: number) => {
+          return val + '%'
+        }
+      }
+    },
+    legend: {
+      position: 'top',
+      horizontalAlign: 'left'
+    }
+  });
 
   // Get employee ID from current user context
   const employeeId = user?._id;
@@ -267,6 +379,8 @@ const AttendanceEmployee = () => {
       fetchTodayAttendance();
       fetchStatistics();
       fetchPrevPeriodStats();
+      fetchSubmissionsData();
+      fetchPerformanceData();
     }
   }, [employeeId, filters]);
 
@@ -531,6 +645,190 @@ const AttendanceEmployee = () => {
     return { percent: Math.abs(percent), up: percent >= 0 };
   };
 
+  // Function to fetch submissions data for the logged-in user
+  const fetchSubmissionsData = async (dataType: string = 'submissions') => {
+    if (!employeeId) return;
+    
+    try {
+      setSubmissionsLoading(true);
+      
+      // Determine endpoint based on data type
+      let endpoint = '';
+      let dataKey = '';
+      let seriesName = '';
+      
+      switch (dataType) {
+        case 'submissions':
+          endpoint = `${backend_url}/api/candidates/submissions/dashboard?employeeId=${employeeId}`;
+          dataKey = 'submissions';
+          seriesName = 'Monthly Submissions';
+          break;
+        case 'job-offers':
+          endpoint = `${backend_url}/api/candidates/job-offers/dashboard?employeeId=${employeeId}`;
+          dataKey = 'jobOffers';
+          seriesName = 'Monthly Job Offers';
+          break;
+        case 'interview-schedules':
+          endpoint = `${backend_url}/api/candidates/interview-schedules/dashboard?employeeId=${employeeId}`;
+          dataKey = 'interviewSchedules';
+          seriesName = 'Monthly Interview Schedules';
+          break;
+        default:
+          endpoint = `${backend_url}/api/candidates/submissions/dashboard?employeeId=${employeeId}`;
+          dataKey = 'submissions';
+          seriesName = 'Monthly Submissions';
+      }
+      
+      console.log(`🔍 Fetching ${dataType} data from:`, endpoint);
+      console.log(`🔍 Employee ID:`, employeeId);
+      
+      const response = await fetch(endpoint, {
+        headers: { 
+          'Authorization': `Bearer ${localStorage.getItem('token')}`, 
+          'Content-Type': 'application/json' 
+        }
+      });
+      
+      console.log(`🔍 Response status:`, response.status);
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log(`🔍 API Response for ${dataType}:`, result);
+        
+        const { months } = result.data;
+        const data = result.data[dataKey] || [];
+        
+        console.log(`🔍 Processed data for ${dataType}:`, data);
+        console.log(`🔍 Months:`, months);
+        
+        setSubmissionsData(data);
+        
+        // Update chart data
+        const chartData = {
+          ...submissionsChartData,
+          series: [{
+            name: seriesName,
+            data: data
+          }],
+          xaxis: {
+            ...submissionsChartData.xaxis,
+            categories: months
+          }
+        };
+        
+        setSubmissionsChartData(chartData);
+      } else {
+        const errorText = await response.text();
+        console.error(`❌ Error fetching ${dataType} data:`, response.status, errorText);
+        setSubmissionsData([]);
+      }
+    } catch (error) {
+      console.error(`❌ Error fetching ${dataType} data:`, error);
+      setSubmissionsData([]);
+    } finally {
+      setSubmissionsLoading(false);
+    }
+  };
+
+  // Function to fetch performance data for the logged-in user
+  const fetchPerformanceData = async (dataType: string = 'submissions') => {
+    if (!employeeId) return;
+    
+    try {
+      setPerformanceLoading(true);
+      
+      // Determine endpoint based on data type
+      let endpoint = '';
+      let dataKey = '';
+      
+      switch (dataType) {
+        case 'submissions':
+          endpoint = `${backend_url}/api/candidates/submissions/dashboard?employeeId=${employeeId}`;
+          dataKey = 'submissions';
+          break;
+        case 'job-offers':
+          endpoint = `${backend_url}/api/candidates/job-offers/dashboard?employeeId=${employeeId}`;
+          dataKey = 'jobOffers';
+          break;
+        case 'interview-schedules':
+          endpoint = `${backend_url}/api/candidates/interview-schedules/dashboard?employeeId=${employeeId}`;
+          dataKey = 'interviewSchedules';
+          break;
+        default:
+          endpoint = `${backend_url}/api/candidates/submissions/dashboard?employeeId=${employeeId}`;
+          dataKey = 'submissions';
+      }
+      
+      console.log(`🔍 Fetching performance ${dataType} data from:`, endpoint);
+      console.log(`🔍 Employee ID:`, employeeId);
+      
+      const response = await fetch(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log(`🔍 Performance response status:`, response.status);
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log(`🔍 Performance API Response for ${dataType}:`, result);
+        
+        const data = result.data[dataKey] || [];
+        console.log(`🔍 Performance raw data for ${dataType}:`, data);
+        
+        // Calculate performance percentage (assuming 100% is the target)
+        const performancePercentages = data.map((value: number) => {
+          // You can adjust this calculation based on your business logic
+          return Math.min(100, (value / 10) * 100); // Example: 10 submissions = 100%
+        });
+        
+        console.log(`🔍 Performance percentages:`, performancePercentages);
+        
+        setPerformanceData(performancePercentages);
+        
+        // Update chart data
+        const chartData = {
+          ...performance_chart2,
+          series: [{
+            name: "performance",
+            data: performancePercentages
+          }]
+        };
+        
+        setPerformanceChart2(chartData);
+        
+        // Set top performer info (for the logged-in user)
+        const totalSubmissions = data.reduce((sum: number, value: number) => sum + value, 0);
+        setTopPerformer({
+          name: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'You',
+          submissions: totalSubmissions
+        });
+      } else {
+        const errorText = await response.text();
+        console.error(`❌ Error fetching performance ${dataType} data:`, response.status, errorText);
+        setPerformanceData([]);
+      }
+    } catch (error) {
+      console.error(`❌ Error fetching performance ${dataType} data:`, error);
+      setPerformanceData([]);
+    } finally {
+      setPerformanceLoading(false);
+    }
+  };
+
+  // Handler for data type changes
+  const handleSubmissionsDataTypeChange = (dataType: string) => {
+    setSubmissionsDataType(dataType);
+    fetchSubmissionsData(dataType);
+  };
+
+  const handlePerformanceDataTypeChange = (dataType: string) => {
+    setPerformanceDataType(dataType);
+    fetchPerformanceData(dataType);
+  };
+
   // Calculate percent changes for cards
   const weekChange = getPercentChange(totalWorkingHoursWeek, prevWeekStats?.totalWorkingHours || 0);
   const monthChange = getPercentChange(statistics?.totalWorkingHours || 0, prevMonthStats?.totalWorkingHours || 0);
@@ -757,7 +1055,7 @@ const AttendanceEmployee = () => {
           {/* Breadcrumb */}
           <div className="d-md-flex d-block align-items-center justify-content-between page-breadcrumb mb-3">
             <div className="my-auto mb-2">
-              <h2 className="mb-1">Employee Attendance</h2>
+              <h2 className="mb-1">Employee Dashboard</h2>
               <nav>
                 <ol className="breadcrumb mb-0">
                   <li className="breadcrumb-item">
@@ -767,7 +1065,7 @@ const AttendanceEmployee = () => {
                   </li>
                   <li className="breadcrumb-item">Employee</li>
                   <li className="breadcrumb-item active" aria-current="page">
-                    Employee Attendance
+                    Employee Dashboard
                   </li>
                 </ol>
               </nav>
@@ -1066,9 +1364,216 @@ const AttendanceEmployee = () => {
               </div>
             </div>
           </div>
+          
+          {/* Submissions Overview and Performance Cards */}
+          <div className="row">
+            {/* Submissions Overview Card */}
+            <div className="col-xl-7 d-flex">
+              <div className="card flex-fill">
+                <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
+                  <h5 className="mb-2">
+                    {submissionsDataType === 'submissions' ? 'Submissions Overview' : 
+                     submissionsDataType === 'job-offers' ? 'Job Offers Overview' : 'Interview Schedules Overview'}
+                  </h5>
+                  <div className="d-flex align-items-center">
+                    <div className="dropdown mb-2 me-2">
+                      <Link
+                        to="#"
+                        className="dropdown-toggle btn btn-white border-0 btn-sm d-inline-flex align-items-center fs-13"
+                        data-bs-toggle="dropdown"
+                      >
+                        {submissionsDataType === 'submissions' ? 'Submissions' : 
+                         submissionsDataType === 'job-offers' ? 'Job Offers' : 'Interview Schedules'}
+                      </Link>
+                      <ul className="dropdown-menu dropdown-menu-end p-3">
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                            onClick={() => handleSubmissionsDataTypeChange('submissions')}
+                          >
+                            Submissions
+                          </Link>
+                        </li>
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                            onClick={() => handleSubmissionsDataTypeChange('job-offers')}
+                          >
+                            Job Offers
+                          </Link>
+                        </li>
+                        <li>
+                          <Link to="#"
+                            className="dropdown-item rounded-1"
+                            onClick={() => handleSubmissionsDataTypeChange('interview-schedules')}
+                          >
+                            Interview Schedules
+                          </Link>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div className="card-body pb-0">
+                  {submissionsLoading ? (
+                    <div className="text-center py-4">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                      <p className="mt-2 text-muted">
+                        Loading {submissionsDataType === 'submissions' ? 'submissions' : 
+                                submissionsDataType === 'job-offers' ? 'job offers' : 'interview schedules'} data...
+                      </p>
+                    </div>
+                  ) : submissionsData.length > 0 ? (
+                    <>
+                  <div className="d-flex align-items-center justify-content-between flex-wrap">
+                    <div className="d-flex align-items-center mb-1">
+                      <p className="fs-13 text-gray-9 me-3 mb-0">
+                        <i className="ti ti-square-filled me-2 text-primary" />
+                            {submissionsDataType === 'submissions' ? 'Monthly Submissions' : 
+                             submissionsDataType === 'job-offers' ? 'Monthly Job Offers' : 'Monthly Interview Schedules'}
+                      </p>
+                    </div>
+                        <p className="fs-13 mb-1">Last Updated at {new Date().toLocaleTimeString()}</p>
+                  </div>
+                  <ReactApexChart
+                        id="submissions-chart"
+                        options={submissionsChartData}
+                        series={submissionsChartData.series}
+                    type="bar"
+                    height={270}
+                  />
+                    </>
+                  ) : (
+                    <div className="text-center py-4">
+                      <i className="ti ti-file-off fs-1 text-muted mb-3"></i>
+                      <p className="text-muted">
+                        No {submissionsDataType === 'submissions' ? 'submissions' : 
+                            submissionsDataType === 'job-offers' ? 'job offers' : 'interview schedules'} data available.
+                      </p>
+                </div>
+                  )}
+              </div>
+            </div>
+            </div>
+            {/* /Submissions Overview Card */}
+            
+            {/* Performance Card */}
+            <div className="col-xl-5 d-flex">
+              <div className="card flex-fill">
+                <div className="card-header">
+                  <div className="d-flex align-items-center justify-content-between flex-wrap row-gap-2">
+                    <h5>Performance</h5>
+                    <div className="d-flex align-items-center">
+                      <div className="dropdown mb-2 me-2">
+                        <Link
+                          to="#"
+                          className="dropdown-toggle btn btn-white border-0 btn-sm d-inline-flex align-items-center fs-13"
+                          data-bs-toggle="dropdown"
+                          style={{ pointerEvents: performanceLoading ? 'none' : 'auto' }}
+                        >
+                          {performanceLoading ? (
+                            <div className="spinner-border spinner-border-sm me-1" role="status">
+                              <span className="visually-hidden">Loading...</span>
+                            </div>
+                          ) : null}
+                          {performanceDataType === 'submissions' ? 'Submissions' : 
+                           performanceDataType === 'job-offers' ? 'Job Offers' : 'Interview Schedules'}
+                        </Link>
+                        <ul className="dropdown-menu dropdown-menu-end p-3">
+                          <li>
+                            <Link to="#"
+                              className="dropdown-item rounded-1"
+                              onClick={() => handlePerformanceDataTypeChange('submissions')}
+                            >
+                              Submissions
+                            </Link>
+                          </li>
+                          <li>
+                            <Link to="#"
+                              className="dropdown-item rounded-1"
+                              onClick={() => handlePerformanceDataTypeChange('job-offers')}
+                            >
+                              Job Offers
+                            </Link>
+                          </li>
+                          <li>
+                            <Link to="#"
+                              className="dropdown-item rounded-1"
+                              onClick={() => handlePerformanceDataTypeChange('interview-schedules')}
+                            >
+                              Interview Schedules
+                            </Link>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="d-flex align-items-center mt-2">
+                    <span className="badge badge-soft-success me-2">
+                      <i className="ti ti-crown me-1"></i>
+                      Your Performance
+                    </span>
+                    <small className="text-muted">
+                      {topPerformer ? (
+                        `${topPerformer.name} (${topPerformer.submissions} ${performanceDataType === 'submissions' ? 'submissions' : 
+                                                                        performanceDataType === 'job-offers' ? 'job offers' : 'interview schedules'} this month)`
+                      ) : (
+                        'Loading...'
+                      )}
+                    </small>
+                  </div>
+                </div>
+                <div className="card-body">
+                  <div>
+                    <div className="bg-light d-flex align-items-center rounded p-2 mb-3">
+                      <h3 className="me-2">
+                        {performanceLoading ? (
+                          <div className="spinner-border spinner-border-sm" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                        ) : performanceData.length > 0 ? (
+                          `${Math.round(performanceData[performanceData.length - 1])}%`
+                        ) : (
+                          '0%'
+                        )}
+                      </h3>
+                      {performanceData.length > 1 && !performanceLoading && (
+                        <span className={`badge rounded-pill me-1 ${
+                          performanceData[performanceData.length - 1] > performanceData[performanceData.length - 2]
+                            ? 'badge-outline-success bg-success-transparent'
+                            : 'badge-outline-danger bg-danger-transparent'
+                        }`}>
+                          {performanceData[performanceData.length - 1] > performanceData[performanceData.length - 2] ? '+' : ''}
+                          {Math.round(performanceData[performanceData.length - 1] - performanceData[performanceData.length - 2])}%
+                        </span>
+                      )}
+                      <span>vs last month</span>
+                    </div>
+                    <div className="mb-2">
+                      <small className="text-muted">
+                        {performanceLoading ? 'Loading...' : `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'You'}
+                      </small>
+                    </div>
+                    <ReactApexChart
+                      id="performance_chart2"
+                      options={performance_chart2}
+                      series={performance_chart2.series}
+                      type="area"
+                      height={288}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* /Performance Card */}
+          </div>
+          {/* /Submissions Overview and Performance Cards */}
+          
           <div className="card">
             <div className="card-header d-flex align-items-center justify-content-between flex-wrap row-gap-3">
-              <h5>Employee Attendance</h5>
+              <h5>Employee Dashboard</h5>
               <div className="d-flex my-xl-auto right-content align-items-center flex-wrap row-gap-3">
                 <div className="me-3">
                   <div className="input-icon-end position-relative">
@@ -1179,7 +1684,7 @@ const AttendanceEmployee = () => {
           <p>
             Designed &amp; Developed By{" "}
             <Link to="#" className="text-primary">
-              Dreams
+              Yogesh
             </Link>
           </p>
         </div>

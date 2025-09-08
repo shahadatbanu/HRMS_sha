@@ -209,7 +209,7 @@ const CompanySettings = () => {
                               <div className="d-flex align-items-center">
                                 <span className="avatar avatar-xl border rounded d-flex align-items-center justify-content-center p-2 me-2">
                                   <ImageWithBasePath
-                                    src="assets/img/logo-small.svg"
+                                    src="assets/img/Final.jpg"
                                     alt="Img"
                                   />
                                 </span>
@@ -257,7 +257,7 @@ const CompanySettings = () => {
                               <div className="d-flex align-items-center">
                                 <span className="avatar avatar-xl border rounded d-flex align-items-center justify-content-center p-2 me-2">
                                   <ImageWithBasePath
-                                    src="assets/img/logo-small.svg"
+                                    src="assets/img/Final.jpg"
                                     alt="Img"
                                   />
                                 </span>
@@ -306,7 +306,7 @@ const CompanySettings = () => {
                               <div className="d-flex align-items-center">
                                 <span className="avatar avatar-xl border rounded d-flex align-items-center justify-content-center p-2 me-2">
                                   <ImageWithBasePath
-                                    src="assets/img/logo-small.svg"
+                                    src="assets/img/Final.jpg"
                                     alt="Img"
                                   />
                                 </span>
@@ -355,7 +355,7 @@ const CompanySettings = () => {
                               <div className="d-flex align-items-center">
                                 <span className="avatar avatar-xl border rounded d-flex align-items-center justify-content-center p-2 me-2">
                                   <ImageWithBasePath
-                                    src="assets/img/logo-small.svg"
+                                    src="assets/img/Final.jpg"
                                     alt="Img"
                                   />
                                 </span>

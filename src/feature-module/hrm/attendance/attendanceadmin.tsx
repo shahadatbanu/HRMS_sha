@@ -143,7 +143,7 @@ const AttendanceAdmin = () => {
           <div className="d-flex align-items-center file-name-icon">
             <span className="avatar avatar-md border avatar-rounded">
               {imgSrc ? (
-                <img src={imgSrc} className="img-fluid" alt="img" style={{ borderRadius: '50%', objectFit: 'cover', aspectRatio: '1/1', width: 40, height: 40 }} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = '/react/template/assets/img/users/default.png'; }} />
+                <img src={imgSrc} className="img-fluid" alt="img" style={{ borderRadius: '50%', objectFit: 'cover', aspectRatio: '1/1', width: 40, height: 40 }} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = 'assets/img/users/user-01.jpg'; }} />
               ) : (
                 <i className="ti ti-user fs-24 text-muted" />
               )}
@@ -385,7 +385,7 @@ const AttendanceAdmin = () => {
                         return (
                           <span className="avatar avatar-rounded" key={item._id || idx}>
                             {imgSrc ? (
-                              <img src={imgSrc} className="border border-white" alt={item.Employee} style={{ borderRadius: '50%', objectFit: 'cover', aspectRatio: '1/1', width: 32, height: 32 }} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = '/react/template/assets/img/users/default.png'; }} />
+                              <img src={imgSrc} className="border border-white" alt={item.Employee} style={{ borderRadius: '50%', objectFit: 'cover', aspectRatio: '1/1', width: 32, height: 32 }} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = 'assets/img/users/user-01.jpg'; }} />
                             ) : (
                               <i className="ti ti-user fs-18 text-muted" />
                             )}

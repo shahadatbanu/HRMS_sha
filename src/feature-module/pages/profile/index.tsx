@@ -483,7 +483,7 @@ const Profile = () => {
           <p>
             Designed &amp; Developed By{" "}
             <Link to="#" className="text-primary">
-              Dreams
+              Yogesh
             </Link>
           </p>
         </div>

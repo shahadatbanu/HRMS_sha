@@ -35,7 +35,7 @@ const StackedSidebar = () => {
         <div className="sidebar sidebar-stacked" style={{display: 'flex' }}>
             <div className="stacked-mini">
                 <Link to={routes.adminDashboard} className="logo-small">
-                    <ImageWithBasePath src="assets/img/logo-small.svg" alt="Logo" />
+                    <ImageWithBasePath src="assets/img/Final.jpg" alt="Logo" />
                 </Link>
                 <div className="sidebar-left slimscroll">
                     <div className="d-flex align-items-center flex-column">
@@ -78,7 +78,7 @@ const StackedSidebar = () => {
             </div>
             <div className="sidebar-right d-flex justify-content-between flex-column">
                 <div className="sidebar-scroll">
-                    <h6 className="mb-3">Welcome to SmartHR</h6>
+                    <h6 className="mb-3">Welcome to Insight Talent Solution</h6>
                     <div className="sidebar-profile text-center rounded bg-light p-3 mb-4">
                         <div className="avatar avatar-lg online mb-3">
                             <ImageWithBasePath src="assets/img/profiles/avatar-02.jpg" alt="Img" className="img-fluid rounded-circle" />

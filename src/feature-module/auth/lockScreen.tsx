@@ -31,7 +31,7 @@ const LockScreen = () => {
           <form>
             <div className="d-flex flex-column justify-content-between vh-100">
               <div className=" mx-auto p-4 text-center">
-                <ImageWithBasePath src="assets/img/logo.svg" className="img-fluid" alt="Logo" />
+                <ImageWithBasePath src="assets/img/Final.jpg" className="img-fluid" alt="Logo" />
               </div>
               <div className="card border-primary">
                 <div className="card-body bg-primary bg-opacity-10  rounded p-4">
@@ -84,7 +84,7 @@ const LockScreen = () => {
                   </Link>
                 </div>
                 <div className="p-2 text-center">
-                  <p className="mb-0 text-gray-9">Copyright © 2024 - SmartHR</p>
+                  <p className="mb-0 text-gray-9">Copyright © 2024 - Insight Talent Solution</p>
                 </div>
               </div>
             </div>

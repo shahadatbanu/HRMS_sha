@@ -32,7 +32,7 @@ const EmailVerification2 = () => {
                     <div>
                       <div className=" mx-auto mb-5 text-center">
                         <ImageWithBasePath
-                          src="assets/img/authentication/authentication-logo.svg"
+                          src="assets/img/Final.jpg"
                           className="img-fluid"
                           alt="Logo"
                         />

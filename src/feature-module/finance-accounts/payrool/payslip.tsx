@@ -52,7 +52,7 @@ const PaySlip = () => {
                                                 <div className="mb-3">
                                                     <div className="mb-2">
                                                         <ImageWithBasePath
-                                                            src="assets/img/logo.svg"
+                                                            src="assets/img/Final.jpg"
                                                             className="img-fluid"
                                                             alt="logo"
                                                         />
@@ -218,7 +218,7 @@ const PaySlip = () => {
                     <p>
                         Designed &amp; Developed By{" "}
                         <Link to="#" className="text-primary">
-                            Dreams
+                            Yogesh
                         </Link>
                     </p>
                 </div>

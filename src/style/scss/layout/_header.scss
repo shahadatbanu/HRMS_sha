@@ -85,9 +85,19 @@
         .logo {
             display: inline-block;
             line-height: 50px;
+            img {
+                max-height: 35px;
+                width: auto;
+                object-fit: contain;
+            }
         }
         .dark-logo {
             line-height: 50px;
+            img {
+                max-height: 35px;
+                width: auto;
+                object-fit: contain;
+            }
         }
         @include respond-below(lg) {
             position: absolute;
@@ -109,11 +119,15 @@
                 display: inline-block;
                 img{
                     width: 130px;
+                    max-height: 35px;
+                    object-fit: contain;
                 }
                     text-align: center;
                     width: 100%;
                     img{
                         width: 140px;
+                        max-height: 35px;
+                        object-fit: contain;
                     }
             }
             .dark-logo {
@@ -761,6 +775,8 @@
 }
 .logo-small img {
     width: 30px;
+    max-height: 30px;
+    object-fit: contain;
 }
 @include respond-above(lg) {
     .mini-sidebar{

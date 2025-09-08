@@ -61,7 +61,7 @@ const InvoicesDetails = () => {
                         <div className="col-md-6">
                           <div className="mb-2">
                             <ImageWithBasePath
-                              src="assets/img/logo.svg"
+                              src="assets/img/Final.jpg"
                               className="img-fluid"
                               alt="logo"
                             />
@@ -283,7 +283,7 @@ const InvoicesDetails = () => {
                       <div className="text-center">
                         <div className="mb-3">
                           <ImageWithBasePath
-                            src="assets/img/logo.svg"
+                            src="assets/img/Final.jpg"
                             className="img-fluid"
                             alt="logo"
                           />
@@ -334,7 +334,7 @@ const InvoicesDetails = () => {
             <p>
               Designed &amp; Developed By{" "}
               <Link to="#" className="text-primary">
-                Dreams
+                Yogesh
               </Link>
             </p>
           </div>
