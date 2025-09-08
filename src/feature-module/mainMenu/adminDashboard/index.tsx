@@ -4596,7 +4596,7 @@ const AdminDashboard = () => {
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Schedules</h5>
-                  <Link to={routes.candidatesGrid} className="btn btn-light btn-md mb-2">
+                  <Link to={routes.adminInterviews} className="btn btn-light btn-md mb-2">
                     View All
                   </Link>
                 </div>
