@@ -5294,6 +5294,7 @@ const CandidateGrid = () => {
                                                                                     <small className="text-muted">
                                                                                         {submission.createdBy?.firstName} {submission.createdBy?.lastName} on{' '}
                                                                                         {new Date(submission.createdAt).toLocaleDateString('en-US', {
+                                                                                            timeZone: 'America/Chicago',
                                                                                             day: '2-digit',
                                                                                             month: 'short',
                                                                                             year: 'numeric',
@@ -5474,6 +5475,10 @@ const CandidateGrid = () => {
                                                                     min={new Date().toISOString().slice(0, 16)}
                                                                     style={{ borderRadius: '12px' }}
                                                                 />
+                                                                <small className="text-muted mt-1 d-block">
+                                                                    <i className="ti ti-clock me-1"></i>
+                                                                    Time is in US Central Time (America/Chicago)
+                                                                </small>
                                                             </div>
                                                         </div>
                                                         <div className="col-lg-6">
@@ -7890,7 +7895,10 @@ const CandidateGrid = () => {
                                             min={new Date().toISOString().slice(0, 16)}
                                             style={{ borderRadius: '8px' }}
                                         />
-                                        <small className="text-muted">Select a future date and time for the interview</small>
+                                        <small className="text-muted">
+                                            <i className="ti ti-clock me-1"></i>
+                                            Select a future date and time for the interview (US Central Time)
+                                        </small>
                                     </div>
                                 </div>
                             </div>

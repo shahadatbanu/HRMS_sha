@@ -251,7 +251,8 @@ const AttendanceSettingsComponent = () => {
                           disabled={!formData.autoAbsenceEnabled}
                         />
                         <small className="form-text text-muted">
-                          Employees will be marked as absent if they haven't checked in by this time
+                          <i className="ti ti-clock me-1"></i>
+                          Employees will be marked as absent if they haven't checked in by this time (US Central Time)
                         </small>
                       </div>
                       <div className="col-md-6">
@@ -282,6 +283,10 @@ const AttendanceSettingsComponent = () => {
                           value={formData.workingHours.startTime}
                           onChange={(e) => handleInputChange('workingHours.startTime', e.target.value)}
                         />
+                        <small className="form-text text-muted">
+                          <i className="ti ti-clock me-1"></i>
+                          Start time in US Central Time
+                        </small>
                       </div>
                       <div className="col-md-6">
                         <label className="form-label">Working Hours End</label>
@@ -291,6 +296,10 @@ const AttendanceSettingsComponent = () => {
                           value={formData.workingHours.endTime}
                           onChange={(e) => handleInputChange('workingHours.endTime', e.target.value)}
                         />
+                        <small className="form-text text-muted">
+                          <i className="ti ti-clock me-1"></i>
+                          End time in US Central Time
+                        </small>
                       </div>
                     </div>
 

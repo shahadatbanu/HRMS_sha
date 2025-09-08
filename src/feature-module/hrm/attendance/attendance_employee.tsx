@@ -35,7 +35,7 @@ const AttendanceEmployee = () => {
   const [loading, setLoading] = useState(true);
   const [checkInLoading, setCheckInLoading] = useState(false);
   const [checkOutLoading, setCheckOutLoading] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState(new Date(new Date().toLocaleString("en-US", { timeZone: "America/Chicago" })));
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',

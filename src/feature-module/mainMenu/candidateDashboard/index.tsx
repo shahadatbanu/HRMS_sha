@@ -2325,20 +2325,22 @@ const CandidateDashboard = () => {
     }
   };
 
-  // Function to format interview time
+  // Function to format interview time (US Central Time)
   const formatInterviewTime = (date: string) => {
     const interviewDate = new Date(date);
     return interviewDate.toLocaleTimeString('en-US', { 
+      timeZone: 'America/Chicago',
       hour: '2-digit', 
       minute: '2-digit',
       hour12: true 
     });
   };
 
-  // Function to format interview date
+  // Function to format interview date (US Central Time)
   const formatInterviewDate = (date: string) => {
     const interviewDate = new Date(date);
     return interviewDate.toLocaleDateString('en-US', { 
+      timeZone: 'America/Chicago',
       weekday: 'short',
       day: 'numeric', 
       month: 'short', 
