@@ -877,10 +877,12 @@ const EmployeeDashboard = () => {
                   <div className="mb-4 text-center">
                     <h6 className="fw-medium text-gray-5 mb-1">Attendance</h6>
                     <h4>{currentTime.toLocaleTimeString('en-US', {
+                      timeZone: 'America/Chicago',
                       hour: '2-digit',
                       minute: '2-digit',
                       hour12: true
                     })}, {currentTime.toLocaleDateString('en-US', {
+                      timeZone: 'America/Chicago',
                       day: '2-digit',
                       month: 'short',
                       year: 'numeric'
@@ -893,12 +895,12 @@ const EmployeeDashboard = () => {
                     </div>
                     <h6 className="fw-medium d-flex align-items-center justify-content-center mb-4">
                       <i className="ti ti-fingerprint text-primary me-1" />
-                      {todayAttendance?.checkIn 
+                      {todayAttendance?.checkIn?.time 
                         ? `Punch In at ${todayAttendance.formattedCheckIn}`
                         : 'Not checked in today'
                       }
                     </h6>
-                    {!todayAttendance?.checkIn ? (
+                    {!todayAttendance?.checkIn?.time ? (
                       <button 
                         className="btn btn-primary w-100"
                         onClick={handleCheckIn}
@@ -906,7 +908,7 @@ const EmployeeDashboard = () => {
                       >
                         {checkInLoading ? 'Checking In...' : 'Punch In'}
                       </button>
-                    ) : todayAttendance?.checkIn && !todayAttendance?.checkOut?.time && todayAttendance?.status !== 'Absent' ? (
+                    ) : todayAttendance?.checkIn?.time && !todayAttendance?.checkOut?.time && todayAttendance?.status !== 'Absent' ? (
                       <button 
                         className="btn btn-dark w-100"
                         onClick={handleCheckOut}
@@ -2447,13 +2449,7 @@ const EmployeeDashboard = () => {
           </div>
         </div>
         <div className="footer d-sm-flex align-items-center justify-content-between border-top bg-white p-3">
-          <p className="mb-0">2014 - 2025 © SmartHR.</p>
-          <p>
-            Designed &amp; Developed By{" "}
-            <Link to="#" className="text-primary">
-              Yogesh
-            </Link>
-          </p>
+          <p className="mb-0">2014 - 2025 © Insight Talent Solution.</p>
         </div>
       </div>
       {/* /Page Wrapper */}

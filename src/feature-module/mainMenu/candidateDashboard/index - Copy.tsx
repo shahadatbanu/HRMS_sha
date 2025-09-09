@@ -1871,7 +1871,7 @@ const CandidateDashboard = () => {
       if (user.role !== 'admin') {
         // Redirect non-admin users to appropriate dashboard
         if (user.role === 'hr') {
-          navigate(routes.adminDashboard); // HR can access admin dashboard
+          navigate(routes.attendanceemployee); // HR redirected to attendance employee page
         } else if (user.role === 'employee') {
           navigate(routes.attendanceemployee); // Employees redirected to attendance employee page
         } else {

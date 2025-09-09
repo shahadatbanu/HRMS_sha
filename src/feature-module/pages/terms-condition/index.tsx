@@ -115,7 +115,7 @@ const TermsCondition = () => {
                 <h5 className="mb-2">Intellectual Property</h5>
                 <p className="mb-2">
                   All content, software, and intellectual property associated with
-                  the platform are owned by SmartHR. You may not reproduce,
+                  the platform are owned by Insight Talent Solution. You may not reproduce,
                   distribute, or create derivative works from any materials on the
                   platform without prior written consent.
                 </p>
@@ -142,7 +142,7 @@ const TermsCondition = () => {
               <div className="mb-3">
                 <h5 className="mb-2">Limitation of Liability</h5>
                 <p>
-                  In no event shall SmartHR be liable for any direct, indirect,
+                  In no event shall Insight Talent Solution be liable for any direct, indirect,
                   incidental, special, or consequential damages resulting from the
                   use or inability to use the platform, even if we have been advised
                   of the possibility of such damages.
@@ -160,7 +160,7 @@ const TermsCondition = () => {
           </div>
         </div>
         <div className="footer d-sm-flex align-items-center justify-content-between border-top bg-white p-3">
-          <p className="mb-0">2014 - 2025 © SmartHR.</p>
+          <p className="mb-0">2014 - 2025 © Insight Talent Solution.</p>
           <p>
             Designed &amp; Developed By{" "}
             <Link to="#" className="text-primary">
