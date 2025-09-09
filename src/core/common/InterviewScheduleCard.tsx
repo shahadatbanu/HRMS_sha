@@ -113,7 +113,7 @@ const InterviewScheduleCard: React.FC<InterviewScheduleCardProps> = ({ employeeI
   };
 
   const handleViewCandidate = (candidateId: string) => {
-    navigate(`${routes.candidatesGrid}?viewCandidate=${candidateId}`);
+    navigate(routes.candidatesGrid);
   };
 
   return (
