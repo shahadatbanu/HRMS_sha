@@ -31,6 +31,9 @@ export const all_routes = {
   superAdminDomain: "/super-admin/domain",
   superAdminPurchaseTransaction: "/super-admin/purchase-transaction",
 
+  //admin module
+  manageTeamLeads: "/admin/manage-team-leads",
+
   calendar: "/calendar",
   dataTables: "/data-tables",
   tablesBasic: "/tables-basic",
@@ -359,6 +362,8 @@ export const all_routes = {
   leavesettings: "/leave-settings",
   attendanceadmin: "/attendance-admin",
   attendanceemployee: "/attendance-employee",
+  employeeInterviews: "/employee-interviews",
+  adminInterviews: "/admin-interviews",
   timesheet: "/timesheets",
   scheduletiming: "/schedule-timing",
   overtime: "/overtime",

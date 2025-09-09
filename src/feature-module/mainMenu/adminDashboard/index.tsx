@@ -1751,20 +1751,22 @@ const AdminDashboard = () => {
     }
   };
 
-  // Function to format interview time
+  // Function to format interview time (US Central Time)
   const formatInterviewTime = (date: string) => {
     const interviewDate = new Date(date);
     return interviewDate.toLocaleTimeString('en-US', { 
+      timeZone: 'America/Chicago',
       hour: '2-digit', 
       minute: '2-digit',
       hour12: true 
     });
   };
 
-  // Function to format interview date
+  // Function to format interview date (US Central Time)
   const formatInterviewDate = (date: string) => {
     const interviewDate = new Date(date);
     return interviewDate.toLocaleDateString('en-US', { 
+      timeZone: 'America/Chicago',
       weekday: 'short',
       day: 'numeric', 
       month: 'short', 
@@ -3104,6 +3106,7 @@ const AdminDashboard = () => {
                         <i className="ti ti-circle-filled fs-5 me-1" />
                                   {attendance.checkIn?.time ? 
                                     new Date(attendance.checkIn.time).toLocaleTimeString('en-US', { 
+                                      timeZone: 'America/Chicago',
                                       hour: '2-digit', 
                                       minute: '2-digit',
                                       hour12: false 
@@ -4596,7 +4599,7 @@ const AdminDashboard = () => {
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Schedules</h5>
-                  <Link to={routes.candidatesGrid} className="btn btn-light btn-md mb-2">
+                  <Link to={routes.adminInterviews} className="btn btn-light btn-md mb-2">
                     View All
                   </Link>
                 </div>

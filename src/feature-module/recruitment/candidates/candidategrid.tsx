@@ -43,6 +43,16 @@ interface Recruiter {
     department: string;
 }
 
+// Define interface for team lead type
+interface TeamLead {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    designation: string;
+    department: string;
+}
+
 // Define interface for candidate details
 interface CandidateDetails {
     _id: string;
@@ -71,6 +81,14 @@ interface CandidateDetails {
     source: string;
     createdAt: string;
     recruiter: {
+        _id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        designation: string;
+        profileImage?: string;
+    };
+    teamLead: {
         _id: string;
         firstName: string;
         lastName: string;
@@ -212,6 +230,7 @@ const CandidateGrid = () => {
         yearsOfExperience: '',
         relevantExperience: '',
         recruiter: '',
+        teamLead: '',
         address: {
             street: '',
             city: '',
@@ -235,6 +254,7 @@ const CandidateGrid = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
     const [recruiters, setRecruiters] = useState<Recruiter[]>([]);
+    const [teamLeads, setTeamLeads] = useState<TeamLead[]>([]);
     const [showSuccess, setShowSuccess] = useState(false);
     const [candidates, setCandidates] = useState<any[]>([]);
     const [loadingCandidates, setLoadingCandidates] = useState(false);
@@ -563,6 +583,7 @@ const CandidateGrid = () => {
             yearsOfExperience: '',
             relevantExperience: '',
             recruiter: '',
+            teamLead: '',
             address: {
                 street: '',
                 city: '',
@@ -611,9 +632,35 @@ const CandidateGrid = () => {
         }
     };
 
-    // Fetch recruiters and candidates on component mount
+    const fetchTeamLeads = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.error('No authentication token found');
+                return;
+            }
+
+            const response = await fetch('/api/candidates/employees/team-leads', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success) {
+                    setTeamLeads(result.data);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching team leads:', error);
+        }
+    };
+
+    // Fetch recruiters, team leads and candidates on component mount
     useEffect(() => {
         fetchRecruiters();
+        fetchTeamLeads();
         fetchCandidates(1, filters);
     }, []);
 
@@ -930,6 +977,7 @@ const CandidateGrid = () => {
             yearsOfExperience: '',
             relevantExperience: '',
             recruiter: '',
+            teamLead: '',
             address: {
                 street: '',
                 city: '',
@@ -2836,9 +2884,9 @@ const CandidateGrid = () => {
                     const value = form[key as keyof typeof form];
                     if (typeof value === 'object') {
                         formDataToSend.append(key, JSON.stringify(value));
-                    } else if (key === 'recruiter' && value) {
+                    } else if ((key === 'recruiter' || key === 'teamLead') && value) {
                         formDataToSend.append(key, String(value));
-                    } else if (key !== 'recruiter') {
+                    } else if (key !== 'recruiter' && key !== 'teamLead') {
                         formDataToSend.append(key, String(value));
                     }
                 }
@@ -2927,6 +2975,7 @@ const CandidateGrid = () => {
             yearsOfExperience: candidate.yearsOfExperience || '',
             relevantExperience: candidate.relevantExperience || '',
             recruiter: candidate.recruiter?._id || '',
+            teamLead: candidate.teamLead?._id || '',
             address: {
                 street: candidate.address?.street || '',
                 city: candidate.address?.city || '',
@@ -2969,9 +3018,9 @@ const CandidateGrid = () => {
                     const value = form[key as keyof typeof form];
                     if (typeof value === 'object') {
                         formDataToSend.append(key, JSON.stringify(value));
-                    } else if (key === 'recruiter' && value) {
+                    } else if ((key === 'recruiter' || key === 'teamLead') && value) {
                         formDataToSend.append(key, String(value));
-                    } else if (key !== 'recruiter') {
+                    } else if (key !== 'recruiter' && key !== 'teamLead') {
                         formDataToSend.append(key, String(value));
                     }
                 }
@@ -5106,7 +5155,7 @@ const CandidateGrid = () => {
                                                                     className="form-control"
                                                                     value={submissionForm.submissionDate}
                                                                     onChange={(e) => handleSubmissionFormChange('submissionDate', e.target.value)}
-                                                                    max={new Date().toISOString().split('T')[0]}
+                                                                    max={new Date().toLocaleDateString('en-CA')}
                                                                 />
                                                             </div>
                                                         </div>
@@ -5245,6 +5294,7 @@ const CandidateGrid = () => {
                                                                                     <small className="text-muted">
                                                                                         {submission.createdBy?.firstName} {submission.createdBy?.lastName} on{' '}
                                                                                         {new Date(submission.createdAt).toLocaleDateString('en-US', {
+                                                                                            timeZone: 'America/Chicago',
                                                                                             day: '2-digit',
                                                                                             month: 'short',
                                                                                             year: 'numeric',
@@ -5425,6 +5475,10 @@ const CandidateGrid = () => {
                                                                     min={new Date().toISOString().slice(0, 16)}
                                                                     style={{ borderRadius: '12px' }}
                                                                 />
+                                                                <small className="text-muted mt-1 d-block">
+                                                                    <i className="ti ti-clock me-1"></i>
+                                                                    Time is in US Central Time (America/Chicago)
+                                                                </small>
                                                             </div>
                                                         </div>
                                                         <div className="col-lg-6">
@@ -6686,6 +6740,27 @@ const CandidateGrid = () => {
                                             </div>
                                             <div className="col-md-6">
                                                 <div className="mb-3">
+                                                    <label className="form-label">Team Lead</label>
+                                                    <CommonSelect
+                                                        className="select"
+                                                        options={teamLeads.map(teamLead => ({
+                                                            value: teamLead._id,
+                                                            label: `${teamLead.firstName} ${teamLead.lastName} (${teamLead.designation})`
+                                                        }))}
+                                                        value={teamLeads.find(tl => tl._id === form.teamLead) ? {
+                                                            value: form.teamLead,
+                                                            label: `${teamLeads.find(tl => tl._id === form.teamLead)?.firstName} ${teamLeads.find(tl => tl._id === form.teamLead)?.lastName} (${teamLeads.find(tl => tl._id === form.teamLead)?.designation})`
+                                                        } : undefined}
+                                                        onChange={(option) => {
+                                                            if (option) {
+                                                                setForm(prev => ({ ...prev, teamLead: option.value }));
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="col-md-6">
+                                                <div className="mb-3">
                                                     <label className="form-label">Current Role</label>
                                                     <input
                                                         type="text"
@@ -7524,6 +7599,27 @@ const CandidateGrid = () => {
                                                 </div>
                                                 <div className="col-md-6">
                                                     <div className="mb-3">
+                                                        <label className="form-label">Team Lead</label>
+                                                        <CommonSelect
+                                                            className="select"
+                                                            options={teamLeads.map(teamLead => ({
+                                                                value: teamLead._id,
+                                                                label: `${teamLead.firstName} ${teamLead.lastName} (${teamLead.designation})`
+                                                            }))}
+                                                            value={teamLeads.find(tl => tl._id === form.teamLead) ? {
+                                                                value: form.teamLead,
+                                                                label: `${teamLeads.find(tl => tl._id === form.teamLead)?.firstName} ${teamLeads.find(tl => tl._id === form.teamLead)?.lastName} (${teamLeads.find(tl => tl._id === form.teamLead)?.designation})`
+                                                            } : undefined}
+                                                            onChange={(option) => {
+                                                                if (option) {
+                                                                    setForm(prev => ({ ...prev, teamLead: option.value }));
+                                                                }
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="col-md-6">
+                                                    <div className="mb-3">
                                                         <label className="form-label">Current Role</label>
                                                         <input
                                                             type="text"
@@ -7799,7 +7895,10 @@ const CandidateGrid = () => {
                                             min={new Date().toISOString().slice(0, 16)}
                                             style={{ borderRadius: '8px' }}
                                         />
-                                        <small className="text-muted">Select a future date and time for the interview</small>
+                                        <small className="text-muted">
+                                            <i className="ti ti-clock me-1"></i>
+                                            Select a future date and time for the interview (US Central Time)
+                                        </small>
                                     </div>
                                 </div>
                             </div>
