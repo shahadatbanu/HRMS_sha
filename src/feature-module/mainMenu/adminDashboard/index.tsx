@@ -4663,7 +4663,7 @@ const AdminDashboard = () => {
                         )}
                       </div>
                         <Link
-                            to={interview.interviewLink || `${routes.candidatesGrid}?viewCandidate=${interview.candidateId}`} 
+                            to={interview.interviewLink || routes.candidatesGrid} 
                             className="btn btn-primary btn-xs"
                             target={interview.interviewLink ? "_blank" : undefined}
                         >
