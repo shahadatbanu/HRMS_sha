@@ -28,7 +28,7 @@ import type { ColorPickerProps, GetProp } from 'antd';
 type Color = Extract<GetProp<ColorPickerProps, 'value'>, string | { cleared: any }>;
 const ThemeSettings = () => {
   const buyNow = () => {
-    window.open('https://themeforest.net/item/smarthr-react-admin-template/28253842?s_rank=21','_blank')
+    window.open('https://themeforest.net/item/Insight Talent Solution-react-admin-template/28253842?s_rank=21','_blank')
   }
   const dispatch = useDispatch();
   const dataLayout = useSelector((state: any) => state.themeSetting.dataLayout);

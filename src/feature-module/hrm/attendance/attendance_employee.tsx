@@ -35,7 +35,7 @@ const AttendanceEmployee = () => {
   const [loading, setLoading] = useState(true);
   const [checkInLoading, setCheckInLoading] = useState(false);
   const [checkOutLoading, setCheckOutLoading] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date(new Date().toLocaleString("en-US", { timeZone: "America/Chicago" })));
+  const [currentTime, setCurrentTime] = useState(new Date());
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
@@ -1226,10 +1226,12 @@ const AttendanceEmployee = () => {
                       Good Morning, {user?.firstName || 'Employee'}
                     </h6>
                     <h4>{currentTime.toLocaleTimeString('en-US', { 
+                      timeZone: 'America/Chicago',
                       hour: '2-digit', 
                       minute: '2-digit',
                       hour12: true 
                     })}, {currentTime.toLocaleDateString('en-US', {
+                      timeZone: 'America/Chicago',
                       day: '2-digit',
                       month: 'short',
                       year: 'numeric'
@@ -1251,15 +1253,15 @@ const AttendanceEmployee = () => {
                     </div>
                     <h6 className="fw-medium d-flex align-items-center justify-content-center mb-3">
                       <i className="ti ti-fingerprint text-primary me-1" />
-                      {todayAttendance?.checkIn 
+                      {todayAttendance?.checkIn?.time 
                         ? `Punch In at ${todayAttendance.formattedCheckIn}`
                         : 'Not checked in today'
                       }
                     </h6>
-                    {(!todayAttendance?.checkIn && punchMessage) ? (
+                    {(!todayAttendance?.checkIn?.time && punchMessage) ? (
                       <div className="text-info fw-medium" style={{ marginTop: 16 }}>{punchMessage}</div>
                     ) :
-                    (!todayAttendance?.checkIn ? (
+                    (!todayAttendance?.checkIn?.time ? (
                       <button 
                         className="btn btn-primary btn-sm w-auto"
                         style={{ minWidth: 140, margin: '0 auto', display: 'block' }}
@@ -1268,7 +1270,7 @@ const AttendanceEmployee = () => {
                       >
                         {checkInLoading ? 'Checking In...' : 'Punch In'}
                       </button>
-                    ) : todayAttendance?.checkIn && !todayAttendance?.checkOut?.time && todayAttendance?.status !== 'Absent' ? (
+                    ) : todayAttendance?.checkIn?.time && !todayAttendance?.checkOut?.time && todayAttendance?.status !== 'Absent' ? (
                       <button 
                         className="btn btn-dark btn-sm w-auto"
                         style={{ minWidth: 140, margin: '0 auto', display: 'block' }}
@@ -1785,13 +1787,7 @@ const AttendanceEmployee = () => {
           </div>
         </div>
         <div className="footer d-sm-flex align-items-center justify-content-between border-top bg-white p-3">
-          <p className="mb-0">2014 - 2025 © SmartHR.</p>
-          <p>
-            Designed &amp; Developed By{" "}
-            <Link to="#" className="text-primary">
-              Yogesh
-            </Link>
-          </p>
+          <p className="mb-0">2014 - 2025 © Insight Talent Solution.</p>
         </div>
       </div>
       {/* /Page Wrapper */}

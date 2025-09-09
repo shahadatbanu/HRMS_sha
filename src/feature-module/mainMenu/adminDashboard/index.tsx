@@ -1864,7 +1864,7 @@ const AdminDashboard = () => {
       if (user.role !== 'admin') {
         // Redirect non-admin users to appropriate dashboard
         if (user.role === 'hr') {
-          navigate(routes.adminDashboard); // HR can access admin dashboard
+          navigate(routes.attendanceemployee); // HR redirected to attendance employee page
         } else if (user.role === 'employee') {
           navigate(routes.attendanceemployee); // Employees redirected to attendance employee page
         } else {
@@ -3050,6 +3050,7 @@ const AdminDashboard = () => {
                           <i className="ti ti-circle-filled fs-5 me-1" />
                               {attendance.checkIn?.time ? 
                                 new Date(attendance.checkIn.time).toLocaleTimeString('en-US', { 
+                                  timeZone: 'America/Chicago',
                                   hour: '2-digit', 
                                   minute: '2-digit',
                                   hour12: false 

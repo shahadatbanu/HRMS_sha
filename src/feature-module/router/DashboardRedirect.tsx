@@ -34,7 +34,7 @@ const DashboardRedirect: React.FC = () => {
     case 'admin':
       return <Navigate to={all_routes.adminDashboard} replace />;
     case 'hr':
-      return <Navigate to={all_routes.adminDashboard} replace />;
+      return <Navigate to={all_routes.attendanceemployee} replace />;
     case 'employee':
       return <Navigate to={all_routes.attendanceemployee} replace />;
     default:
