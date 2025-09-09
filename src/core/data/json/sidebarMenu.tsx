@@ -514,6 +514,17 @@ export const SidebarDataTest = [
            // },
          ],
        },
+       // {
+       //   label: 'Manage Team Leads',
+       //   link: routes.manageTeamLeads,
+       //   submenu: false,
+       //   showSubRoute: false,
+       //   icon: 'user-star',
+       //   base: 'manage-team-leads',
+       //   materialicons: 'group',
+       //   roles: ['admin'], // Only admin can access
+       //   submenuItems: [],
+       // },
       // {
       //   label: 'Tickets',
       //   link: 'ticketList',

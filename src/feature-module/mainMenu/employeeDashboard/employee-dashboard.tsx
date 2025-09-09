@@ -32,6 +32,10 @@ const EmployeeDashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [locationName, setLocationName] = useState<string | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [geolocationSupported, setGeolocationSupported] = useState(false);
+  const [geolocationPermission, setGeolocationPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
+  const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   // Get employee ID from current user context
   const employeeId = user?._id;
@@ -127,6 +131,126 @@ const EmployeeDashboard = () => {
     }
   };
 
+  // Geolocation helper functions
+  const checkGeolocationSupport = () => {
+    if ('geolocation' in navigator) {
+      setGeolocationSupported(true);
+      return true;
+    } else {
+      setGeolocationSupported(false);
+      setLocationError('Geolocation is not supported by this browser');
+      return false;
+    }
+  };
+
+  const requestGeolocationPermission = async () => {
+    if (!checkGeolocationSupport()) return false;
+
+    try {
+      // Try to check permission status first (if supported)
+      if ('permissions' in navigator) {
+        try {
+          const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+          setGeolocationPermission(permission.state);
+          
+          permission.onchange = () => {
+            setGeolocationPermission(permission.state);
+          };
+          
+          if (permission.state === 'granted') {
+            return true;
+          } else if (permission.state === 'denied') {
+            return false;
+          }
+          // If 'prompt', we'll try to get position to trigger the prompt
+        } catch (error) {
+          console.warn('Permission API not supported, trying direct geolocation');
+        }
+      }
+      
+      // If permission is 'prompt' or permission API not supported, try to get position
+      // This will trigger the browser's permission prompt
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0
+          });
+        });
+        
+        setGeolocationPermission('granted');
+        return true;
+      } catch (error: any) {
+        if (error.code === error.PERMISSION_DENIED) {
+          setGeolocationPermission('denied');
+          return false;
+        }
+        // For other errors, we'll still return false but don't set permission to denied
+        return false;
+      }
+    } catch (error) {
+      console.error('Error checking geolocation permission:', error);
+      return false;
+    }
+  };
+
+  const getCurrentPosition = (): Promise<{ latitude: number; longitude: number }> => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Geolocation is not supported'));
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const location = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          };
+          setCurrentLocation(location);
+          setLocationError(null);
+          
+          // Get location name
+          try {
+            const locationNameResult = await getLocationName(location.latitude, location.longitude);
+            setLocationName(locationNameResult);
+          } catch (error) {
+            console.warn('Could not get location name:', error);
+            setLocationName(null);
+          }
+          
+          resolve(location);
+        },
+        (error) => {
+          let errorMessage = 'Unable to get your location';
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = 'Location permission denied. Please enable location access.';
+              setGeolocationPermission('denied');
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = 'Location information unavailable.';
+              break;
+            case error.TIMEOUT:
+              errorMessage = 'Location request timed out.';
+              break;
+            default:
+              errorMessage = 'An unknown error occurred while getting location.';
+              break;
+          }
+          setLocationError(errorMessage);
+          reject(new Error(errorMessage));
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000
+        }
+      );
+    });
+  };
+
   //New Chart
   const [leavesChart] = useState<any>({
     chart: {
@@ -215,6 +339,11 @@ const EmployeeDashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    // Initialize geolocation support check only
+    checkGeolocationSupport();
+  }, []);
+
   // Fetch today's attendance
   const fetchTodayAttendance = async () => {
     if (!employeeId) return;
@@ -233,39 +362,58 @@ const EmployeeDashboard = () => {
     
     try {
       setCheckInLoading(true);
+      setLocationError(null);
+      
+      // Check if geolocation is supported
+      if (!geolocationSupported) {
+        setLocationError('Location services are not supported by this browser. Please use a different browser or device.');
+        return;
+      }
+      
+      // Check if location permission is granted
+      if (geolocationPermission === 'denied') {
+        setLocationError('Location permission is required for punch in. Please enable location access in your browser settings and refresh the page.');
+        return;
+      }
+      
+      // If permission is still pending, try to get it
+      if (geolocationPermission === 'prompt') {
+        const hasPermission = await requestGeolocationPermission();
+        if (!hasPermission) {
+          // After the request, check what the current permission status is
+          // Use a type assertion to tell TypeScript that the state might have changed
+          const currentPermission = geolocationPermission as 'granted' | 'denied' | 'prompt';
+          if (currentPermission === 'denied') {
+            setLocationError('Location permission was denied. Please enable location access in your browser settings and refresh the page.');
+          } else {
+            setLocationError('Location permission is required for punch in. Please allow location access when prompted.');
+          }
+          return;
+        }
+      }
       
       let geolocation = null;
       let locationNameResult = '';
       
-      // Try to get current location if geolocation is supported
-      if ('geolocation' in navigator) {
-        try {
-          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-              enableHighAccuracy: true,
-              timeout: 10000,
-              maximumAge: 60000
-            });
-          });
-          
-          geolocation = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          };
-          
-          // Get location name
-          try {
-            const nameResult = await getLocationName(geolocation.latitude, geolocation.longitude);
-            setLocationName(nameResult);
-            locationNameResult = nameResult;
-          } catch (error) {
-            console.warn('Could not get location name:', error);
-          }
-        } catch (error) {
-          console.warn('Could not get location for check-in:', error);
-          // Continue with check-in even if location fails
+      // Get current location - this is now mandatory
+      try {
+        geolocation = await getCurrentPosition();
+        console.log('Got geolocation:', geolocation);
+        
+        // Get location name if we have coordinates
+        if (geolocation) {
+          console.log('Calling getLocationName with coordinates:', geolocation);
+          locationNameResult = await getLocationName(geolocation.latitude, geolocation.longitude);
+          console.log('Location name result:', locationNameResult);
+          setLocationName(locationNameResult);
         }
+      } catch (error) {
+        console.error('Could not get location for check-in:', error);
+        setLocationError('Unable to get your current location. Please ensure location services are enabled and try again.');
+        return;
       }
+      
+      console.log('Final location data for check-in:', { locationNameResult, geolocation });
       
       await checkIn(employeeId, '', locationNameResult, geolocation);
       await fetchTodayAttendance();
@@ -754,7 +902,7 @@ const EmployeeDashboard = () => {
                       <button 
                         className="btn btn-primary w-100"
                         onClick={handleCheckIn}
-                        disabled={checkInLoading}
+                        disabled={checkInLoading || !geolocationSupported || geolocationPermission === 'denied'}
                       >
                         {checkInLoading ? 'Checking In...' : 'Punch In'}
                       </button>
@@ -778,24 +926,67 @@ const EmployeeDashboard = () => {
                       </div>
                     ) : null}
                     
-                    {/* Location Display */}
-                    {locationName && (
-                      <div className="mt-3 p-2 bg-light rounded">
+                    {/* Location Status Indicator */}
+                    <div className="mt-3">
+                      <div className="d-flex align-items-center justify-content-center mb-2">
+                        <i className={`ti ${geolocationSupported ? 'ti-map-pin' : 'ti-map-pin-off'} me-2 ${geolocationSupported ? 'text-success' : 'text-danger'}`} />
+                        <span className={`fs-12 ${geolocationSupported ? 'text-muted' : 'text-danger'}`}>
+                          {geolocationSupported ? 'Location tracking enabled' : 'Location tracking not available'}
+                        </span>
+                      </div>
+                      
+                      {geolocationSupported && (
+                        <div className="d-flex align-items-center justify-content-center mb-2">
+                          <i className={`ti ${geolocationPermission === 'granted' ? 'ti-shield-check' : geolocationPermission === 'denied' ? 'ti-shield-x' : 'ti-shield'} me-2 ${geolocationPermission === 'granted' ? 'text-success' : geolocationPermission === 'denied' ? 'text-danger' : 'text-info'}`} />
+                          <span className={`fs-12 ${geolocationPermission === 'granted' ? 'text-muted' : geolocationPermission === 'denied' ? 'text-danger' : 'text-info'}`}>
+                            {geolocationPermission === 'granted' ? 'Location access granted' : 
+                             geolocationPermission === 'denied' ? 'Location access denied - Punch in disabled' : 
+                             'Location permission required for punch in'}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {!geolocationSupported && (
+                        <div className="alert alert-danger alert-sm mt-2 mb-0">
+                          <i className="ti ti-alert-triangle me-1" />
+                          <span className="fs-12">Location services are required for punch in. Please use a supported browser.</span>
+                        </div>
+                      )}
+                      
+                      {geolocationSupported && geolocationPermission === 'denied' && (
+                        <div className="alert alert-danger alert-sm mt-2 mb-0">
+                          <i className="ti ti-shield-x me-1" />
+                          <span className="fs-12">Location permission is required for punch in. Please enable location access in your browser settings and refresh the page.</span>
+                        </div>
+                      )}
+                      
+                      {currentLocation && geolocationPermission === 'granted' && (
                         <div className="d-flex align-items-center justify-content-center">
-                          <i className="ti ti-map-pin text-info me-2" />
+                          <i className="ti ti-crosshair me-2 text-info" />
                           {locationLoading ? (
                             <span className="fs-12 text-muted">
                               <i className="ti ti-loader ti-spin me-1" />
                               Getting location...
                             </span>
+                          ) : (locationName || todayAttendance?.checkIn?.locationName) ? (
+                            <span className="fs-12 text-muted" title={`${currentLocation.latitude.toFixed(6)}, ${currentLocation.longitude.toFixed(6)}`}>
+                              {locationName || todayAttendance?.checkIn?.locationName}
+                            </span>
                           ) : (
                             <span className="fs-12 text-muted">
-                              {locationName}
+                              {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
                             </span>
                           )}
                         </div>
-                      </div>
-                    )}
+                      )}
+                      
+                      {locationError && (
+                        <div className="alert alert-warning alert-sm mt-2 mb-0">
+                          <i className="ti ti-alert-triangle me-1" />
+                          <span className="fs-12">{locationError}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
