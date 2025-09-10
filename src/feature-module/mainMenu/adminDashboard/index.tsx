@@ -2096,7 +2096,7 @@ const AdminDashboard = () => {
                           +2.1%
                         </span> */}
                       </h3>
-                      <Link to="attendance-employee.html" className="link-default">
+                      <Link to={routes.attendanceadmin} className="link-default">
                         View Details
                       </Link>
                     </div>
@@ -2125,8 +2125,8 @@ const AdminDashboard = () => {
                           Today
                         </span>
                       </h3>
-                      <Link to="attendance-report.html" className="link-default">
-                        View All
+                      <Link to={routes.attendanceadmin} className="link-default">
+                        View Details
                       </Link>
                     </div>
                   </div>
@@ -2198,8 +2198,8 @@ const AdminDashboard = () => {
                           Today
                         </span>
                       </h3>
-                      <Link to="attendance-report.html" className="link-default">
-                        View All
+                      <Link to={routes.attendanceadmin} className="link-default">
+                        View Details
                       </Link>
                     </div>
                   </div>
@@ -2227,8 +2227,8 @@ const AdminDashboard = () => {
                           This Month
                         </span>
                       </h3>
-                      <Link to="employees.html" className="link-default">
-                        View All
+                      <Link to={routes.employeeList} className="link-default">
+                        View Details
                       </Link>
                     </div>
                   </div>
@@ -2701,7 +2701,7 @@ const AdminDashboard = () => {
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Employees</h5>
-                  <Link to="employees.html" className="btn btn-light btn-md mb-2">
+                  <Link to={routes.employeeList} className="btn btn-light btn-md mb-2">
                     View All
                   </Link>
                 </div>

@@ -160,6 +160,16 @@ const AttendanceAdmin = () => {
       sorter: (a: any, b: any) => a.Employee.length - b.Employee.length,
     },
     {
+      title: "Date",
+      dataIndex: "Date",
+      render: (text: String, record: any) => (
+        <span className="fw-medium">
+          {record.Date}
+        </span>
+      ),
+      sorter: (a: any, b: any) => new Date(a.Date).getTime() - new Date(b.Date).getTime(),
+    },
+    {
       title: "Status",
       dataIndex: "Status",
       render: (text: String, record: any) => (
@@ -298,7 +308,8 @@ const AttendanceAdmin = () => {
               </nav>
             </div>
             <div className="d-flex my-xl-auto right-content align-items-center flex-wrap ">
-              <div className="me-2 mb-2">
+              {/* Hidden buttons as per user request */}
+              {/* <div className="me-2 mb-2">
                 <div className="d-flex align-items-center border bg-white rounded p-1 me-2 icon-list">
                   <Link
                     to={all_routes.attendanceemployee}
@@ -359,7 +370,7 @@ const AttendanceAdmin = () => {
               </div>
               <div className="ms-2 head-icons">
                 <CollapseHeader />
-              </div>
+              </div> */}
             </div>
           </div>
           {/* /Breadcrumb */}
