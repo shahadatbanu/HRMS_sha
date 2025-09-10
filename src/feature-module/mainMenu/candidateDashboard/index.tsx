@@ -2661,7 +2661,7 @@ const CandidateDashboard = () => {
                         <span className="avatar rounded-circle bg-primary">
                           <i className="ti ti-users-group fs-16" />
                       </span>
-                        <Link to="candidates.html" className="link-default">
+                        <Link to={routes.candidatesGrid} className="link-default">
                           View All
                         </Link>
                       </div>
@@ -2691,7 +2691,7 @@ const CandidateDashboard = () => {
                         <span className="avatar rounded-circle bg-success">
                           <i className="ti ti-user-check fs-16" />
                       </span>
-                        <Link to="candidates.html" className="link-default">
+                      <Link to={routes.candidatesGrid} className="link-default">
                           View All
                         </Link>
                       </div>
@@ -2722,9 +2722,9 @@ const CandidateDashboard = () => {
                         <span className="avatar rounded-circle bg-danger">
                           <i className="ti ti-user-x fs-16" />
                       </span>
-                        <Link to="candidates.html" className="link-default">
-                        View All
-                      </Link>
+                      <Link to={routes.candidatesGrid} className="link-default">
+                          View All
+                        </Link>
                     </div>
                       <h6 className="fs-13 fw-medium text-default mb-1">
                         Inactive/Dead
@@ -2753,9 +2753,9 @@ const CandidateDashboard = () => {
                         <span className="avatar rounded-circle bg-primary">
                           <i className="ti ti-clock fs-16" />
                       </span>
-                        <Link to="candidates.html" className="link-default">
+                        {/* <Link to="candidates.html" className="link-default">
                           View All
-                        </Link>
+                        </Link> */}
                       </div>
                       <h6 className="fs-13 fw-medium text-default mb-1">
                         Avg. Pipeline Time
@@ -2784,9 +2784,9 @@ const CandidateDashboard = () => {
                         <span className="avatar rounded-circle bg-warning">
                           <i className="ti ti-trending-up fs-16" />
                       </span>
-                        <Link to="candidates.html" className="link-default">
+                        {/* <Link to="candidates.html" className="link-default">
                           View All
-                        </Link>
+                        </Link> */}
                       </div>
                       <h6 className="fs-13 fw-medium text-default mb-1">
                         Conversion Rate
@@ -2815,9 +2815,9 @@ const CandidateDashboard = () => {
                         <span className="avatar rounded-circle bg-success">
                           <i className="ti ti-medal fs-16" />
                       </span>
-                        <Link to="candidates.html" className="link-default">
+                        {/* <Link to="candidates.html" className="link-default">
                         View All
-                      </Link>
+                      </Link> */}
                     </div>
                       <h6 className="fs-13 fw-medium text-default mb-1">
                         Top Recruiter
@@ -5496,7 +5496,7 @@ const CandidateDashboard = () => {
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Schedules</h5>
-                  <Link to={routes.candidatesGrid} className="btn btn-light btn-md mb-2">
+                  <Link to={routes.adminInterviews} className="btn btn-light btn-md mb-2">
                     View All
                   </Link>
                 </div>

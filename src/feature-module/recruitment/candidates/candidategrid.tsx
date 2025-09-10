@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import PredefinedDateRanges from '../../../core/common/datePicker'
 import ImageWithBasePath from '../../../core/common/imageWithBasePath'
 import ProfileImage from '../../../core/common/ProfileImage'
@@ -215,6 +215,7 @@ interface CandidateDetails {
 
 const CandidateGrid = () => {
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     const viewCandidateId = searchParams.get('viewCandidate');
     
     const [form, setForm] = useState({
@@ -261,6 +262,8 @@ const CandidateGrid = () => {
     const [selectedCandidate, setSelectedCandidate] = useState<CandidateDetails | null>(null);
     const [loadingCandidateDetails, setLoadingCandidateDetails] = useState(false);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [showCandidateModal, setShowCandidateModal] = useState(false);
+    const [activeTab, setActiveTab] = useState('basic-info');
     const [filtering, setFiltering] = useState(false);
     
     // Pagination state
@@ -416,57 +419,40 @@ const CandidateGrid = () => {
         if (viewCandidateId) {
             console.log('Viewing candidate from URL parameter:', viewCandidateId);
             fetchCandidateDetails(viewCandidateId);
-            // Automatically show the interview section when navigating from dashboard
-            setShowInterviewInput(true);
+            // Show the candidate modal
+            setShowCandidateModal(true);
+            // Set active tab to interview
+            setActiveTab('interview');
+            // Don't automatically show the interview input form
+            setShowInterviewInput(false);
         }
     }, [viewCandidateId]);
 
     // Scroll to interview section when candidate is loaded from dashboard
     useEffect(() => {
-        if (selectedCandidate && viewCandidateId && interviewSectionRef.current) {
-            // Activate the interview tab first using a more robust approach
-            const interviewTab = document.getElementById('interview-tab');
-            const interviewTabContent = document.getElementById('interview');
-            
-            if (interviewTab && interviewTabContent) {
-                // Remove active class from all tabs and content
-                document.querySelectorAll('.nav-link').forEach(tab => {
-                    tab.classList.remove('active');
-                    tab.setAttribute('aria-selected', 'false');
-                });
-                document.querySelectorAll('.tab-pane').forEach(content => {
-                    content.classList.remove('show', 'active');
-                    (content as HTMLElement).style.display = 'none';
-                });
-                
-                // Add active class to interview tab and content
-                interviewTab.classList.add('active');
-                interviewTab.setAttribute('aria-selected', 'true');
-                interviewTabContent.classList.add('show', 'active');
-                
-                // Force the tab content to be visible with important styles
-                interviewTabContent.style.display = 'block !important';
-                interviewTabContent.style.opacity = '1';
-                interviewTabContent.style.visibility = 'visible';
-                
-                // Also ensure the tab is visually highlighted
-                (interviewTab as HTMLElement).style.backgroundColor = '#e3f2fd';
-                (interviewTab as HTMLElement).style.borderColor = '#2196f3';
-            }
-            
-            // Small delay to ensure the interview section is rendered
+        if (selectedCandidate && viewCandidateId && showCandidateModal && activeTab === 'interview') {
+            // Add a delay to ensure the modal and content are fully rendered
             setTimeout(() => {
-                interviewSectionRef.current?.scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'start' 
-                });
-                
-                // Add a temporary highlight to make the interview section more visible
                 if (interviewSectionRef.current) {
-                    interviewSectionRef.current.style.border = '3px solid #2196f3';
+                    // Add a temporary highlight to make the interview section more visible
+                    interviewSectionRef.current.style.border = '2px solid #2196f3';
                     interviewSectionRef.current.style.backgroundColor = '#e3f2fd';
                     interviewSectionRef.current.style.padding = '10px';
                     interviewSectionRef.current.style.borderRadius = '8px';
+                    interviewSectionRef.current.style.transition = 'all 0.3s ease';
+                    
+                    // Scroll within the modal content instead of the entire page
+                    const modalBody = document.querySelector('.offcanvas-body');
+                    if (modalBody && interviewSectionRef.current) {
+                        // Get the interview section's offset position within the modal body
+                        const interviewSectionOffsetTop = interviewSectionRef.current.offsetTop;
+                        
+                        // Scroll the modal body to show the interview section
+                        modalBody.scrollTo({
+                            top: interviewSectionOffsetTop - 20, // 20px offset from top
+                            behavior: 'smooth'
+                        });
+                    }
                     
                     // Remove the highlight after 3 seconds
                     setTimeout(() => {
@@ -478,9 +464,9 @@ const CandidateGrid = () => {
                         }
                     }, 3000);
                 }
-            }, 500);
+            }, 500); // Increased delay to ensure content is rendered
         }
-    }, [selectedCandidate, viewCandidateId, showInterviewInput]);
+    }, [selectedCandidate, viewCandidateId, showCandidateModal, activeTab]);
 
     // Populate offer details form when candidate is selected
     // Reset offer details form when selectedCandidate changes (don't auto-populate)
@@ -679,6 +665,14 @@ const CandidateGrid = () => {
         if (offcanvas) {
             const handleOffcanvasClose = () => {
                 setSelectedCandidate(null);
+                setShowCandidateModal(false);
+                // Clean the URL by removing the viewCandidate parameter
+                const newSearchParams = new URLSearchParams(searchParams);
+                newSearchParams.delete('viewCandidate');
+                const newUrl = newSearchParams.toString() 
+                    ? `${window.location.pathname}?${newSearchParams.toString()}`
+                    : window.location.pathname;
+                navigate(newUrl, { replace: true });
             };
             
             offcanvas.addEventListener('hidden.bs.offcanvas', handleOffcanvasClose);
@@ -687,7 +681,7 @@ const CandidateGrid = () => {
                 offcanvas.removeEventListener('hidden.bs.offcanvas', handleOffcanvasClose);
             };
         }
-    }, []);
+    }, [searchParams, navigate]);
 
     // Auto-dismiss success alerts after 4 seconds
     useEffect(() => {
@@ -815,6 +809,7 @@ const CandidateGrid = () => {
 
     const handleCandidateClick = (candidateId: string) => {
         fetchCandidateDetails(candidateId);
+        setShowCandidateModal(true);
     };
 
     // Filter handling functions
@@ -3909,11 +3904,29 @@ const CandidateGrid = () => {
                 </div>
             </div>
             {/* /Page Wrapper */}
+            {/* Candidate Details Backdrop */}
+            {showCandidateModal && (
+                <div 
+                    className="offcanvas-backdrop fade show"
+                    onClick={() => {
+                        setShowCandidateModal(false);
+                        // Clean the URL by removing the viewCandidate parameter
+                        const newSearchParams = new URLSearchParams(searchParams);
+                        newSearchParams.delete('viewCandidate');
+                        const newUrl = newSearchParams.toString() 
+                            ? `${window.location.pathname}?${newSearchParams.toString()}`
+                            : window.location.pathname;
+                        navigate(newUrl, { replace: true });
+                    }}
+                    style={{ zIndex: 1040 }}
+                />
+            )}
             {/* Candidate Details */}
             <div
-                className="offcanvas offcanvas-end offcanvas-large"
+                className={`offcanvas offcanvas-end offcanvas-large ${showCandidateModal ? 'show' : ''}`}
                 tabIndex={-1}
                 id="candidate_details"
+                style={{ display: showCandidateModal ? 'block' : 'none', zIndex: 1045 }}
             >
                 <div className="offcanvas-header border-bottom">
                     <h4 className="d-flex align-items-center">
@@ -3925,13 +3938,22 @@ const CandidateGrid = () => {
                     <button
                         type="button"
                         className="btn-close custom-btn-close"
-                        data-bs-dismiss="offcanvas"
+                        onClick={() => {
+                            setShowCandidateModal(false);
+                            // Clean the URL by removing the viewCandidate parameter
+                            const newSearchParams = new URLSearchParams(searchParams);
+                            newSearchParams.delete('viewCandidate');
+                            const newUrl = newSearchParams.toString() 
+                                ? `${window.location.pathname}?${newSearchParams.toString()}`
+                                : window.location.pathname;
+                            navigate(newUrl, { replace: true });
+                        }}
                         aria-label="Close"
                     >
                         <i className="ti ti-x" />
                     </button>
                 </div>
-                <div className="offcanvas-body">
+                <div className="offcanvas-body" style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 120px)' }}>
                     {loadingCandidateDetails ? (
                         <div className="text-center py-5">
                             <div className="spinner-border text-primary" role="status">
@@ -4049,104 +4071,96 @@ const CandidateGrid = () => {
                         <ul className="nav nav-underline" id="myTab" role="tablist">
                             <li className="nav-item" role="presentation">
                                 <button
-                                    className="nav-link active pt-0"
+                                    className={`nav-link pt-0 ${activeTab === 'basic-info' ? 'active' : ''}`}
                                     id="info-tab"
-                                    data-bs-toggle="tab"
-                                    data-bs-target="#basic-info"
+                                    onClick={() => setActiveTab('basic-info')}
                                     type="button"
                                     role="tab"
-                                    aria-selected="true"
+                                    aria-selected={activeTab === 'basic-info'}
                                 >
                                     Profile
                                 </button>
                             </li>
                             <li className="nav-item" role="presentation">
                                 <button
-                                    className="nav-link pt-0"
+                                    className={`nav-link pt-0 ${activeTab === 'address' ? 'active' : ''}`}
                                     id="address-tab"
-                                    data-bs-toggle="tab"
-                                    data-bs-target="#address"
+                                    onClick={() => setActiveTab('address')}
                                     type="button"
                                     role="tab"
-                                    aria-selected="false"
+                                    aria-selected={activeTab === 'address'}
                                 >
                                     Hiring Pipeline
                                 </button>
                             </li>
                             <li className="nav-item" role="presentation">
                                 <button
-                                    className="nav-link pt-0"
+                                    className={`nav-link pt-0 ${activeTab === 'submission' ? 'active' : ''}`}
                                     id="submission-tab"
-                                    data-bs-toggle="tab"
-                                    data-bs-target="#submission"
+                                    onClick={() => setActiveTab('submission')}
                                     type="button"
                                     role="tab"
-                                    aria-selected="false"
+                                    aria-selected={activeTab === 'submission'}
                                 >
                                     Submission
                                 </button>
                             </li>
                             <li className="nav-item" role="presentation">
                                 <button
-                                    className="nav-link pt-0"
+                                    className={`nav-link pt-0 ${activeTab === 'interview' ? 'active' : ''}`}
                                     id="interview-tab"
-                                    data-bs-toggle="tab"
-                                    data-bs-target="#interview"
+                                    onClick={() => setActiveTab('interview')}
                                     type="button"
                                     role="tab"
-                                    aria-selected="false"
+                                    aria-selected={activeTab === 'interview'}
                                 >
                                     Interview
                                 </button>
                             </li>
                             <li className="nav-item" role="presentation">
                                 <button
-                                    className="nav-link pt-0"
+                                    className={`nav-link pt-0 ${activeTab === 'address2' ? 'active' : ''}`}
                                     id="address-tab2"
-                                    data-bs-toggle="tab"
-                                    data-bs-target="#address2"
+                                    onClick={() => setActiveTab('address2')}
                                     type="button"
                                     role="tab"
-                                    aria-selected="false"
+                                    aria-selected={activeTab === 'address2'}
                                 >
                                     Notes
                                 </button>
                             </li>
                             <li className="nav-item" role="presentation">
                                 <button
-                                    className="nav-link pt-0"
+                                    className={`nav-link pt-0 ${activeTab === 'attachments' ? 'active' : ''}`}
                                     id="attachments-tab"
-                                    data-bs-toggle="tab"
-                                    data-bs-target="#attachments"
+                                    onClick={() => setActiveTab('attachments')}
                                     type="button"
                                     role="tab"
-                                    aria-selected="false"
+                                    aria-selected={activeTab === 'attachments'}
                                 >
                                     Attachments
                                 </button>
                             </li>
                             <li className="nav-item" role="presentation">
                                 <button
-                                    className="nav-link pt-0"
+                                    className={`nav-link pt-0 ${activeTab === 'offer-details' ? 'active' : ''}`}
                                     id="offer-details-tab"
-                                    data-bs-toggle="tab"
-                                    data-bs-target="#offer-details"
+                                    onClick={() => setActiveTab('offer-details')}
                                     type="button"
                                     role="tab"
-                                    aria-selected="false"
+                                    aria-selected={activeTab === 'offer-details'}
                                 >
                                     Offer Details
                                 </button>
                             </li>
                             <li className="nav-item" role="presentation">
                                 <button
-                                    className="nav-link pt-0"
+                                    className={`nav-link pt-0 ${activeTab === 'background-check' ? 'active' : ''}`}
                                     id="background-check-tab"
-                                    data-bs-toggle="tab"
-                                    data-bs-target="#background-check"
+                                    onClick={() => setActiveTab('background-check')}
                                     type="button"
                                     role="tab"
-                                    aria-selected="false"
+                                    aria-selected={activeTab === 'background-check'}
                                 >
                                     BG Check
                                 </button>
@@ -4155,11 +4169,12 @@ const CandidateGrid = () => {
                     </div>
                     <div className="tab-content" id="myTabContent">
                         <div
-                            className="tab-pane fade show active"
+                            className={`tab-pane fade ${activeTab === 'basic-info' ? 'show active' : ''}`}
                             id="basic-info"
                             role="tabpanel"
                             aria-labelledby="info-tab"
                             tabIndex={0}
+                            style={{ display: activeTab === 'basic-info' ? 'block' : 'none' }}
                         >
                             {selectedCandidate ? (
                                 <>
@@ -4396,11 +4411,12 @@ const CandidateGrid = () => {
                             )}
                         </div>
                         <div
-                            className="tab-pane fade"
+                            className={`tab-pane fade ${activeTab === 'address' ? 'show active' : ''}`}
                             id="address"
                             role="tabpanel"
                             aria-labelledby="address-tab"
                             tabIndex={0}
+                            style={{ display: activeTab === 'address' ? 'block' : 'none' }}
                         >
                             {selectedCandidate ? (
                                 <>
@@ -4626,11 +4642,12 @@ const CandidateGrid = () => {
                             )}
                         </div>
                         <div
-                            className="tab-pane fade"
+                            className={`tab-pane fade ${activeTab === 'address2' ? 'show active' : ''}`}
                             id="address2"
                             role="tabpanel"
                             aria-labelledby="address-tab2"
                             tabIndex={0}
+                            style={{ display: activeTab === 'address2' ? 'block' : 'none' }}
                         >
                             {selectedCandidate ? (
                                 <div className="card">
@@ -4836,11 +4853,12 @@ const CandidateGrid = () => {
                             )}
                         </div>
                         <div
-                            className="tab-pane fade"
+                            className={`tab-pane fade ${activeTab === 'attachments' ? 'show active' : ''}`}
                             id="attachments"
                             role="tabpanel"
                             aria-labelledby="attachments-tab"
                             tabIndex={0}
+                            style={{ display: activeTab === 'attachments' ? 'block' : 'none' }}
                         >
                             {selectedCandidate ? (
                                 <div className="card">
@@ -5051,11 +5069,12 @@ const CandidateGrid = () => {
                             )}
                         </div>
                         <div
-                            className="tab-pane fade"
+                            className={`tab-pane fade ${activeTab === 'submission' ? 'show active' : ''}`}
                             id="submission"
                             role="tabpanel"
                             aria-labelledby="submission-tab"
                             tabIndex={0}
+                            style={{ display: activeTab === 'submission' ? 'block' : 'none' }}
                         >
                             {selectedCandidate ? (
                                 <div className="card">
@@ -5406,11 +5425,12 @@ const CandidateGrid = () => {
                             )}
                         </div>
                         <div
-                            className="tab-pane fade"
+                            className={`tab-pane fade ${activeTab === 'interview' ? 'show active' : ''}`}
                             id="interview"
                             role="tabpanel"
                             aria-labelledby="interview-tab"
                             tabIndex={0}
+                            style={{ display: activeTab === 'interview' ? 'block' : 'none' }}
                         >
                             {selectedCandidate ? (
                                 <div className="card">
@@ -5830,11 +5850,12 @@ const CandidateGrid = () => {
                             )}
                         </div>
                         <div
-                            className="tab-pane fade"
+                            className={`tab-pane fade ${activeTab === 'offer-details' ? 'show active' : ''}`}
                             id="offer-details"
                             role="tabpanel"
                             aria-labelledby="offer-details-tab"
                             tabIndex={0}
+                            style={{ display: activeTab === 'offer-details' ? 'block' : 'none' }}
                         >
                             {selectedCandidate ? (
                                 <div className="card">
@@ -6220,11 +6241,12 @@ const CandidateGrid = () => {
                             )}
                         </div>
                         <div
-                            className="tab-pane fade"
+                            className={`tab-pane fade ${activeTab === 'background-check' ? 'show active' : ''}`}
                             id="background-check"
                             role="tabpanel"
                             aria-labelledby="background-check-tab"
                             tabIndex={0}
+                            style={{ display: activeTab === 'background-check' ? 'block' : 'none' }}
                         >
                             {selectedCandidate ? (
                                 <div className="card">
