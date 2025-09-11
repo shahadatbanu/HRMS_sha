@@ -97,12 +97,12 @@ const LeaveEmployee = () => {
     {
       title: 'From',
       dataIndex: 'from',
-      render: (text: string) => text ? new Date(text).toLocaleDateString() : '',
+      render: (text: string) => text ? new Date(text).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' }) : '',
     },
     {
       title: 'To',
       dataIndex: 'to',
-      render: (text: string) => text ? new Date(text).toLocaleDateString() : '',
+      render: (text: string) => text ? new Date(text).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' }) : '',
     },
     {
       title: 'No of Days',

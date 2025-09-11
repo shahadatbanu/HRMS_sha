@@ -12,7 +12,7 @@ const Localizationsettings = () => {
     { value: "spanish", label: "Spanish" },
   ];
   const timezoneOptions = [
-    { value: "America/Chicago", label: "US Central Time (America/Chicago)" },
+    { value: "Asia/Kolkata", label: "US Central Time (Asia/Kolkata)" },
     { value: "(UTC +5:30)", label: "(UTC +5:30)" },
     { value: "(UTC+11:00) INR", label: "(UTC+11:00) INR" },
   ];

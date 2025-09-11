@@ -1762,7 +1762,7 @@ const CandidateDashboard = () => {
   const formatInterviewTime = (date: string) => {
     const interviewDate = new Date(date);
     return interviewDate.toLocaleTimeString('en-US', { 
-      timeZone: 'America/Chicago',
+      timeZone: 'Asia/Kolkata',
       hour: '2-digit', 
       minute: '2-digit',
       hour12: true 
@@ -1773,7 +1773,7 @@ const CandidateDashboard = () => {
   const formatInterviewDate = (date: string) => {
     const interviewDate = new Date(date);
     return interviewDate.toLocaleDateString('en-US', { 
-      timeZone: 'America/Chicago',
+      timeZone: 'Asia/Kolkata',
       weekday: 'short',
       day: 'numeric', 
       month: 'short', 

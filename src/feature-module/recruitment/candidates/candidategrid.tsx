@@ -5453,7 +5453,7 @@ const CandidateGrid = () => {
                                                                                     <small className="text-muted">
                                                                                         {submission.createdBy?.firstName} {submission.createdBy?.lastName} on{' '}
                                                                                         {new Date(submission.createdAt).toLocaleDateString('en-US', {
-                                                                                            timeZone: 'America/Chicago',
+                                                                                            timeZone: 'Asia/Kolkata',
                                                                                             day: '2-digit',
                                                                                             month: 'short',
                                                                                             year: 'numeric',
