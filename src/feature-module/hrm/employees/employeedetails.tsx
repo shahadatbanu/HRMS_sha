@@ -32,6 +32,64 @@ type PasswordField = "password" | "confirmPassword";
 
 const EmployeeDetails = () => {
   const { id } = useParams();
+  
+  // Helper function to show success alert and close modal
+  const showSuccessAndCloseModal = async (title: string, text: string, modalId: string) => {
+    const MySwal = withReactContent(Swal);
+    
+    // Store modal element reference
+    const modalElement = document.getElementById(modalId);
+    
+    // Function to close the modal
+    const closeModal = () => {
+      if (modalElement) {
+        // Try Bootstrap 5 modal API first
+        if (window.bootstrap && window.bootstrap.Modal) {
+          const modal = window.bootstrap.Modal.getInstance(modalElement);
+          if (modal) {
+            modal.hide();
+          } else {
+            // Use jQuery or direct DOM manipulation for Bootstrap 5
+            modalElement.classList.remove('show');
+            modalElement.setAttribute('aria-hidden', 'true');
+            modalElement.setAttribute('style', 'display: none !important');
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+            const backdrop = document.querySelector('.modal-backdrop');
+            if (backdrop) backdrop.remove();
+          }
+        } else {
+          // Fallback for older Bootstrap or if bootstrap is not available
+          modalElement.classList.remove('show');
+          modalElement.setAttribute('aria-hidden', 'true');
+          modalElement.setAttribute('style', 'display: none !important');
+          document.body.classList.remove('modal-open');
+          document.body.style.overflow = '';
+          document.body.style.paddingRight = '';
+          const backdrop = document.querySelector('.modal-backdrop');
+          if (backdrop) backdrop.remove();
+        }
+      }
+    };
+    
+    await MySwal.fire({
+      title,
+      text,
+      icon: "success",
+      confirmButtonColor: "#5CB85C",
+      confirmButtonText: "OK",
+      allowOutsideClick: false,
+      allowEscapeKey: true,
+      focusConfirm: false,
+      backdrop: true,
+      allowEnterKey: true,
+      willClose: () => {
+        // Close modal when SweetAlert is about to close
+        closeModal();
+      }
+    });
+  };
   const { user } = useUser();
   const [employee, setEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -222,24 +280,12 @@ const EmployeeDetails = () => {
         }
       );
       setEmployee((prev: any) => ({ ...prev, about: aboutText }));
-      // Show success confirmation box
-      const MySwal = withReactContent(Swal);
-      await MySwal.fire({
-        title: "Success!",
-        text: "About information has been updated successfully.",
-        icon: "success",
-        confirmButtonColor: "#5CB85C",
-        confirmButtonText: "OK",
-      });
-      // Close modal if present
-      const modal = document.getElementById('edit_about');
-      if (modal) {
-        const backdrop = document.querySelector('.modal-backdrop');
-        if (backdrop) backdrop.remove();
-        (modal as any)?.classList?.remove('show');
-        (modal as any).setAttribute('style', 'display: none');
-        document.body.classList.remove('modal-open');
-      }
+      // Show success confirmation box and close modal
+      await showSuccessAndCloseModal(
+        "Success!",
+        "About information has been updated successfully.",
+        "edit_about"
+      );
     } catch (err: any) {
       setAboutError(err.response?.data?.message || 'Failed to update about information');
     } finally {
@@ -324,28 +370,12 @@ const EmployeeDetails = () => {
         }
       );
       setEmployee(response.data?.employee ?? ((prev: any) => ({ ...prev, assets: updatedAssets })));
-      const MySwal = withReactContent(Swal);
-      await MySwal.fire({
-        title: "Success!",
-        text: "Asset assigned successfully.",
-        icon: "success",
-        confirmButtonColor: "#5CB85C",
-        confirmButtonText: "OK",
-      });
-      const modal = document.getElementById('assign_asset');
-      if (modal) {
-        const backdrop = document.querySelector('.modal-backdrop');
-        if (backdrop) backdrop.remove();
-        modal.classList.remove('show', 'd-block');
-        modal.setAttribute('aria-hidden', 'true');
-        modal.setAttribute('style', 'display: none !important');
-        document.body.classList.remove('modal-open');
-        document.body.style.paddingRight = '';
-        if (window.bootstrap) {
-          const bootstrapModal = window.bootstrap.Modal.getInstance(modal);
-          if (bootstrapModal) bootstrapModal.hide();
-        }
-      }
+      // Show success confirmation box and close modal
+      await showSuccessAndCloseModal(
+        "Success!",
+        "Asset assigned successfully.",
+        "assign_asset"
+      );
     } catch (err: any) {
       setAssetError(err.response?.data?.message || 'Failed to assign asset');
     } finally {
@@ -759,45 +789,12 @@ const EmployeeDetails = () => {
         );
         setEmployee((prev: any) => ({ ...prev, ...bankDetails }));
         
-        // Show success confirmation box first
-        const MySwal = withReactContent(Swal);
-        await MySwal.fire({
-          title: "Success!",
-          text: "Bank details have been updated successfully.",
-          icon: "success",
-          confirmButtonColor: "#5CB85C",
-          confirmButtonText: "OK",
-          customClass: {
-            confirmButton: "btn btn-success",
-          },
-        });
-        
-        // Properly close modal and remove backdrop
-        const modal = document.getElementById('edit_bank');
-        if (modal) {
-          // Remove modal backdrop
-          const backdrop = document.querySelector('.modal-backdrop');
-          if (backdrop) {
-            backdrop.remove();
-          }
-          
-          // Remove modal classes and hide
-          modal.classList.remove('show', 'd-block');
-          modal.setAttribute('aria-hidden', 'true');
-          modal.setAttribute('style', 'display: none !important');
-          
-          // Remove body classes
-          document.body.classList.remove('modal-open');
-          document.body.style.paddingRight = '';
-          
-          // If using Bootstrap 5, also try the proper API
-          if (window.bootstrap) {
-            const bootstrapModal = window.bootstrap.Modal.getInstance(modal);
-            if (bootstrapModal) {
-              bootstrapModal.hide();
-            }
-          }
-        }
+        // Show success confirmation box and close modal
+        await showSuccessAndCloseModal(
+          "Success!",
+          "Bank details have been updated successfully.",
+          "edit_bank"
+        );
       } catch (err: any) {
         setBankError(err.response?.data?.message || 'Failed to update bank details');
       } finally {
@@ -822,34 +819,12 @@ const EmployeeDetails = () => {
         );
         setEmployee((prev: any) => ({ ...prev, ...personalInfo }));
         
-        // Show success confirmation box
-        const MySwal = withReactContent(Swal);
-        await MySwal.fire({
-          title: "Success!",
-          text: "Personal information has been updated successfully.",
-          icon: "success",
-          confirmButtonColor: "#5CB85C",
-          confirmButtonText: "OK",
-          customClass: {
-            confirmButton: "btn btn-success",
-          },
-        });
-        
-        // Close modal
-        const modal = document.getElementById('edit_personal');
-        if (modal) {
-          const backdrop = document.querySelector('.modal-backdrop');
-          if (backdrop) backdrop.remove();
-          modal.classList.remove('show', 'd-block');
-          modal.setAttribute('aria-hidden', 'true');
-          modal.setAttribute('style', 'display: none !important');
-          document.body.classList.remove('modal-open');
-          document.body.style.paddingRight = '';
-          if (window.bootstrap) {
-            const bootstrapModal = window.bootstrap.Modal.getInstance(modal);
-            if (bootstrapModal) bootstrapModal.hide();
-          }
-        }
+        // Show success confirmation box and close modal
+        await showSuccessAndCloseModal(
+          "Success!",
+          "Personal information has been updated successfully.",
+          "edit_personal"
+        );
       } catch (err: any) {
         setPersonalError(err.response?.data?.message || 'Failed to update personal information');
       } finally {
@@ -874,34 +849,12 @@ const EmployeeDetails = () => {
         );
         setEmployee((prev: any) => ({ ...prev, emergencyContacts }));
         
-        // Show success confirmation box
-        const MySwal = withReactContent(Swal);
-        await MySwal.fire({
-          title: "Success!",
-          text: "Emergency contacts have been updated successfully.",
-          icon: "success",
-          confirmButtonColor: "#5CB85C",
-          confirmButtonText: "OK",
-          customClass: {
-            confirmButton: "btn btn-success",
-          },
-        });
-        
-        // Close modal
-        const modal = document.getElementById('edit_emergency');
-        if (modal) {
-          const backdrop = document.querySelector('.modal-backdrop');
-          if (backdrop) backdrop.remove();
-          modal.classList.remove('show', 'd-block');
-          modal.setAttribute('aria-hidden', 'true');
-          modal.setAttribute('style', 'display: none !important');
-          document.body.classList.remove('modal-open');
-          document.body.style.paddingRight = '';
-          if (window.bootstrap) {
-            const bootstrapModal = window.bootstrap.Modal.getInstance(modal);
-            if (bootstrapModal) bootstrapModal.hide();
-          }
-        }
+        // Show success confirmation box and close modal
+        await showSuccessAndCloseModal(
+          "Success!",
+          "Emergency contacts have been updated successfully.",
+          "edit_emergency"
+        );
       } catch (err: any) {
         setEmergencyError(err.response?.data?.message || 'Failed to update emergency contacts');
       } finally {
@@ -926,34 +879,12 @@ const EmployeeDetails = () => {
         );
         setEmployee(response.data?.employee ?? ((prev: any) => ({ ...prev, familyInfo })));
         
-        // Show success confirmation box
-        const MySwal = withReactContent(Swal);
-        await MySwal.fire({
-          title: "Success!",
-          text: "Family information has been updated successfully.",
-          icon: "success",
-          confirmButtonColor: "#5CB85C",
-          confirmButtonText: "OK",
-          customClass: {
-            confirmButton: "btn btn-success",
-          },
-        });
-        
-        // Close modal
-        const modal = document.getElementById('edit_familyinformation');
-        if (modal) {
-          const backdrop = document.querySelector('.modal-backdrop');
-          if (backdrop) backdrop.remove();
-          modal.classList.remove('show', 'd-block');
-          modal.setAttribute('aria-hidden', 'true');
-          modal.setAttribute('style', 'display: none !important');
-          document.body.classList.remove('modal-open');
-          document.body.style.paddingRight = '';
-          if (window.bootstrap) {
-            const bootstrapModal = window.bootstrap.Modal.getInstance(modal);
-            if (bootstrapModal) bootstrapModal.hide();
-          }
-        }
+        // Show success confirmation box and close modal
+        await showSuccessAndCloseModal(
+          "Success!",
+          "Family information has been updated successfully.",
+          "edit_familyinformation"
+        );
       } catch (err: any) {
         setFamilyError(err.response?.data?.message || 'Failed to update family information');
       } finally {
@@ -978,34 +909,12 @@ const EmployeeDetails = () => {
         );
         setEmployee(response.data?.employee ?? ((prev: any) => ({ ...prev, education })));
         
-        // Show success confirmation box
-        const MySwal = withReactContent(Swal);
-        await MySwal.fire({
-          title: "Success!",
-          text: "Education details have been updated successfully.",
-          icon: "success",
-          confirmButtonColor: "#5CB85C",
-          confirmButtonText: "OK",
-          customClass: {
-            confirmButton: "btn btn-success",
-          },
-        });
-        
-        // Close modal
-        const modal = document.getElementById('edit_education');
-        if (modal) {
-          const backdrop = document.querySelector('.modal-backdrop');
-          if (backdrop) backdrop.remove();
-          modal.classList.remove('show', 'd-block');
-          modal.setAttribute('aria-hidden', 'true');
-          modal.setAttribute('style', 'display: none !important');
-          document.body.classList.remove('modal-open');
-          document.body.style.paddingRight = '';
-          if (window.bootstrap) {
-            const bootstrapModal = window.bootstrap.Modal.getInstance(modal);
-            if (bootstrapModal) bootstrapModal.hide();
-          }
-        }
+        // Show success confirmation box and close modal
+        await showSuccessAndCloseModal(
+          "Success!",
+          "Education details have been updated successfully.",
+          "edit_education"
+        );
       } catch (err: any) {
         setEducationError(err.response?.data?.message || 'Failed to update education details');
       } finally {
@@ -1030,34 +939,12 @@ const EmployeeDetails = () => {
         );
         setEmployee(response.data?.employee ?? ((prev: any) => ({ ...prev, experience })));
         
-        // Show success confirmation box
-        const MySwal = withReactContent(Swal);
-        await MySwal.fire({
-          title: "Success!",
-          text: "Experience details have been updated successfully.",
-          icon: "success",
-          confirmButtonColor: "#5CB85C",
-          confirmButtonText: "OK",
-          customClass: {
-            confirmButton: "btn btn-success",
-          },
-        });
-        
-        // Close modal
-        const modal = document.getElementById('edit_experience');
-        if (modal) {
-          const backdrop = document.querySelector('.modal-backdrop');
-          if (backdrop) backdrop.remove();
-          modal.classList.remove('show', 'd-block');
-          modal.setAttribute('aria-hidden', 'true');
-          modal.setAttribute('style', 'display: none !important');
-          document.body.classList.remove('modal-open');
-          document.body.style.paddingRight = '';
-          if (window.bootstrap) {
-            const bootstrapModal = window.bootstrap.Modal.getInstance(modal);
-            if (bootstrapModal) bootstrapModal.hide();
-          }
-        }
+        // Show success confirmation box and close modal
+        await showSuccessAndCloseModal(
+          "Success!",
+          "Experience details have been updated successfully.",
+          "edit_experience"
+        );
       } catch (err: any) {
         setExperienceError(err.response?.data?.message || 'Failed to update experience details');
       } finally {
@@ -1070,6 +957,46 @@ const EmployeeDetails = () => {
       e.preventDefault();
       setBasicInfoSaving(true);
       setBasicInfoError(null);
+      
+      // Validate birthday format before sending
+      if (basicInfo.birthday && basicInfo.birthday.trim() !== '') {
+        const birthdayRegex = /^(\d{2})-(\d{2})-(\d{4})$/;
+        if (!birthdayRegex.test(basicInfo.birthday)) {
+          setBasicInfoError('Invalid birthday format. Please use DD-MM-YYYY format.');
+          setBasicInfoSaving(false);
+          return;
+        }
+        
+        // Additional validation for date values
+        const match = basicInfo.birthday.match(birthdayRegex);
+        if (!match) {
+          setBasicInfoError('Invalid birthday format. Please use DD-MM-YYYY format.');
+          setBasicInfoSaving(false);
+          return;
+        }
+        const [, day, month, year] = match;
+        const dayNum = parseInt(day, 10);
+        const monthNum = parseInt(month, 10);
+        const yearNum = parseInt(year, 10);
+        
+        if (dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12 || yearNum < 1900 || yearNum > 2100) {
+          setBasicInfoError('Invalid date values. Please check day, month, and year.');
+          setBasicInfoSaving(false);
+          return;
+        }
+        
+        // Check if the date is actually valid
+        const testDate = new Date(yearNum, monthNum - 1, dayNum);
+        if (isNaN(testDate.getTime()) || 
+            testDate.getDate() !== dayNum || 
+            testDate.getMonth() !== (monthNum - 1) || 
+            testDate.getFullYear() !== yearNum) {
+          setBasicInfoError('Invalid date. Please check if the date exists.');
+          setBasicInfoSaving(false);
+          return;
+        }
+      }
+      
       try {
         const response = await axios.put(
           `${BACKEND_URL}/api/employees/${id}`,
@@ -1082,34 +1009,12 @@ const EmployeeDetails = () => {
         );
         setEmployee((prev: any) => ({ ...prev, ...basicInfo }));
         
-        // Show success confirmation box
-        const MySwal = withReactContent(Swal);
-        await MySwal.fire({
-          title: "Success!",
-          text: "Basic information has been updated successfully.",
-          icon: "success",
-          confirmButtonColor: "#5CB85C",
-          confirmButtonText: "OK",
-          customClass: {
-            confirmButton: "btn btn-success",
-          },
-        });
-        
-        // Close modal
-        const modal = document.getElementById('edit_employee');
-        if (modal) {
-          const backdrop = document.querySelector('.modal-backdrop');
-          if (backdrop) backdrop.remove();
-          modal.classList.remove('show', 'd-block');
-          modal.setAttribute('aria-hidden', 'true');
-          modal.setAttribute('style', 'display: none !important');
-          document.body.classList.remove('modal-open');
-          document.body.style.paddingRight = '';
-          if (window.bootstrap) {
-            const bootstrapModal = window.bootstrap.Modal.getInstance(modal);
-            if (bootstrapModal) bootstrapModal.hide();
-          }
-        }
+        // Show success confirmation box and close modal
+        await showSuccessAndCloseModal(
+          "Success!",
+          "Basic information has been updated successfully.",
+          "edit_employee"
+        );
       } catch (err: any) {
         setBasicInfoError(err.response?.data?.message || 'Failed to update basic information');
       } finally {
@@ -3248,7 +3153,13 @@ const EmployeeDetails = () => {
                                                     getPopupContainer={getModalContainer}
                                                     placeholder="DD-MM-YYYY"
                                                     value={basicInfo.birthday ? dayjs(basicInfo.birthday, 'DD-MM-YYYY') : null}
-                                                    onChange={(date) => setBasicInfo({ ...basicInfo, birthday: date ? date.format('DD-MM-YYYY') : '' })}
+                                                    onChange={(date) => {
+                                                        if (date && date.isValid()) {
+                                                            setBasicInfo({ ...basicInfo, birthday: date.format('DD-MM-YYYY') });
+                                                        } else {
+                                                            setBasicInfo({ ...basicInfo, birthday: '' });
+                                                        }
+                                                    }}
                                                 />
                                                 <span className="input-icon-addon">
                                                     <i className="ti ti-calendar text-gray-7" />

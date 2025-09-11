@@ -1758,22 +1758,22 @@ const CandidateDashboard = () => {
     }
   };
 
-  // Function to format interview time (US Central Time)
+  // Function to format interview time (IST)
   const formatInterviewTime = (date: string) => {
     const interviewDate = new Date(date);
     return interviewDate.toLocaleTimeString('en-US', { 
-      timeZone: 'America/Chicago',
+      timeZone: 'Asia/Kolkata',
       hour: '2-digit', 
       minute: '2-digit',
       hour12: true 
     });
   };
 
-  // Function to format interview date (US Central Time)
+  // Function to format interview date (IST)
   const formatInterviewDate = (date: string) => {
     const interviewDate = new Date(date);
     return interviewDate.toLocaleDateString('en-US', { 
-      timeZone: 'America/Chicago',
+      timeZone: 'Asia/Kolkata',
       weekday: 'short',
       day: 'numeric', 
       month: 'short', 

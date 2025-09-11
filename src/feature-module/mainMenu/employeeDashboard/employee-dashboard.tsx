@@ -877,12 +877,12 @@ const EmployeeDashboard = () => {
                   <div className="mb-4 text-center">
                     <h6 className="fw-medium text-gray-5 mb-1">Attendance</h6>
                     <h4>{currentTime.toLocaleTimeString('en-US', {
-                      timeZone: 'America/Chicago',
+                      timeZone: 'Asia/Kolkata',
                       hour: '2-digit',
                       minute: '2-digit',
                       hour12: true
                     })}, {currentTime.toLocaleDateString('en-US', {
-                      timeZone: 'America/Chicago',
+                      timeZone: 'Asia/Kolkata',
                       day: '2-digit',
                       month: 'short',
                       year: 'numeric'
