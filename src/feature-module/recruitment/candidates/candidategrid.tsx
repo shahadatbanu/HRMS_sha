@@ -522,6 +522,16 @@ const CandidateGrid = () => {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
+        
+        // Validate yearsOfExperience to prevent negative values
+        if (name === 'yearsOfExperience') {
+            const numValue = parseFloat(value);
+            if (value !== '' && (isNaN(numValue) || numValue < 0)) {
+                // Don't update the state if the value is negative or invalid
+                return;
+            }
+        }
+        
         if (name.includes('.')) {
             const [parent, child] = name.split('.');
             setForm(prev => ({
@@ -748,11 +758,17 @@ const CandidateGrid = () => {
                 return;
             }
 
-            // Build query parameters
+            // Build query parameters, filtering out empty values
             const params = new URLSearchParams({
                 page: page.toString(),
-                limit: pageSize.toString(),
-                ...filters
+                limit: pageSize.toString()
+            });
+            
+            // Only add non-empty filter values
+            Object.entries(filterParams).forEach(([key, value]) => {
+                if (value && value.toString().trim() !== '') {
+                    params.append(key, value.toString());
+                }
             });
 
             console.log('🔍 Fetching candidates with params:', params.toString());
@@ -917,7 +933,17 @@ const CandidateGrid = () => {
         };
         setFilters(clearedFilters);
         setCurrentPage(1);
+        // Force a fresh fetch with cleared filters
+        console.log('🔍 Clearing filters and fetching candidates...');
         fetchCandidates(1, clearedFilters);
+        
+        // Fallback: if no candidates are loaded after a short delay, try again
+        setTimeout(() => {
+            if (candidates.length === 0) {
+                console.log('🔍 Fallback: No candidates found, trying again...');
+                fetchCandidates(1, clearedFilters);
+            }
+        }, 1000);
     };
 
 
@@ -2924,6 +2950,13 @@ const CandidateGrid = () => {
             return;
         }
 
+        // Validate years of experience
+        if (form.yearsOfExperience && (isNaN(Number(form.yearsOfExperience)) || Number(form.yearsOfExperience) < 0)) {
+            setMessage('Years of experience must be a positive number');
+            setLoading(false);
+            return;
+        }
+
         try {
     
             const formDataToSend = new FormData();
@@ -3806,14 +3839,14 @@ const CandidateGrid = () => {
                                         </select>
                                     </div>
                                     <div className="me-3">
-                                        {/* <button
+                                        <button
                                             className="btn btn-outline-secondary btn-sm"
                                             onClick={clearFilters}
-                                            disabled={!filters.search && !filters.status && !filters.experience}
+                                            disabled={!filters.search && !filters.status && !filters.assignedTo && !filters.experience && !filters.techStack && !filters.dateFrom && !filters.dateTo}
                                         >
                                             <i className="ti ti-x me-1"></i>
                                             Clear Filters
-                                        </button> */}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -6841,6 +6874,8 @@ const CandidateGrid = () => {
                                                         name="yearsOfExperience"
                                                         value={form.yearsOfExperience}
                                                         onChange={handleInputChange}
+                                                        min="0"
+                                                        step="0.1"
                                                     />
                                                 </div>
                                             </div>
@@ -7037,14 +7072,43 @@ const CandidateGrid = () => {
                                             <button 
                                                 className="btn btn-primary px-4 py-2" 
                                                 onClick={() => {
-                                                    handleSuccessModalClose();
-                                                    // Reopen the add candidate modal using data attributes
-                                                    setTimeout(() => {
-                                                        const addButton = document.querySelector('[data-bs-target="#add_candidate"]');
-                                                        if (addButton) {
-                                                            (addButton as HTMLElement).click();
-                                                        }
-                                                    }, 100);
+                                                    // Only close the success modal, keep add candidate modal open
+                                                    setShowSuccess(false);
+                                                    // Clear the form for new candidate
+                                                    setForm({
+                                                        candidateId: '',
+                                                        firstName: '',
+                                                        lastName: '',
+                                                        email: '',
+                                                        phone: '',
+                                                        appliedRole: '',
+                                                        appliedCompany: '',
+                                                        source: '',
+                                                        currentRole: '',
+                                                        yearsOfExperience: '',
+                                                        relevantExperience: '',
+                                                        recruiter: '',
+                                                        teamLead: '',
+                                                        address: {
+                                                            street: '',
+                                                            city: '',
+                                                            state: '',
+                                                            country: '',
+                                                            zipCode: ''
+                                                        },
+                                                        education: [],
+                                                        certifications: [],
+                                                        experience: [],
+                                                        techStack: [],
+                                                        coverLetter: '',
+                                                        portfolio: ''
+                                                    });
+                                                    // Clear file states
+                                                    setCvFile(null);
+                                                    setProfileImageFile(null);
+                                                    setImagePreview(null);
+                                                    setExistingCvFile(null);
+                                                    setExistingProfileImage(null);
                                                 }}
                                                 style={{ borderRadius: '8px', fontWeight: '500' }}
                                             >
@@ -7714,6 +7778,8 @@ const CandidateGrid = () => {
                                                             name="yearsOfExperience"
                                                             value={form.yearsOfExperience}
                                                             onChange={handleInputChange}
+                                                            min="0"
+                                                            step="0.1"
                                                         />
                                                     </div>
                                                 </div>
@@ -7935,7 +8001,7 @@ const CandidateGrid = () => {
 
             {/* Reschedule Interview Modal */}
             {showRescheduleModal && reschedulingInterview && (
-                <div className="modal fade show d-block" style={{ display: 'block', background: 'rgba(0,0,0,0.6)', zIndex: 9999 }}>
+                <div className="modal fade show d-block" style={{ display: 'block', background: 'rgba(0,0,0,0.6)', zIndex: 10000 }}>
                     <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: '500px' }}>
                         <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '16px' }}>
                             <div className="modal-header border-0 pb-0">
