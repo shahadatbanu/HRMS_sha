@@ -37,6 +37,7 @@ const LeaveEmployee = () => {
     reason: '',
   });
   const [addLoading, setAddLoading] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   // Check if Half Day is selected
   const isHalfDay = addForm.leaveType.value === 'Half Day';
@@ -217,6 +218,10 @@ const LeaveEmployee = () => {
       await leaveService.addLeaveRequest(leaveData);
       message.success('Leave request submitted');
       setAddForm({ leaveType: leavetype[0], from: null, to: null, reason: '' });
+      
+      // Close the modal
+      setShowAddModal(false);
+      
       // Refresh data
       const [leavesRes, balanceRes] = await Promise.all([
         leaveService.getEmployeeLeaves(employeeId),
@@ -314,16 +319,15 @@ const LeaveEmployee = () => {
                 </div>
               </div>
               <div className="mb-2">
-                <Link
-                  to="#"
-                  data-bs-toggle="modal" data-inert={true}
-                  data-bs-target="#add_leaves"
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(true)}
                   className={`btn d-flex align-items-center ${calculateRemainingLeaves() <= 0 ? 'btn-secondary disabled' : 'btn-primary'}`}
                   style={{ pointerEvents: calculateRemainingLeaves() <= 0 ? 'none' : 'auto' }}
                 >
                   <i className="ti ti-circle-plus me-2" />
                   {calculateRemainingLeaves() <= 0 ? 'No Leaves Remaining' : 'Add Leave'}
-                </Link>
+                </button>
               </div>
             </div>
           </div>
@@ -436,20 +440,27 @@ const LeaveEmployee = () => {
       </div>
       {/* /Page Wrapper */}
       {/* Add Leaves */}
-      <div className="modal fade" id="add_leaves">
-        <div className="modal-dialog modal-dialog-centered modal-lg">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h4 className="modal-title">Add Leave</h4>
-              <button
-                type="button"
-                className="btn-close custom-btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-              >
-                <i className="ti ti-x" />
-              </button>
-            </div>
+      {showAddModal && (
+        <>
+          <div 
+            className="modal-backdrop fade show"
+            onClick={() => setShowAddModal(false)}
+            style={{ zIndex: 1040 }}
+          ></div>
+          <div className="modal fade show" style={{ display: 'block', zIndex: 1050 }} id="add_leaves">
+            <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h4 className="modal-title">Add Leave</h4>
+                <button
+                  type="button"
+                  className="btn-close custom-btn-close"
+                  onClick={() => setShowAddModal(false)}
+                  aria-label="Close"
+                >
+                  <i className="ti ti-x" />
+                </button>
+              </div>
             <form onSubmit={handleAddLeave}>
               <div className="modal-body pb-0">
                 <div className="row">
@@ -529,7 +540,7 @@ const LeaveEmployee = () => {
                 <button
                   type="button"
                   className="btn btn-light me-2"
-                  data-bs-dismiss="modal"
+                  onClick={() => setShowAddModal(false)}
                 >
                   Cancel
                 </button>
@@ -538,9 +549,11 @@ const LeaveEmployee = () => {
                 </button>
               </div>
             </form>
+            </div>
           </div>
         </div>
-      </div>
+        </>
+      )}
       {/* /Add Leaves */}
     </>
   );
