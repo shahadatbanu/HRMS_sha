@@ -270,7 +270,7 @@ const CandidateGrid = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalRecords, setTotalRecords] = useState(0);
-    const [pageSize, setPageSize] = useState(10);
+    const [pageSize, setPageSize] = useState(20);
     
     // Filter state
     const [filters, setFilters] = useState({
@@ -649,7 +649,7 @@ const CandidateGrid = () => {
         fetchTeamLeads();
         // Only fetch candidates if user is available (authenticated)
         if (user) {
-            fetchCandidates(1, filters);
+        fetchCandidates(1, filters);
         } else {
             // Fallback: try to fetch candidates after a short delay
             // in case user context is still loading
@@ -696,6 +696,7 @@ const CandidateGrid = () => {
             const handleOffcanvasClose = () => {
                 setSelectedCandidate(null);
                 setShowCandidateModal(false);
+                setActiveTab('basic-info'); // Reset tab to default
                 // Clean the URL by removing the viewCandidate parameter
                 const newSearchParams = new URLSearchParams(searchParams);
                 newSearchParams.delete('viewCandidate');
@@ -856,10 +857,13 @@ const CandidateGrid = () => {
             setSelectedCandidate(null);
         }
         
+        // Reset tab to default when opening a new candidate
+        setActiveTab('basic-info');
+        
         // Small delay to ensure clean state before opening new modal
         setTimeout(() => {
-            fetchCandidateDetails(candidateId);
-            setShowCandidateModal(true);
+        fetchCandidateDetails(candidateId);
+        setShowCandidateModal(true);
         }, 50);
     };
 
@@ -3945,6 +3949,64 @@ const CandidateGrid = () => {
                         )}
                     </div>
                     {/* /Candidates Grid */}
+                    
+                    {/* Pagination Component */}
+                    {totalRecords > 0 && (
+                        <div className="d-flex justify-content-between align-items-center p-3 border-top">
+                            <div className="d-flex align-items-center">
+                                <span className="text-muted me-3">
+                                    Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalRecords)} of {totalRecords} candidates
+                                </span>
+                            </div>
+                            <nav>
+                                <ul className="pagination pagination-sm mb-0">
+                                    <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                                        <button 
+                                            className="page-link" 
+                                            onClick={() => handlePageChange(currentPage - 1)}
+                                            disabled={currentPage === 1}
+                                        >
+                                            Previous
+                                        </button>
+                                    </li>
+                                    
+                                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                        let pageNum: number;
+                                        if (totalPages <= 5) {
+                                            pageNum = i + 1;
+                                        } else if (currentPage <= 3) {
+                                            pageNum = i + 1;
+                                        } else if (currentPage >= totalPages - 2) {
+                                            pageNum = totalPages - 4 + i;
+                                        } else {
+                                            pageNum = currentPage - 2 + i;
+                                        }
+                                        
+                                        return (
+                                            <li key={pageNum} className={`page-item ${currentPage === pageNum ? 'active' : ''}`}>
+                                                <button 
+                                                    className="page-link"
+                                                    onClick={() => handlePageChange(pageNum)}
+                                                >
+                                                    {pageNum}
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
+                                    
+                                    <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                                        <button 
+                                            className="page-link" 
+                                            onClick={() => handlePageChange(currentPage + 1)}
+                                            disabled={currentPage === totalPages}
+                                        >
+                                            Next
+                                        </button>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    )}
                 </div>
                 <div className="footer d-sm-flex align-items-center justify-content-between border-top bg-white p-3">
                     <p className="mb-0">2014 - 2025 © Insight Talent Solution.</p>
@@ -3958,6 +4020,7 @@ const CandidateGrid = () => {
                     onClick={() => {
                         setShowCandidateModal(false);
                         setSelectedCandidate(null);
+                        setActiveTab('basic-info'); // Reset tab to default
                         // Clean the URL by removing the viewCandidate parameter
                         const newSearchParams = new URLSearchParams(searchParams);
                         newSearchParams.delete('viewCandidate');
@@ -3989,6 +4052,7 @@ const CandidateGrid = () => {
                         onClick={() => {
                             setShowCandidateModal(false);
                             setSelectedCandidate(null);
+                            setActiveTab('basic-info'); // Reset tab to default
                             // Clean the URL by removing the viewCandidate parameter
                             const newSearchParams = new URLSearchParams(searchParams);
                             newSearchParams.delete('viewCandidate');
@@ -6506,74 +6570,6 @@ const CandidateGrid = () => {
                     </div>
                 </div>
             </div>
-            
-            {/* Pagination Component - Temporarily Hidden */}
-            {/* {totalRecords > 0 && (
-                <div className="d-flex justify-content-between align-items-center mt-4 mb-3">
-                    <div className="d-flex align-items-center">
-                        <span className="text-muted me-3">
-                            Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalRecords)} of {totalRecords} candidates
-                        </span>
-                        <select 
-                            className="form-select form-select-sm" 
-                            style={{ width: 'auto' }}
-                            value={pageSize}
-                            onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                        >
-                            <option value={10}>10 per page</option>
-                            <option value={20}>20 per page</option>
-                            <option value={50}>50 per page</option>
-                        </select>
-                    </div>
-                    <nav>
-                        <ul className="pagination pagination-sm mb-0">
-                            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                                <button 
-                                    className="page-link" 
-                                    onClick={() => handlePageChange(currentPage - 1)}
-                                    disabled={currentPage === 1}
-                                >
-                                    <i className="ti ti-chevron-left"></i>
-                                </button>
-                            </li>
-                            
-                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                let pageNum: number;
-                                if (totalPages <= 5) {
-                                    pageNum = i + 1;
-                                } else if (currentPage <= 3) {
-                                    pageNum = i + 1;
-                                } else if (currentPage >= totalPages - 2) {
-                                    pageNum = totalPages - 4 + i;
-                                } else {
-                                    pageNum = currentPage - 2 + i;
-                                }
-                                
-                                return (
-                                    <li key={pageNum} className={`page-item ${currentPage === pageNum ? 'active' : ''}`}>
-                                        <button 
-                                            className="page-link"
-                                            onClick={() => handlePageChange(pageNum)}
-                                        >
-                                            {pageNum}
-                                        </button>
-                                    </li>
-                                );
-                            })}
-                            
-                            <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                                <button 
-                                    className="page-link" 
-                                    onClick={() => handlePageChange(currentPage + 1)}
-                                    disabled={currentPage === totalPages}
-                                >
-                                    <i className="ti ti-chevron-right"></i>
-                                </button>
-                            </li>
-                        </ul>
-                    </nav>
-                </div>
-            )} */}
             
             {/* Candidate Details */}
 
