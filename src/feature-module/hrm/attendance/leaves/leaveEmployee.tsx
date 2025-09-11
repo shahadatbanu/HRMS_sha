@@ -26,7 +26,7 @@ const LeaveEmployee = () => {
   const { user } = useUser();
   const employeeId = user?._id;
 
-  // State
+  // State - All hooks must be called before any conditional returns
   const [leaves, setLeaves] = useState<LeaveRecord[]>([]);
   const [balances, setBalances] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
@@ -56,6 +56,26 @@ const LeaveEmployee = () => {
       .catch(() => message.error('Failed to load leave data'))
       .finally(() => setLoading(false));
   }, [employeeId]);
+
+  // Check if user is admin - hide this page for admin users
+  if (user && user.role === 'admin') {
+    return (
+      <div className="page-wrapper">
+        <div className="content">
+          <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
+            <div className="text-center">
+              <i className="ti ti-shield-x fs-1 text-muted mb-3"></i>
+              <h4>Access Denied</h4>
+              <p className="text-muted">This page is not accessible to administrators.</p>
+              <Link to="/index" className="btn btn-primary">
+                Go to Dashboard
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Table columns
   const columns = [
