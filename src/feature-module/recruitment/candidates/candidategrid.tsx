@@ -647,8 +647,22 @@ const CandidateGrid = () => {
     useEffect(() => {
         fetchRecruiters();
         fetchTeamLeads();
-        fetchCandidates(1, filters);
-    }, []);
+        // Only fetch candidates if user is available (authenticated)
+        if (user) {
+            fetchCandidates(1, filters);
+        } else {
+            // Fallback: try to fetch candidates after a short delay
+            // in case user context is still loading
+            const timer = setTimeout(() => {
+                const token = localStorage.getItem('token');
+                if (token) {
+                    console.log('🔍 Fallback: Fetching candidates with token');
+                    fetchCandidates(1, filters);
+                }
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [user]);
 
     // Cleanup timeout on unmount
     useEffect(() => {
@@ -710,6 +724,8 @@ const CandidateGrid = () => {
             setLoadingCandidates(true);
             setFiltering(false);
             const token = localStorage.getItem('token');
+            console.log('🔍 Token exists:', !!token);
+            console.log('🔍 User context:', user);
             if (!token) {
                 console.error('No authentication token found');
                 return;
@@ -6962,12 +6978,26 @@ const CandidateGrid = () => {
                                             className="btn btn-outline-secondary px-4 py-2" 
                                             onClick={() => {
                                                 handleSuccessModalClose();
-                                                // Ensure the add candidate modal is also closed
-                                                const modal = document.getElementById('add_candidate');
-                                                if (modal) {
-                                                    const bootstrapModal = window.bootstrap?.Modal.getInstance(modal);
-                                                    bootstrapModal?.hide();
+                                                // Close the add candidate modal using data-bs-dismiss
+                                                const addCandidateModal = document.getElementById('add_candidate');
+                                                if (addCandidateModal) {
+                                                    // Trigger the modal close event
+                                                    const closeButton = addCandidateModal.querySelector('[data-bs-dismiss="modal"]');
+                                                    if (closeButton) {
+                                                        (closeButton as HTMLElement).click();
+                                                    } else {
+                                                        // Fallback: hide the modal directly
+                                                        addCandidateModal.classList.remove('show');
+                                                        addCandidateModal.style.display = 'none';
+                                                        document.body.classList.remove('modal-open');
+                                                        const modalBackdrop = document.querySelector('.modal-backdrop');
+                                                        if (modalBackdrop) {
+                                                            modalBackdrop.remove();
+                                                        }
+                                                    }
                                                 }
+                                                // Refresh the page to show all candidates
+                                                window.location.reload();
                                             }}
                                             style={{ borderRadius: '8px', fontWeight: '500' }}
                                         >
