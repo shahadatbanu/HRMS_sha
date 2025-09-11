@@ -1,40 +1,40 @@
 /**
- * Frontend Timezone Utilities for US Central Time
- * Handles conversion and formatting for US Central Time display
+ * Frontend Timezone Utilities for Indian Standard Time (IST)
+ * Handles conversion and formatting for IST display
  */
 
-const US_CENTRAL_TIMEZONE = 'America/Chicago';
+const IST_TIMEZONE = 'Asia/Kolkata';
 
 /**
- * Convert a date to US Central Time
+ * Convert a date to IST
  * @param date - The date to convert
- * @returns Date converted to US Central Time
+ * @returns Date converted to IST
  */
-export function toUSCentralTime(date: Date | string | null | undefined): Date | null {
+export function toISTTime(date: Date | string | null | undefined): Date | null {
   if (!date) return null;
   
   const inputDate = new Date(date);
   if (isNaN(inputDate.getTime())) return null;
   
-  // Convert to US Central Time
-  return new Date(inputDate.toLocaleString("en-US", { timeZone: US_CENTRAL_TIMEZONE }));
+  // Convert to IST
+  return new Date(inputDate.toLocaleString("en-US", { timeZone: IST_TIMEZONE }));
 }
 
 /**
- * Get current time in US Central Time
- * @returns Current time in US Central Time
+ * Get current time in IST
+ * @returns Current time in IST
  */
-export function getCurrentUSCentralTime(): Date {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: US_CENTRAL_TIMEZONE }));
+export function getCurrentISTTime(): Date {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: IST_TIMEZONE }));
 }
 
 /**
- * Format a date to US Central Time string
+ * Format a date to IST string
  * @param date - The date to format
  * @param options - Intl.DateTimeFormat options
- * @returns Formatted date string in US Central Time
+ * @returns Formatted date string in IST
  */
-export function formatToUSCentralTime(
+export function formatToISTTime(
   date: Date | string | null | undefined, 
   options: Intl.DateTimeFormatOptions = {}
 ): string {
@@ -44,7 +44,7 @@ export function formatToUSCentralTime(
   if (isNaN(inputDate.getTime())) return '';
   
   const defaultOptions: Intl.DateTimeFormatOptions = {
-    timeZone: US_CENTRAL_TIMEZONE,
+    timeZone: IST_TIMEZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -60,12 +60,12 @@ export function formatToUSCentralTime(
 }
 
 /**
- * Format time only in US Central Time
+ * Format time only in IST
  * @param date - The date to format
  * @param use24Hour - Whether to use 24-hour format
- * @returns Formatted time string in US Central Time
+ * @returns Formatted time string in IST
  */
-export function formatTimeToUSCentral(
+export function formatTimeToIST(
   date: Date | string | null | undefined, 
   use24Hour: boolean = false
 ): string {
@@ -75,7 +75,7 @@ export function formatTimeToUSCentral(
   if (isNaN(inputDate.getTime())) return '';
   
   return inputDate.toLocaleTimeString('en-US', {
-    timeZone: US_CENTRAL_TIMEZONE,
+    timeZone: IST_TIMEZONE,
     hour: '2-digit',
     minute: '2-digit',
     hour12: !use24Hour
@@ -83,12 +83,12 @@ export function formatTimeToUSCentral(
 }
 
 /**
- * Format date only in US Central Time
+ * Format date only in IST
  * @param date - The date to format
  * @param options - Additional formatting options
- * @returns Formatted date string in US Central Time
+ * @returns Formatted date string in IST
  */
-export function formatDateToUSCentral(
+export function formatDateToIST(
   date: Date | string | null | undefined, 
   options: Intl.DateTimeFormatOptions = {}
 ): string {
@@ -98,7 +98,7 @@ export function formatDateToUSCentral(
   if (isNaN(inputDate.getTime())) return '';
   
   const defaultOptions: Intl.DateTimeFormatOptions = {
-    timeZone: US_CENTRAL_TIMEZONE,
+    timeZone: IST_TIMEZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
@@ -110,7 +110,7 @@ export function formatDateToUSCentral(
 }
 
 /**
- * Format interview time in US Central Time
+ * Format interview time in IST
  * @param date - The interview date
  * @returns Formatted interview time
  */
@@ -121,7 +121,7 @@ export function formatInterviewTime(date: Date | string | null | undefined): str
   if (isNaN(inputDate.getTime())) return '';
   
   return inputDate.toLocaleTimeString('en-US', {
-    timeZone: US_CENTRAL_TIMEZONE,
+    timeZone: IST_TIMEZONE,
     hour: '2-digit',
     minute: '2-digit',
     hour12: true
@@ -129,7 +129,7 @@ export function formatInterviewTime(date: Date | string | null | undefined): str
 }
 
 /**
- * Format interview date in US Central Time
+ * Format interview date in IST
  * @param date - The interview date
  * @returns Formatted interview date
  */
@@ -140,7 +140,7 @@ export function formatInterviewDate(date: Date | string | null | undefined): str
   if (isNaN(inputDate.getTime())) return '';
   
   return inputDate.toLocaleDateString('en-US', {
-    timeZone: US_CENTRAL_TIMEZONE,
+    timeZone: IST_TIMEZONE,
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -149,7 +149,7 @@ export function formatInterviewDate(date: Date | string | null | undefined): str
 }
 
 /**
- * Format submission date in US Central Time
+ * Format submission date in IST
  * @param date - The submission date
  * @returns Formatted submission date
  */
@@ -160,7 +160,7 @@ export function formatSubmissionDate(date: Date | string | null | undefined): st
   if (isNaN(inputDate.getTime())) return '';
   
   return inputDate.toLocaleDateString('en-US', {
-    timeZone: US_CENTRAL_TIMEZONE,
+    timeZone: IST_TIMEZONE,
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -170,7 +170,7 @@ export function formatSubmissionDate(date: Date | string | null | undefined): st
 }
 
 /**
- * Format attendance time in US Central Time
+ * Format attendance time in IST
  * @param date - The attendance date
  * @returns Formatted attendance time
  */
@@ -181,7 +181,7 @@ export function formatAttendanceTime(date: Date | string | null | undefined): st
   if (isNaN(inputDate.getTime())) return '';
   
   return inputDate.toLocaleTimeString('en-US', {
-    timeZone: US_CENTRAL_TIMEZONE,
+    timeZone: IST_TIMEZONE,
     hour: '2-digit',
     minute: '2-digit',
     hour12: true
@@ -189,7 +189,7 @@ export function formatAttendanceTime(date: Date | string | null | undefined): st
 }
 
 /**
- * Format attendance date in US Central Time
+ * Format attendance date in IST
  * @param date - The attendance date
  * @returns Formatted attendance date
  */
@@ -200,7 +200,7 @@ export function formatAttendanceDate(date: Date | string | null | undefined): st
   if (isNaN(inputDate.getTime())) return '';
   
   return inputDate.toLocaleDateString('en-US', {
-    timeZone: US_CENTRAL_TIMEZONE,
+    timeZone: IST_TIMEZONE,
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -209,60 +209,60 @@ export function formatAttendanceDate(date: Date | string | null | undefined): st
 }
 
 /**
- * Get start of day in US Central Time
+ * Get start of day in IST
  * @param date - The date to get start of day for
- * @returns Start of day in US Central Time
+ * @returns Start of day in IST
  */
-export function getStartOfDayUSCentral(date: Date | string | null | undefined): Date | null {
+export function getStartOfDayIST(date: Date | string | null | undefined): Date | null {
   if (!date) return null;
   
   const inputDate = new Date(date);
   if (isNaN(inputDate.getTime())) return null;
   
-  // Get the date in US Central Time
-  const centralDate = new Date(inputDate.toLocaleString("en-US", { timeZone: US_CENTRAL_TIMEZONE }));
+  // Get the date in IST
+  const centralDate = new Date(inputDate.toLocaleString("en-US", { timeZone: IST_TIMEZONE }));
   centralDate.setHours(0, 0, 0, 0);
   
   return centralDate;
 }
 
 /**
- * Get end of day in US Central Time
+ * Get end of day in IST
  * @param date - The date to get end of day for
- * @returns End of day in US Central Time
+ * @returns End of day in IST
  */
-export function getEndOfDayUSCentral(date: Date | string | null | undefined): Date | null {
+export function getEndOfDayIST(date: Date | string | null | undefined): Date | null {
   if (!date) return null;
   
   const inputDate = new Date(date);
   if (isNaN(inputDate.getTime())) return null;
   
-  // Get the date in US Central Time
-  const centralDate = new Date(inputDate.toLocaleString("en-US", { timeZone: US_CENTRAL_TIMEZONE }));
+  // Get the date in IST
+  const centralDate = new Date(inputDate.toLocaleString("en-US", { timeZone: IST_TIMEZONE }));
   centralDate.setHours(23, 59, 59, 999);
   
   return centralDate;
 }
 
 /**
- * Check if a date is today in US Central Time
+ * Check if a date is today in IST
  * @param date - The date to check
- * @returns True if the date is today in US Central Time
+ * @returns True if the date is today in IST
  */
-export function isTodayUSCentral(date: Date | string | null | undefined): boolean {
+export function isTodayIST(date: Date | string | null | undefined): boolean {
   if (!date) return false;
   
   const inputDate = new Date(date);
   if (isNaN(inputDate.getTime())) return false;
   
-  const today = getCurrentUSCentralTime();
-  const inputDateCentral = new Date(inputDate.toLocaleString("en-US", { timeZone: US_CENTRAL_TIMEZONE }));
+  const today = getCurrentISTTime();
+  const inputDateCentral = new Date(inputDate.toLocaleString("en-US", { timeZone: IST_TIMEZONE }));
   
   return inputDateCentral.toDateString() === today.toDateString();
 }
 
 /**
- * Get relative time in US Central Time (e.g., "2 hours ago")
+ * Get relative time in IST (e.g., "2 hours ago")
  * @param date - The date to get relative time for
  * @returns Relative time string
  */
@@ -272,7 +272,7 @@ export function getRelativeTimeUSCentral(date: Date | string | null | undefined)
   const inputDate = new Date(date);
   if (isNaN(inputDate.getTime())) return '';
   
-  const now = getCurrentUSCentralTime();
+  const now = getCurrentISTTime();
   const diffInSeconds = Math.floor((now.getTime() - inputDate.getTime()) / 1000);
   
   if (diffInSeconds < 60) {
@@ -290,7 +290,7 @@ export function getRelativeTimeUSCentral(date: Date | string | null | undefined)
 }
 
 /**
- * Format date range for US Central Time
+ * Format date range for IST
  * @param startDate - Start date
  * @param endDate - End date
  * @returns Object with formatted start and end dates
@@ -300,7 +300,7 @@ export function getFormattedDateRangeUSCentral(
   endDate: Date | string | null | undefined
 ): { start: string; end: string } {
   return {
-    start: formatToUSCentralTime(startDate, {
+    start: formatToISTTime(startDate, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -308,7 +308,7 @@ export function getFormattedDateRangeUSCentral(
       minute: '2-digit',
       hour12: true
     }),
-    end: formatToUSCentralTime(endDate, {
+    end: formatToISTTime(endDate, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -320,7 +320,7 @@ export function getFormattedDateRangeUSCentral(
 }
 
 /**
- * Get timezone info for US Central Time
+ * Get timezone info for IST
  * @returns Timezone information
  */
 export function getUSCentralTimezoneInfo(): {
@@ -329,7 +329,7 @@ export function getUSCentralTimezoneInfo(): {
   isDST: boolean;
 } {
   const now = new Date();
-  const centralTime = new Date(now.toLocaleString("en-US", { timeZone: US_CENTRAL_TIMEZONE }));
+  const centralTime = new Date(now.toLocaleString("en-US", { timeZone: IST_TIMEZONE }));
   const utcTime = new Date(now.toUTCString());
   
   const offsetMinutes = (centralTime.getTime() - utcTime.getTime()) / 60000;
@@ -341,7 +341,7 @@ export function getUSCentralTimezoneInfo(): {
   const isDST = month >= 2 && month <= 10; // March to November
   
   return {
-    timezone: US_CENTRAL_TIMEZONE,
+    timezone: IST_TIMEZONE,
     offset: `UTC${offsetSign}${offsetHours}`,
     isDST
   };

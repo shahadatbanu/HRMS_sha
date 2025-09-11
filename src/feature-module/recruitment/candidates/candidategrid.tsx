@@ -5635,10 +5635,10 @@ const CandidateGrid = () => {
                                                                     min={new Date().toISOString().slice(0, 16)}
                                                                     style={{ borderRadius: '12px' }}
                                                                 />
-                                                                <small className="text-muted mt-1 d-block">
+                                                                {/* <small className="text-muted mt-1 d-block">
                                                                     <i className="ti ti-clock me-1"></i>
-                                                                    Time is in US Central Time (America/Chicago)
-                                                                </small>
+                                                                    Time is in IST (Asia/Kolkata)
+                                                                </small> */}
                                                             </div>
                                                         </div>
                                                         <div className="col-lg-6">
@@ -8038,7 +8038,7 @@ const CandidateGrid = () => {
                                         />
                                         <small className="text-muted">
                                             <i className="ti ti-clock me-1"></i>
-                                            Select a future date and time for the interview (US Central Time)
+                                            Select a future date and time for the interview (IST)
                                         </small>
                                     </div>
                                 </div>

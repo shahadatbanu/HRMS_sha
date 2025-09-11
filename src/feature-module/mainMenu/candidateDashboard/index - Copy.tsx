@@ -1758,7 +1758,7 @@ const CandidateDashboard = () => {
     }
   };
 
-  // Function to format interview time (US Central Time)
+  // Function to format interview time (IST)
   const formatInterviewTime = (date: string) => {
     const interviewDate = new Date(date);
     return interviewDate.toLocaleTimeString('en-US', { 
@@ -1769,7 +1769,7 @@ const CandidateDashboard = () => {
     });
   };
 
-  // Function to format interview date (US Central Time)
+  // Function to format interview date (IST)
   const formatInterviewDate = (date: string) => {
     const interviewDate = new Date(date);
     return interviewDate.toLocaleDateString('en-US', { 
