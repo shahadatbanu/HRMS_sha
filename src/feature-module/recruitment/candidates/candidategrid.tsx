@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import PredefinedDateRanges from '../../../core/common/datePicker'
 import ImageWithBasePath from '../../../core/common/imageWithBasePath'
 import ProfileImage from '../../../core/common/ProfileImage'
@@ -43,6 +43,16 @@ interface Recruiter {
     department: string;
 }
 
+// Define interface for team lead type
+interface TeamLead {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    designation: string;
+    department: string;
+}
+
 // Define interface for candidate details
 interface CandidateDetails {
     _id: string;
@@ -71,6 +81,14 @@ interface CandidateDetails {
     source: string;
     createdAt: string;
     recruiter: {
+        _id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        designation: string;
+        profileImage?: string;
+    };
+    teamLead: {
         _id: string;
         firstName: string;
         lastName: string;
@@ -197,6 +215,7 @@ interface CandidateDetails {
 
 const CandidateGrid = () => {
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     const viewCandidateId = searchParams.get('viewCandidate');
     
     const [form, setForm] = useState({
@@ -212,6 +231,7 @@ const CandidateGrid = () => {
         yearsOfExperience: '',
         relevantExperience: '',
         recruiter: '',
+        teamLead: '',
         address: {
             street: '',
             city: '',
@@ -235,12 +255,15 @@ const CandidateGrid = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
     const [recruiters, setRecruiters] = useState<Recruiter[]>([]);
+    const [teamLeads, setTeamLeads] = useState<TeamLead[]>([]);
     const [showSuccess, setShowSuccess] = useState(false);
     const [candidates, setCandidates] = useState<any[]>([]);
     const [loadingCandidates, setLoadingCandidates] = useState(false);
     const [selectedCandidate, setSelectedCandidate] = useState<CandidateDetails | null>(null);
     const [loadingCandidateDetails, setLoadingCandidateDetails] = useState(false);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [showCandidateModal, setShowCandidateModal] = useState(false);
+    const [activeTab, setActiveTab] = useState('basic-info');
     const [filtering, setFiltering] = useState(false);
     
     // Pagination state
@@ -396,57 +419,40 @@ const CandidateGrid = () => {
         if (viewCandidateId) {
             console.log('Viewing candidate from URL parameter:', viewCandidateId);
             fetchCandidateDetails(viewCandidateId);
-            // Automatically show the interview section when navigating from dashboard
-            setShowInterviewInput(true);
+            // Show the candidate modal
+            setShowCandidateModal(true);
+            // Set active tab to interview
+            setActiveTab('interview');
+            // Don't automatically show the interview input form
+            setShowInterviewInput(false);
         }
     }, [viewCandidateId]);
 
     // Scroll to interview section when candidate is loaded from dashboard
     useEffect(() => {
-        if (selectedCandidate && viewCandidateId && interviewSectionRef.current) {
-            // Activate the interview tab first using a more robust approach
-            const interviewTab = document.getElementById('interview-tab');
-            const interviewTabContent = document.getElementById('interview');
-            
-            if (interviewTab && interviewTabContent) {
-                // Remove active class from all tabs and content
-                document.querySelectorAll('.nav-link').forEach(tab => {
-                    tab.classList.remove('active');
-                    tab.setAttribute('aria-selected', 'false');
-                });
-                document.querySelectorAll('.tab-pane').forEach(content => {
-                    content.classList.remove('show', 'active');
-                    (content as HTMLElement).style.display = 'none';
-                });
-                
-                // Add active class to interview tab and content
-                interviewTab.classList.add('active');
-                interviewTab.setAttribute('aria-selected', 'true');
-                interviewTabContent.classList.add('show', 'active');
-                
-                // Force the tab content to be visible with important styles
-                interviewTabContent.style.display = 'block !important';
-                interviewTabContent.style.opacity = '1';
-                interviewTabContent.style.visibility = 'visible';
-                
-                // Also ensure the tab is visually highlighted
-                (interviewTab as HTMLElement).style.backgroundColor = '#e3f2fd';
-                (interviewTab as HTMLElement).style.borderColor = '#2196f3';
-            }
-            
-            // Small delay to ensure the interview section is rendered
+        if (selectedCandidate && viewCandidateId && showCandidateModal && activeTab === 'interview') {
+            // Add a delay to ensure the modal and content are fully rendered
             setTimeout(() => {
-                interviewSectionRef.current?.scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'start' 
-                });
-                
-                // Add a temporary highlight to make the interview section more visible
                 if (interviewSectionRef.current) {
-                    interviewSectionRef.current.style.border = '3px solid #2196f3';
+                    // Add a temporary highlight to make the interview section more visible
+                    interviewSectionRef.current.style.border = '2px solid #2196f3';
                     interviewSectionRef.current.style.backgroundColor = '#e3f2fd';
                     interviewSectionRef.current.style.padding = '10px';
                     interviewSectionRef.current.style.borderRadius = '8px';
+                    interviewSectionRef.current.style.transition = 'all 0.3s ease';
+                    
+                    // Scroll within the modal content instead of the entire page
+                    const modalBody = document.querySelector('.offcanvas-body');
+                    if (modalBody && interviewSectionRef.current) {
+                        // Get the interview section's offset position within the modal body
+                        const interviewSectionOffsetTop = interviewSectionRef.current.offsetTop;
+                        
+                        // Scroll the modal body to show the interview section
+                        modalBody.scrollTo({
+                            top: interviewSectionOffsetTop - 20, // 20px offset from top
+                            behavior: 'smooth'
+                        });
+                    }
                     
                     // Remove the highlight after 3 seconds
                     setTimeout(() => {
@@ -458,9 +464,9 @@ const CandidateGrid = () => {
                         }
                     }, 3000);
                 }
-            }, 500);
+            }, 500); // Increased delay to ensure content is rendered
         }
-    }, [selectedCandidate, viewCandidateId, showInterviewInput]);
+    }, [selectedCandidate, viewCandidateId, showCandidateModal, activeTab]);
 
     // Populate offer details form when candidate is selected
     // Reset offer details form when selectedCandidate changes (don't auto-populate)
@@ -563,6 +569,7 @@ const CandidateGrid = () => {
             yearsOfExperience: '',
             relevantExperience: '',
             recruiter: '',
+            teamLead: '',
             address: {
                 street: '',
                 city: '',
@@ -611,9 +618,35 @@ const CandidateGrid = () => {
         }
     };
 
-    // Fetch recruiters and candidates on component mount
+    const fetchTeamLeads = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.error('No authentication token found');
+                return;
+            }
+
+            const response = await fetch('/api/candidates/employees/team-leads', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success) {
+                    setTeamLeads(result.data);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching team leads:', error);
+        }
+    };
+
+    // Fetch recruiters, team leads and candidates on component mount
     useEffect(() => {
         fetchRecruiters();
+        fetchTeamLeads();
         fetchCandidates(1, filters);
     }, []);
 
@@ -632,6 +665,14 @@ const CandidateGrid = () => {
         if (offcanvas) {
             const handleOffcanvasClose = () => {
                 setSelectedCandidate(null);
+                setShowCandidateModal(false);
+                // Clean the URL by removing the viewCandidate parameter
+                const newSearchParams = new URLSearchParams(searchParams);
+                newSearchParams.delete('viewCandidate');
+                const newUrl = newSearchParams.toString() 
+                    ? `${window.location.pathname}?${newSearchParams.toString()}`
+                    : window.location.pathname;
+                navigate(newUrl, { replace: true });
             };
             
             offcanvas.addEventListener('hidden.bs.offcanvas', handleOffcanvasClose);
@@ -640,7 +681,7 @@ const CandidateGrid = () => {
                 offcanvas.removeEventListener('hidden.bs.offcanvas', handleOffcanvasClose);
             };
         }
-    }, []);
+    }, [searchParams, navigate]);
 
     // Auto-dismiss success alerts after 4 seconds
     useEffect(() => {
@@ -768,6 +809,7 @@ const CandidateGrid = () => {
 
     const handleCandidateClick = (candidateId: string) => {
         fetchCandidateDetails(candidateId);
+        setShowCandidateModal(true);
     };
 
     // Filter handling functions
@@ -930,6 +972,7 @@ const CandidateGrid = () => {
             yearsOfExperience: '',
             relevantExperience: '',
             recruiter: '',
+            teamLead: '',
             address: {
                 street: '',
                 city: '',
@@ -2836,9 +2879,9 @@ const CandidateGrid = () => {
                     const value = form[key as keyof typeof form];
                     if (typeof value === 'object') {
                         formDataToSend.append(key, JSON.stringify(value));
-                    } else if (key === 'recruiter' && value) {
+                    } else if ((key === 'recruiter' || key === 'teamLead') && value) {
                         formDataToSend.append(key, String(value));
-                    } else if (key !== 'recruiter') {
+                    } else if (key !== 'recruiter' && key !== 'teamLead') {
                         formDataToSend.append(key, String(value));
                     }
                 }
@@ -2927,6 +2970,7 @@ const CandidateGrid = () => {
             yearsOfExperience: candidate.yearsOfExperience || '',
             relevantExperience: candidate.relevantExperience || '',
             recruiter: candidate.recruiter?._id || '',
+            teamLead: candidate.teamLead?._id || '',
             address: {
                 street: candidate.address?.street || '',
                 city: candidate.address?.city || '',
@@ -2969,9 +3013,9 @@ const CandidateGrid = () => {
                     const value = form[key as keyof typeof form];
                     if (typeof value === 'object') {
                         formDataToSend.append(key, JSON.stringify(value));
-                    } else if (key === 'recruiter' && value) {
+                    } else if ((key === 'recruiter' || key === 'teamLead') && value) {
                         formDataToSend.append(key, String(value));
-                    } else if (key !== 'recruiter') {
+                    } else if (key !== 'recruiter' && key !== 'teamLead') {
                         formDataToSend.append(key, String(value));
                     }
                 }
@@ -3856,21 +3900,33 @@ const CandidateGrid = () => {
                     {/* /Candidates Grid */}
                 </div>
                 <div className="footer d-sm-flex align-items-center justify-content-between border-top bg-white p-3">
-                    <p className="mb-0">2014 - 2025 © SmartHR.</p>
-                    <p>
-                        Designed &amp; Developed By{" "}
-                        <Link to="#" className="text-primary">
-                            Yogesh
-                        </Link>
-                    </p>
+                    <p className="mb-0">2014 - 2025 © Insight Talent Solution.</p>
                 </div>
             </div>
             {/* /Page Wrapper */}
+            {/* Candidate Details Backdrop */}
+            {showCandidateModal && (
+                <div 
+                    className="offcanvas-backdrop fade show"
+                    onClick={() => {
+                        setShowCandidateModal(false);
+                        // Clean the URL by removing the viewCandidate parameter
+                        const newSearchParams = new URLSearchParams(searchParams);
+                        newSearchParams.delete('viewCandidate');
+                        const newUrl = newSearchParams.toString() 
+                            ? `${window.location.pathname}?${newSearchParams.toString()}`
+                            : window.location.pathname;
+                        navigate(newUrl, { replace: true });
+                    }}
+                    style={{ zIndex: 1040 }}
+                />
+            )}
             {/* Candidate Details */}
             <div
-                className="offcanvas offcanvas-end offcanvas-large"
+                className={`offcanvas offcanvas-end offcanvas-large ${showCandidateModal ? 'show' : ''}`}
                 tabIndex={-1}
                 id="candidate_details"
+                style={{ display: showCandidateModal ? 'block' : 'none', zIndex: 1045 }}
             >
                 <div className="offcanvas-header border-bottom">
                     <h4 className="d-flex align-items-center">
@@ -3882,13 +3938,22 @@ const CandidateGrid = () => {
                     <button
                         type="button"
                         className="btn-close custom-btn-close"
-                        data-bs-dismiss="offcanvas"
+                        onClick={() => {
+                            setShowCandidateModal(false);
+                            // Clean the URL by removing the viewCandidate parameter
+                            const newSearchParams = new URLSearchParams(searchParams);
+                            newSearchParams.delete('viewCandidate');
+                            const newUrl = newSearchParams.toString() 
+                                ? `${window.location.pathname}?${newSearchParams.toString()}`
+                                : window.location.pathname;
+                            navigate(newUrl, { replace: true });
+                        }}
                         aria-label="Close"
                     >
                         <i className="ti ti-x" />
                     </button>
                 </div>
-                <div className="offcanvas-body">
+                <div className="offcanvas-body" style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 120px)' }}>
                     {loadingCandidateDetails ? (
                         <div className="text-center py-5">
                             <div className="spinner-border text-primary" role="status">
@@ -4006,104 +4071,96 @@ const CandidateGrid = () => {
                         <ul className="nav nav-underline" id="myTab" role="tablist">
                             <li className="nav-item" role="presentation">
                                 <button
-                                    className="nav-link active pt-0"
+                                    className={`nav-link pt-0 ${activeTab === 'basic-info' ? 'active' : ''}`}
                                     id="info-tab"
-                                    data-bs-toggle="tab"
-                                    data-bs-target="#basic-info"
+                                    onClick={() => setActiveTab('basic-info')}
                                     type="button"
                                     role="tab"
-                                    aria-selected="true"
+                                    aria-selected={activeTab === 'basic-info'}
                                 >
                                     Profile
                                 </button>
                             </li>
                             <li className="nav-item" role="presentation">
                                 <button
-                                    className="nav-link pt-0"
+                                    className={`nav-link pt-0 ${activeTab === 'address' ? 'active' : ''}`}
                                     id="address-tab"
-                                    data-bs-toggle="tab"
-                                    data-bs-target="#address"
+                                    onClick={() => setActiveTab('address')}
                                     type="button"
                                     role="tab"
-                                    aria-selected="false"
+                                    aria-selected={activeTab === 'address'}
                                 >
                                     Hiring Pipeline
                                 </button>
                             </li>
                             <li className="nav-item" role="presentation">
                                 <button
-                                    className="nav-link pt-0"
+                                    className={`nav-link pt-0 ${activeTab === 'submission' ? 'active' : ''}`}
                                     id="submission-tab"
-                                    data-bs-toggle="tab"
-                                    data-bs-target="#submission"
+                                    onClick={() => setActiveTab('submission')}
                                     type="button"
                                     role="tab"
-                                    aria-selected="false"
+                                    aria-selected={activeTab === 'submission'}
                                 >
                                     Submission
                                 </button>
                             </li>
                             <li className="nav-item" role="presentation">
                                 <button
-                                    className="nav-link pt-0"
+                                    className={`nav-link pt-0 ${activeTab === 'interview' ? 'active' : ''}`}
                                     id="interview-tab"
-                                    data-bs-toggle="tab"
-                                    data-bs-target="#interview"
+                                    onClick={() => setActiveTab('interview')}
                                     type="button"
                                     role="tab"
-                                    aria-selected="false"
+                                    aria-selected={activeTab === 'interview'}
                                 >
                                     Interview
                                 </button>
                             </li>
                             <li className="nav-item" role="presentation">
                                 <button
-                                    className="nav-link pt-0"
+                                    className={`nav-link pt-0 ${activeTab === 'address2' ? 'active' : ''}`}
                                     id="address-tab2"
-                                    data-bs-toggle="tab"
-                                    data-bs-target="#address2"
+                                    onClick={() => setActiveTab('address2')}
                                     type="button"
                                     role="tab"
-                                    aria-selected="false"
+                                    aria-selected={activeTab === 'address2'}
                                 >
                                     Notes
                                 </button>
                             </li>
                             <li className="nav-item" role="presentation">
                                 <button
-                                    className="nav-link pt-0"
+                                    className={`nav-link pt-0 ${activeTab === 'attachments' ? 'active' : ''}`}
                                     id="attachments-tab"
-                                    data-bs-toggle="tab"
-                                    data-bs-target="#attachments"
+                                    onClick={() => setActiveTab('attachments')}
                                     type="button"
                                     role="tab"
-                                    aria-selected="false"
+                                    aria-selected={activeTab === 'attachments'}
                                 >
                                     Attachments
                                 </button>
                             </li>
                             <li className="nav-item" role="presentation">
                                 <button
-                                    className="nav-link pt-0"
+                                    className={`nav-link pt-0 ${activeTab === 'offer-details' ? 'active' : ''}`}
                                     id="offer-details-tab"
-                                    data-bs-toggle="tab"
-                                    data-bs-target="#offer-details"
+                                    onClick={() => setActiveTab('offer-details')}
                                     type="button"
                                     role="tab"
-                                    aria-selected="false"
+                                    aria-selected={activeTab === 'offer-details'}
                                 >
                                     Offer Details
                                 </button>
                             </li>
                             <li className="nav-item" role="presentation">
                                 <button
-                                    className="nav-link pt-0"
+                                    className={`nav-link pt-0 ${activeTab === 'background-check' ? 'active' : ''}`}
                                     id="background-check-tab"
-                                    data-bs-toggle="tab"
-                                    data-bs-target="#background-check"
+                                    onClick={() => setActiveTab('background-check')}
                                     type="button"
                                     role="tab"
-                                    aria-selected="false"
+                                    aria-selected={activeTab === 'background-check'}
                                 >
                                     BG Check
                                 </button>
@@ -4112,11 +4169,12 @@ const CandidateGrid = () => {
                     </div>
                     <div className="tab-content" id="myTabContent">
                         <div
-                            className="tab-pane fade show active"
+                            className={`tab-pane fade ${activeTab === 'basic-info' ? 'show active' : ''}`}
                             id="basic-info"
                             role="tabpanel"
                             aria-labelledby="info-tab"
                             tabIndex={0}
+                            style={{ display: activeTab === 'basic-info' ? 'block' : 'none' }}
                         >
                             {selectedCandidate ? (
                                 <>
@@ -4353,11 +4411,12 @@ const CandidateGrid = () => {
                             )}
                         </div>
                         <div
-                            className="tab-pane fade"
+                            className={`tab-pane fade ${activeTab === 'address' ? 'show active' : ''}`}
                             id="address"
                             role="tabpanel"
                             aria-labelledby="address-tab"
                             tabIndex={0}
+                            style={{ display: activeTab === 'address' ? 'block' : 'none' }}
                         >
                             {selectedCandidate ? (
                                 <>
@@ -4583,11 +4642,12 @@ const CandidateGrid = () => {
                             )}
                         </div>
                         <div
-                            className="tab-pane fade"
+                            className={`tab-pane fade ${activeTab === 'address2' ? 'show active' : ''}`}
                             id="address2"
                             role="tabpanel"
                             aria-labelledby="address-tab2"
                             tabIndex={0}
+                            style={{ display: activeTab === 'address2' ? 'block' : 'none' }}
                         >
                             {selectedCandidate ? (
                                 <div className="card">
@@ -4793,11 +4853,12 @@ const CandidateGrid = () => {
                             )}
                         </div>
                         <div
-                            className="tab-pane fade"
+                            className={`tab-pane fade ${activeTab === 'attachments' ? 'show active' : ''}`}
                             id="attachments"
                             role="tabpanel"
                             aria-labelledby="attachments-tab"
                             tabIndex={0}
+                            style={{ display: activeTab === 'attachments' ? 'block' : 'none' }}
                         >
                             {selectedCandidate ? (
                                 <div className="card">
@@ -5008,11 +5069,12 @@ const CandidateGrid = () => {
                             )}
                         </div>
                         <div
-                            className="tab-pane fade"
+                            className={`tab-pane fade ${activeTab === 'submission' ? 'show active' : ''}`}
                             id="submission"
                             role="tabpanel"
                             aria-labelledby="submission-tab"
                             tabIndex={0}
+                            style={{ display: activeTab === 'submission' ? 'block' : 'none' }}
                         >
                             {selectedCandidate ? (
                                 <div className="card">
@@ -5106,7 +5168,7 @@ const CandidateGrid = () => {
                                                                     className="form-control"
                                                                     value={submissionForm.submissionDate}
                                                                     onChange={(e) => handleSubmissionFormChange('submissionDate', e.target.value)}
-                                                                    max={new Date().toISOString().split('T')[0]}
+                                                                    max={new Date().toLocaleDateString('en-CA')}
                                                                 />
                                                             </div>
                                                         </div>
@@ -5245,6 +5307,7 @@ const CandidateGrid = () => {
                                                                                     <small className="text-muted">
                                                                                         {submission.createdBy?.firstName} {submission.createdBy?.lastName} on{' '}
                                                                                         {new Date(submission.createdAt).toLocaleDateString('en-US', {
+                                                                                            timeZone: 'America/Chicago',
                                                                                             day: '2-digit',
                                                                                             month: 'short',
                                                                                             year: 'numeric',
@@ -5362,11 +5425,12 @@ const CandidateGrid = () => {
                             )}
                         </div>
                         <div
-                            className="tab-pane fade"
+                            className={`tab-pane fade ${activeTab === 'interview' ? 'show active' : ''}`}
                             id="interview"
                             role="tabpanel"
                             aria-labelledby="interview-tab"
                             tabIndex={0}
+                            style={{ display: activeTab === 'interview' ? 'block' : 'none' }}
                         >
                             {selectedCandidate ? (
                                 <div className="card">
@@ -5425,6 +5489,10 @@ const CandidateGrid = () => {
                                                                     min={new Date().toISOString().slice(0, 16)}
                                                                     style={{ borderRadius: '12px' }}
                                                                 />
+                                                                <small className="text-muted mt-1 d-block">
+                                                                    <i className="ti ti-clock me-1"></i>
+                                                                    Time is in US Central Time (America/Chicago)
+                                                                </small>
                                                             </div>
                                                         </div>
                                                         <div className="col-lg-6">
@@ -5782,11 +5850,12 @@ const CandidateGrid = () => {
                             )}
                         </div>
                         <div
-                            className="tab-pane fade"
+                            className={`tab-pane fade ${activeTab === 'offer-details' ? 'show active' : ''}`}
                             id="offer-details"
                             role="tabpanel"
                             aria-labelledby="offer-details-tab"
                             tabIndex={0}
+                            style={{ display: activeTab === 'offer-details' ? 'block' : 'none' }}
                         >
                             {selectedCandidate ? (
                                 <div className="card">
@@ -6172,11 +6241,12 @@ const CandidateGrid = () => {
                             )}
                         </div>
                         <div
-                            className="tab-pane fade"
+                            className={`tab-pane fade ${activeTab === 'background-check' ? 'show active' : ''}`}
                             id="background-check"
                             role="tabpanel"
                             aria-labelledby="background-check-tab"
                             tabIndex={0}
+                            style={{ display: activeTab === 'background-check' ? 'block' : 'none' }}
                         >
                             {selectedCandidate ? (
                                 <div className="card">
@@ -6679,6 +6749,27 @@ const CandidateGrid = () => {
                                                         onChange={(option) => {
                                                             if (option) {
                                                                 setForm(prev => ({ ...prev, recruiter: option.value }));
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="col-md-6">
+                                                <div className="mb-3">
+                                                    <label className="form-label">Team Lead</label>
+                                                    <CommonSelect
+                                                        className="select"
+                                                        options={teamLeads.map(teamLead => ({
+                                                            value: teamLead._id,
+                                                            label: `${teamLead.firstName} ${teamLead.lastName} (${teamLead.designation})`
+                                                        }))}
+                                                        value={teamLeads.find(tl => tl._id === form.teamLead) ? {
+                                                            value: form.teamLead,
+                                                            label: `${teamLeads.find(tl => tl._id === form.teamLead)?.firstName} ${teamLeads.find(tl => tl._id === form.teamLead)?.lastName} (${teamLeads.find(tl => tl._id === form.teamLead)?.designation})`
+                                                        } : undefined}
+                                                        onChange={(option) => {
+                                                            if (option) {
+                                                                setForm(prev => ({ ...prev, teamLead: option.value }));
                                                             }
                                                         }}
                                                     />
@@ -7524,6 +7615,27 @@ const CandidateGrid = () => {
                                                 </div>
                                                 <div className="col-md-6">
                                                     <div className="mb-3">
+                                                        <label className="form-label">Team Lead</label>
+                                                        <CommonSelect
+                                                            className="select"
+                                                            options={teamLeads.map(teamLead => ({
+                                                                value: teamLead._id,
+                                                                label: `${teamLead.firstName} ${teamLead.lastName} (${teamLead.designation})`
+                                                            }))}
+                                                            value={teamLeads.find(tl => tl._id === form.teamLead) ? {
+                                                                value: form.teamLead,
+                                                                label: `${teamLeads.find(tl => tl._id === form.teamLead)?.firstName} ${teamLeads.find(tl => tl._id === form.teamLead)?.lastName} (${teamLeads.find(tl => tl._id === form.teamLead)?.designation})`
+                                                            } : undefined}
+                                                            onChange={(option) => {
+                                                                if (option) {
+                                                                    setForm(prev => ({ ...prev, teamLead: option.value }));
+                                                                }
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="col-md-6">
+                                                    <div className="mb-3">
                                                         <label className="form-label">Current Role</label>
                                                         <input
                                                             type="text"
@@ -7799,7 +7911,10 @@ const CandidateGrid = () => {
                                             min={new Date().toISOString().slice(0, 16)}
                                             style={{ borderRadius: '8px' }}
                                         />
-                                        <small className="text-muted">Select a future date and time for the interview</small>
+                                        <small className="text-muted">
+                                            <i className="ti ti-clock me-1"></i>
+                                            Select a future date and time for the interview (US Central Time)
+                                        </small>
                                     </div>
                                 </div>
                             </div>

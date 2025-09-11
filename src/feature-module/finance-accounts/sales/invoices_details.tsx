@@ -330,13 +330,7 @@ const InvoicesDetails = () => {
           </div>
           {/* Footer */}
           <div className="footer d-sm-flex align-items-center justify-content-between bg-white border-top p-3">
-            <p className="mb-0">2014 - 2025 © SmartHR.</p>
-            <p>
-              Designed &amp; Developed By{" "}
-              <Link to="#" className="text-primary">
-                Yogesh
-              </Link>
-            </p>
+            <p className="mb-0">2014 - 2025 © Insight Talent Solution.</p>
           </div>
           {/* /Footer */}
         </div>

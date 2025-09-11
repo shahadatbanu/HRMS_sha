@@ -1751,20 +1751,22 @@ const AdminDashboard = () => {
     }
   };
 
-  // Function to format interview time
+  // Function to format interview time (US Central Time)
   const formatInterviewTime = (date: string) => {
     const interviewDate = new Date(date);
     return interviewDate.toLocaleTimeString('en-US', { 
+      timeZone: 'America/Chicago',
       hour: '2-digit', 
       minute: '2-digit',
       hour12: true 
     });
   };
 
-  // Function to format interview date
+  // Function to format interview date (US Central Time)
   const formatInterviewDate = (date: string) => {
     const interviewDate = new Date(date);
     return interviewDate.toLocaleDateString('en-US', { 
+      timeZone: 'America/Chicago',
       weekday: 'short',
       day: 'numeric', 
       month: 'short', 
@@ -1862,7 +1864,7 @@ const AdminDashboard = () => {
       if (user.role !== 'admin') {
         // Redirect non-admin users to appropriate dashboard
         if (user.role === 'hr') {
-          navigate(routes.adminDashboard); // HR can access admin dashboard
+          navigate(routes.attendanceemployee); // HR redirected to attendance employee page
         } else if (user.role === 'employee') {
           navigate(routes.attendanceemployee); // Employees redirected to attendance employee page
         } else {
@@ -2094,7 +2096,7 @@ const AdminDashboard = () => {
                           +2.1%
                         </span> */}
                       </h3>
-                      <Link to="attendance-employee.html" className="link-default">
+                      <Link to={routes.attendanceadmin} className="link-default">
                         View Details
                       </Link>
                     </div>
@@ -2123,8 +2125,8 @@ const AdminDashboard = () => {
                           Today
                         </span>
                       </h3>
-                      <Link to="attendance-report.html" className="link-default">
-                        View All
+                      <Link to={routes.attendanceadmin} className="link-default">
+                        View Details
                       </Link>
                     </div>
                   </div>
@@ -2196,8 +2198,8 @@ const AdminDashboard = () => {
                           Today
                         </span>
                       </h3>
-                      <Link to="attendance-report.html" className="link-default">
-                        View All
+                      <Link to={routes.attendanceadmin} className="link-default">
+                        View Details
                       </Link>
                     </div>
                   </div>
@@ -2225,8 +2227,8 @@ const AdminDashboard = () => {
                           This Month
                         </span>
                       </h3>
-                      <Link to="employees.html" className="link-default">
-                        View All
+                      <Link to={routes.employeeList} className="link-default">
+                        View Details
                       </Link>
                     </div>
                   </div>
@@ -2699,7 +2701,7 @@ const AdminDashboard = () => {
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Employees</h5>
-                  <Link to="employees.html" className="btn btn-light btn-md mb-2">
+                  <Link to={routes.employeeList} className="btn btn-light btn-md mb-2">
                     View All
                   </Link>
                 </div>
@@ -3048,6 +3050,7 @@ const AdminDashboard = () => {
                           <i className="ti ti-circle-filled fs-5 me-1" />
                               {attendance.checkIn?.time ? 
                                 new Date(attendance.checkIn.time).toLocaleTimeString('en-US', { 
+                                  timeZone: 'America/Chicago',
                                   hour: '2-digit', 
                                   minute: '2-digit',
                                   hour12: false 
@@ -3104,6 +3107,7 @@ const AdminDashboard = () => {
                         <i className="ti ti-circle-filled fs-5 me-1" />
                                   {attendance.checkIn?.time ? 
                                     new Date(attendance.checkIn.time).toLocaleTimeString('en-US', { 
+                                      timeZone: 'America/Chicago',
                                       hour: '2-digit', 
                                       minute: '2-digit',
                                       hour12: false 
@@ -4596,7 +4600,7 @@ const AdminDashboard = () => {
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Schedules</h5>
-                  <Link to={routes.candidatesGrid} className="btn btn-light btn-md mb-2">
+                  <Link to={routes.adminInterviews} className="btn btn-light btn-md mb-2">
                     View All
                   </Link>
                 </div>
@@ -4659,7 +4663,7 @@ const AdminDashboard = () => {
                         )}
                       </div>
                         <Link
-                            to={interview.interviewLink || `${routes.candidatesGrid}?viewCandidate=${interview.candidateId}`} 
+                            to={interview.interviewLink || routes.candidatesGrid} 
                             className="btn btn-primary btn-xs"
                             target={interview.interviewLink ? "_blank" : undefined}
                         >

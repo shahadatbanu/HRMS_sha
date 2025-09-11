@@ -177,27 +177,9 @@ const EmployeeList = () => {
       title: "Designation",
       dataIndex: "Designation",
       render: (text: string, record: any) => (
-        <div className="dropdown me-3">
-          <Link
-            to="#"
-            className="dropdown-toggle btn btn-white d-inline-flex align-items-center"
-            data-bs-toggle="dropdown"
-          >
-            {record.Designation}
-          </Link>
-          <ul className="dropdown-menu  dropdown-menu-end p-3">
-            <li>
-              <Link to="#" className="dropdown-item rounded-1">
-                Developer
-              </Link>
-            </li>
-            <li>
-              <Link to="#" className="dropdown-item rounded-1">
-                Executive
-              </Link>
-            </li>
-          </ul>
-        </div>
+        <span className="text-muted">
+          {record.Designation}
+        </span>
       ),
       sorter: (a: any, b: any) => a.Designation.length - b.Designation.length,
     },
@@ -249,9 +231,6 @@ const EmployeeList = () => {
   const department = [
     { value: "Select", label: "Select" },
     { value: "All Department", label: "All Department" },
-    { value: "Finance", label: "Finance" },
-    { value: "Developer", label: "Developer" },
-    { value: "Executive", label: "Executive" },
   ];
   const [designationOptions, setDesignationOptions] = useState<{ value: string; label: string }[]>([
     { value: "Select", label: "Select" },
@@ -844,13 +823,7 @@ const EmployeeList = () => {
           </div>
         </div>
         <div className="footer d-sm-flex align-items-center justify-content-between border-top bg-white p-3">
-          <p className="mb-0">2014 - 2025 © SmartHR.</p>
-          <p>
-            Designed &amp; Developed By{" "}
-            <Link to="#" className="text-primary">
-              Dreams
-            </Link>
-          </p>
+          <p className="mb-0">2014 - 2025 © Insight Talent Solution.</p>
         </div>
       </div>
       {/* /Page Wrapper */}

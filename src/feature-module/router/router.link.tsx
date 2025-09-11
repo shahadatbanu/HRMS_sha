@@ -89,6 +89,7 @@ const Alert = React.lazy(() => import("../uiInterface/base-ui/alert"));
 const Tooltips = React.lazy(() => import("../uiInterface/base-ui/tooltips"));
 const Ribbon = React.lazy(() => import("../uiInterface/advanced-ui/ribbon"));
 const AdminDashboard = React.lazy(() => import("../mainMenu/adminDashboard"));
+const ManageTeamLeads = React.lazy(() => import("../hrm/team-leads/manageTeamLeads"));
 const CandidateDashboard = React.lazy(() => import("../mainMenu/candidateDashboard"));
 const CandidateDashboardPrototype = React.lazy(() => import("../mainMenu/candidateDashboard/prototype - Copy"));
 const DashboardRedirect = React.lazy(() => import("./DashboardRedirect"));
@@ -285,6 +286,8 @@ const LeaveEmployee = React.lazy(() => import("../hrm/attendance/leaves/leaveEmp
 const LeaveSettings = React.lazy(() => import("../hrm/attendance/leaves/leavesettings"));
 const AttendanceAdmin = React.lazy(() => import("../hrm/attendance/attendanceadmin"));
 const AttendanceEmployee = React.lazy(() => import("../hrm/attendance/attendance_employee"));
+const EmployeeInterviews = React.lazy(() => import("../hrm/attendance/employee-interviews"));
+const AdminInterviews = React.lazy(() => import("../hrm/attendance/admin-interviews"));
 const TimeSheet = React.lazy(() => import("../hrm/attendance/timesheet"));
 const ScheduleTiming = React.lazy(() => import("../hrm/attendance/scheduletiming"));
 const OverTime = React.lazy(() => import("../hrm/attendance/overtime"));
@@ -319,6 +322,11 @@ export const publicRoutes = [
   {
     path: routes.adminDashboard,
     element: <AdminDashboard />,
+    route: Route,
+  },
+  {
+    path: routes.manageTeamLeads,
+    element: <ManageTeamLeads />,
     route: Route,
   },
   {
@@ -1602,6 +1610,16 @@ export const publicRoutes = [
   {
     path: routes.attendanceemployee,
     element: <AttendanceEmployee />,
+    route: Route,
+  },
+  {
+    path: routes.employeeInterviews,
+    element: <EmployeeInterviews />,
+    route: Route,
+  },
+  {
+    path: routes.adminInterviews,
+    element: <AdminInterviews />,
     route: Route,
   },
   {

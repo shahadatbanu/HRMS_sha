@@ -25,6 +25,7 @@ import holidayService, { Holiday } from '../../../core/services/holidayService';
 import leaveService, { LeaveRecord } from '../../../core/services/leaveService';
 import ReactApexChart from "react-apexcharts";
 import { backend_url } from '../../../environment';
+import InterviewScheduleCard from '../../../core/common/InterviewScheduleCard';
 
 const AttendanceEmployee = () => {
   const { user } = useUser();
@@ -182,17 +183,65 @@ const AttendanceEmployee = () => {
   };
 
   const requestGeolocationPermission = async () => {
-    if (!checkGeolocationSupport()) return false;
+    console.log('requestGeolocationPermission called');
+    if (!checkGeolocationSupport()) {
+      console.log('Geolocation not supported');
+      return false;
+    }
 
     try {
-      const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
-      setGeolocationPermission(permission.state);
+      // Try to check permission status first (if supported)
+      if ('permissions' in navigator) {
+        try {
+          console.log('Checking permission status via permissions API');
+          const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+          console.log('Permission status:', permission.state);
+          setGeolocationPermission(permission.state);
+          
+          permission.onchange = () => {
+            console.log('Permission status changed to:', permission.state);
+            setGeolocationPermission(permission.state);
+          };
+          
+          if (permission.state === 'granted') {
+            console.log('Permission already granted');
+            return true;
+          } else if (permission.state === 'denied') {
+            console.log('Permission already denied');
+            return false;
+          }
+          // If 'prompt', we'll try to get position to trigger the prompt
+        } catch (error) {
+          console.warn('Permission API not supported, trying direct geolocation');
+        }
+      }
       
-      permission.onchange = () => {
-        setGeolocationPermission(permission.state);
-      };
-      
-      return permission.state === 'granted';
+      // If permission is 'prompt' or permission API not supported, try to get position
+      // This will trigger the browser's permission prompt
+      console.log('Attempting to get current position to trigger permission prompt');
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0
+          });
+        });
+        
+        console.log('Position obtained successfully');
+        setGeolocationPermission('granted');
+        return true;
+      } catch (error: any) {
+        console.log('Error getting position:', error);
+        if (error.code === error.PERMISSION_DENIED) {
+          console.log('Permission denied by user');
+          setGeolocationPermission('denied');
+          return false;
+        }
+        // For other errors, we'll still return false but don't set permission to denied
+        console.log('Other error, not setting permission to denied');
+        return false;
+      }
     } catch (error) {
       console.error('Error checking geolocation permission:', error);
       return false;
@@ -357,8 +406,8 @@ const AttendanceEmployee = () => {
   }, []);
 
   useEffect(() => {
-    // Initialize geolocation
-    requestGeolocationPermission();
+    // Initialize geolocation support check only
+    checkGeolocationSupport();
   }, []);
 
   useEffect(() => {
@@ -493,26 +542,60 @@ const AttendanceEmployee = () => {
       setCheckInLoading(true);
       setLocationError(null);
       
+      console.log('Punch in clicked - checking geolocation support:', geolocationSupported);
+      console.log('Current permission status:', geolocationPermission);
+      
+      // Check if geolocation is supported
+      if (!geolocationSupported) {
+        console.log('Geolocation not supported');
+        setLocationError('Location services are not supported by this browser. Please use a different browser or device.');
+        return;
+      }
+      
+      // Check if location permission is granted
+      if (geolocationPermission === 'denied') {
+        console.log('Permission already denied');
+        setLocationError('Location permission is required for punch in. Please enable location access in your browser settings and refresh the page.');
+        return;
+      }
+      
+      // If permission is still pending, try to get it
+      if (geolocationPermission === 'prompt') {
+        console.log('Permission pending, requesting permission...');
+        const hasPermission = await requestGeolocationPermission();
+        console.log('Permission request result:', hasPermission, 'New permission status:', geolocationPermission);
+        if (!hasPermission) {
+          // After the request, check what the current permission status is
+          // Use a type assertion to tell TypeScript that the state might have changed
+          const currentPermission = geolocationPermission as 'granted' | 'denied' | 'prompt';
+          if (currentPermission === 'denied') {
+            setLocationError('Location permission was denied. Please enable location access in your browser settings and refresh the page.');
+          } else {
+            setLocationError('Location permission is required for punch in. Please allow location access when prompted.');
+          }
+          return;
+        }
+      }
+      
       let geolocation = null;
       let locationNameResult = '';
       
-      // Try to get current location if geolocation is supported and permitted
-      if (geolocationSupported && geolocationPermission !== 'denied') {
-        try {
-          geolocation = await getCurrentPosition();
-          console.log('Got geolocation:', geolocation);
-          
-          // Get location name if we have coordinates
-          if (geolocation) {
-            console.log('Calling getLocationName with coordinates:', geolocation);
-            locationNameResult = await getLocationName(geolocation.latitude, geolocation.longitude);
-            console.log('Location name result:', locationNameResult);
-            setLocationName(locationNameResult);
-          }
-        } catch (error) {
-          console.warn('Could not get location for check-in:', error);
-          // Continue with check-in even if location fails
+      // Get current location - this is now mandatory
+      try {
+        geolocation = await getCurrentPosition();
+        console.log('Got geolocation:', geolocation);
+        
+        // Get location name if we have coordinates
+        if (geolocation) {
+          console.log('Calling getLocationName with coordinates:', geolocation);
+          locationNameResult = await getLocationName(geolocation.latitude, geolocation.longitude);
+          console.log('Location name result:', locationNameResult);
+          setLocationName(locationNameResult);
         }
+      } catch (error) {
+        console.error('Could not get location for check-in:', error);
+        setLocationError('Unable to get your current location. Please ensure location services are enabled and try again.');
+        return;
       }
       
       console.log('Final location data for check-in:', { locationNameResult, geolocation });
@@ -1143,10 +1226,12 @@ const AttendanceEmployee = () => {
                       Good Morning, {user?.firstName || 'Employee'}
                     </h6>
                     <h4>{currentTime.toLocaleTimeString('en-US', { 
+                      timeZone: 'America/Chicago',
                       hour: '2-digit', 
                       minute: '2-digit',
                       hour12: true 
                     })}, {currentTime.toLocaleDateString('en-US', {
+                      timeZone: 'America/Chicago',
                       day: '2-digit',
                       month: 'short',
                       year: 'numeric'
@@ -1168,24 +1253,24 @@ const AttendanceEmployee = () => {
                     </div>
                     <h6 className="fw-medium d-flex align-items-center justify-content-center mb-3">
                       <i className="ti ti-fingerprint text-primary me-1" />
-                      {todayAttendance?.checkIn 
+                      {todayAttendance?.checkIn?.time 
                         ? `Punch In at ${todayAttendance.formattedCheckIn}`
                         : 'Not checked in today'
                       }
                     </h6>
-                    {(!todayAttendance?.checkIn && punchMessage) ? (
+                    {(!todayAttendance?.checkIn?.time && punchMessage) ? (
                       <div className="text-info fw-medium" style={{ marginTop: 16 }}>{punchMessage}</div>
                     ) :
-                    (!todayAttendance?.checkIn ? (
+                    (!todayAttendance?.checkIn?.time ? (
                       <button 
                         className="btn btn-primary btn-sm w-auto"
                         style={{ minWidth: 140, margin: '0 auto', display: 'block' }}
                         onClick={handleCheckIn}
-                        disabled={checkInLoading || isTodayHoliday || isTodaySunday}
+                        disabled={checkInLoading || isTodayHoliday || isTodaySunday || !geolocationSupported || geolocationPermission === 'denied'}
                       >
                         {checkInLoading ? 'Checking In...' : 'Punch In'}
                       </button>
-                    ) : todayAttendance?.checkIn && !todayAttendance?.checkOut?.time && todayAttendance?.status !== 'Absent' ? (
+                    ) : todayAttendance?.checkIn?.time && !todayAttendance?.checkOut?.time && todayAttendance?.status !== 'Absent' ? (
                       <button 
                         className="btn btn-dark btn-sm w-auto"
                         style={{ minWidth: 140, margin: '0 auto', display: 'block' }}
@@ -1209,24 +1294,38 @@ const AttendanceEmployee = () => {
                     {/* Location Status Indicator */}
                     <div className="mt-3">
                       <div className="d-flex align-items-center justify-content-center mb-2">
-                        <i className={`ti ${geolocationSupported ? 'ti-map-pin' : 'ti-map-pin-off'} me-2 ${geolocationSupported ? 'text-success' : 'text-muted'}`} />
-                        <span className="fs-12 text-muted">
+                        <i className={`ti ${geolocationSupported ? 'ti-map-pin' : 'ti-map-pin-off'} me-2 ${geolocationSupported ? 'text-success' : 'text-danger'}`} />
+                        <span className={`fs-12 ${geolocationSupported ? 'text-muted' : 'text-danger'}`}>
                           {geolocationSupported ? 'Location tracking enabled' : 'Location tracking not available'}
                         </span>
                       </div>
                       
                       {geolocationSupported && (
                         <div className="d-flex align-items-center justify-content-center mb-2">
-                          <i className={`ti ${geolocationPermission === 'granted' ? 'ti-shield-check' : geolocationPermission === 'denied' ? 'ti-shield-x' : 'ti-shield'} me-2 ${geolocationPermission === 'granted' ? 'text-success' : geolocationPermission === 'denied' ? 'text-danger' : 'text-warning'}`} />
-                          <span className="fs-12 text-muted">
+                          <i className={`ti ${geolocationPermission === 'granted' ? 'ti-shield-check' : geolocationPermission === 'denied' ? 'ti-shield-x' : 'ti-shield'} me-2 ${geolocationPermission === 'granted' ? 'text-success' : geolocationPermission === 'denied' ? 'text-danger' : 'text-info'}`} />
+                          <span className={`fs-12 ${geolocationPermission === 'granted' ? 'text-muted' : geolocationPermission === 'denied' ? 'text-danger' : 'text-info'}`}>
                             {geolocationPermission === 'granted' ? 'Location access granted' : 
-                             geolocationPermission === 'denied' ? 'Location access denied' : 
-                             'Location permission pending'}
+                             geolocationPermission === 'denied' ? 'Location access denied - Punch in disabled' : 
+                             'Location permission required for punch in'}
                           </span>
                         </div>
                       )}
                       
-                      {currentLocation && (
+                      {!geolocationSupported && (
+                        <div className="alert alert-danger alert-sm mt-2 mb-0">
+                          <i className="ti ti-alert-triangle me-1" />
+                          <span className="fs-12">Location services are required for punch in. Please use a supported browser.</span>
+                        </div>
+                      )}
+                      
+                      {geolocationSupported && geolocationPermission === 'denied' && (
+                        <div className="alert alert-danger alert-sm mt-2 mb-0">
+                          <i className="ti ti-shield-x me-1" />
+                          <span className="fs-12">Location permission is required for punch in. Please enable location access in your browser settings and refresh the page.</span>
+                        </div>
+                      )}
+                      
+                      {currentLocation && geolocationPermission === 'granted' && (
                         <div className="d-flex align-items-center justify-content-center">
                           <i className="ti ti-crosshair me-2 text-info" />
                           {locationLoading ? (
@@ -1365,10 +1464,9 @@ const AttendanceEmployee = () => {
             </div>
           </div>
           
-          {/* Submissions Overview and Performance Cards */}
+          {/* Submissions Overview Card - Full Width */}
           <div className="row">
-            {/* Submissions Overview Card */}
-            <div className="col-xl-7 d-flex">
+            <div className="col-xl-12 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">
@@ -1427,23 +1525,23 @@ const AttendanceEmployee = () => {
                     </div>
                   ) : submissionsData.length > 0 ? (
                     <>
-                  <div className="d-flex align-items-center justify-content-between flex-wrap">
-                    <div className="d-flex align-items-center mb-1">
-                      <p className="fs-13 text-gray-9 me-3 mb-0">
-                        <i className="ti ti-square-filled me-2 text-primary" />
+                      <div className="d-flex align-items-center justify-content-between flex-wrap">
+                        <div className="d-flex align-items-center mb-1">
+                          <p className="fs-13 text-gray-9 me-3 mb-0">
+                            <i className="ti ti-square-filled me-2 text-primary" />
                             {submissionsDataType === 'submissions' ? 'Monthly Submissions' : 
                              submissionsDataType === 'job-offers' ? 'Monthly Job Offers' : 'Monthly Interview Schedules'}
-                      </p>
-                    </div>
+                          </p>
+                        </div>
                         <p className="fs-13 mb-1">Last Updated at {new Date().toLocaleTimeString()}</p>
-                  </div>
-                  <ReactApexChart
+                      </div>
+                      <ReactApexChart
                         id="submissions-chart"
                         options={submissionsChartData}
                         series={submissionsChartData.series}
-                    type="bar"
-                    height={270}
-                  />
+                        type="bar"
+                        height={270}
+                      />
                     </>
                   ) : (
                     <div className="text-center py-4">
@@ -1452,15 +1550,18 @@ const AttendanceEmployee = () => {
                         No {submissionsDataType === 'submissions' ? 'submissions' : 
                             submissionsDataType === 'job-offers' ? 'job offers' : 'interview schedules'} data available.
                       </p>
-                </div>
+                    </div>
                   )}
+                </div>
               </div>
             </div>
-            </div>
-            {/* /Submissions Overview Card */}
-            
-            {/* Performance Card */}
-            <div className="col-xl-5 d-flex">
+          </div>
+          {/* /Submissions Overview Card */}
+          
+          {/* Performance and Interview Schedule Cards */}
+          <div className="row">
+            {/* Performance Card - 67% width */}
+            <div className="col-xl-8 d-flex">
               <div className="card flex-fill">
                 <div className="card-header">
                   <div className="d-flex align-items-center justify-content-between flex-wrap row-gap-2">
@@ -1568,8 +1669,14 @@ const AttendanceEmployee = () => {
               </div>
             </div>
             {/* /Performance Card */}
+            
+            {/* Interview Schedule Card - 33% width */}
+            <div className="col-xl-4 d-flex">
+              <InterviewScheduleCard employeeId={employeeId || ''} />
+            </div>
+            {/* /Interview Schedule Card */}
           </div>
-          {/* /Submissions Overview and Performance Cards */}
+          {/* /Performance and Interview Schedule Cards */}
           
           <div className="card">
             <div className="card-header d-flex align-items-center justify-content-between flex-wrap row-gap-3">
@@ -1680,13 +1787,7 @@ const AttendanceEmployee = () => {
           </div>
         </div>
         <div className="footer d-sm-flex align-items-center justify-content-between border-top bg-white p-3">
-          <p className="mb-0">2014 - 2025 © SmartHR.</p>
-          <p>
-            Designed &amp; Developed By{" "}
-            <Link to="#" className="text-primary">
-              Yogesh
-            </Link>
-          </p>
+          <p className="mb-0">2014 - 2025 © Insight Talent Solution.</p>
         </div>
       </div>
       {/* /Page Wrapper */}

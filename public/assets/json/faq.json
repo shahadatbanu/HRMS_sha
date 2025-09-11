@@ -11,8 +11,8 @@
           "Categories": "General"
         },
         {
-          "Questions": "Is the data stored in an SmartHR secure?",
-          "Answers": "Yes, SmartHR is design with advanced security measures, including data encryption",
+          "Questions": "Is the data stored in an Insight Talent Solution secure?",
+          "Answers": "Yes, Insight Talent Solution is design with advanced security measures, including data encryption",
           "Categories": "Feature"
         },
         {
@@ -21,7 +21,7 @@
           "Categories": "Employee"
         },
         {
-          "Questions": "How do I generate custom reports in the SmartHR?",
+          "Questions": "How do I generate custom reports in the Insight Talent Solution?",
           "Answers": "Custom reports can be generated using the reporting module within the HRMS",
           "Categories": "Reports"
         },
@@ -31,7 +31,7 @@
           "Categories": "Leaves"
         },
         {
-          "Questions": "How do I process payroll in the SmartHR?",
+          "Questions": "How do I process payroll in the Insight Talent Solution?",
           "Answers": "Reviewing employee hours and deductions and executing payments.",
           "Categories": "Payroll"
         },

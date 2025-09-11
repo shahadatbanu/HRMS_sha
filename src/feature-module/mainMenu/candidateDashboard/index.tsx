@@ -2325,20 +2325,22 @@ const CandidateDashboard = () => {
     }
   };
 
-  // Function to format interview time
+  // Function to format interview time (US Central Time)
   const formatInterviewTime = (date: string) => {
     const interviewDate = new Date(date);
     return interviewDate.toLocaleTimeString('en-US', { 
+      timeZone: 'America/Chicago',
       hour: '2-digit', 
       minute: '2-digit',
       hour12: true 
     });
   };
 
-  // Function to format interview date
+  // Function to format interview date (US Central Time)
   const formatInterviewDate = (date: string) => {
     const interviewDate = new Date(date);
     return interviewDate.toLocaleDateString('en-US', { 
+      timeZone: 'America/Chicago',
       weekday: 'short',
       day: 'numeric', 
       month: 'short', 
@@ -2436,7 +2438,7 @@ const CandidateDashboard = () => {
       if (user.role !== 'admin') {
         // Redirect non-admin users to appropriate dashboard
         if (user.role === 'hr') {
-          navigate(routes.adminDashboard); // HR can access admin dashboard
+          navigate(routes.attendanceemployee); // HR redirected to attendance employee page
         } else if (user.role === 'employee') {
           navigate(routes.attendanceemployee); // Employees redirected to attendance employee page
         } else {
@@ -2659,7 +2661,7 @@ const CandidateDashboard = () => {
                         <span className="avatar rounded-circle bg-primary">
                           <i className="ti ti-users-group fs-16" />
                       </span>
-                        <Link to="candidates.html" className="link-default">
+                        <Link to={routes.candidatesGrid} className="link-default">
                           View All
                         </Link>
                       </div>
@@ -2689,7 +2691,7 @@ const CandidateDashboard = () => {
                         <span className="avatar rounded-circle bg-success">
                           <i className="ti ti-user-check fs-16" />
                       </span>
-                        <Link to="candidates.html" className="link-default">
+                      <Link to={routes.candidatesGrid} className="link-default">
                           View All
                         </Link>
                       </div>
@@ -2720,9 +2722,9 @@ const CandidateDashboard = () => {
                         <span className="avatar rounded-circle bg-danger">
                           <i className="ti ti-user-x fs-16" />
                       </span>
-                        <Link to="candidates.html" className="link-default">
-                        View All
-                      </Link>
+                      <Link to={routes.candidatesGrid} className="link-default">
+                          View All
+                        </Link>
                     </div>
                       <h6 className="fs-13 fw-medium text-default mb-1">
                         Inactive/Dead
@@ -2751,9 +2753,9 @@ const CandidateDashboard = () => {
                         <span className="avatar rounded-circle bg-primary">
                           <i className="ti ti-clock fs-16" />
                       </span>
-                        <Link to="candidates.html" className="link-default">
+                        {/* <Link to="candidates.html" className="link-default">
                           View All
-                        </Link>
+                        </Link> */}
                       </div>
                       <h6 className="fs-13 fw-medium text-default mb-1">
                         Avg. Pipeline Time
@@ -2782,9 +2784,9 @@ const CandidateDashboard = () => {
                         <span className="avatar rounded-circle bg-warning">
                           <i className="ti ti-trending-up fs-16" />
                       </span>
-                        <Link to="candidates.html" className="link-default">
+                        {/* <Link to="candidates.html" className="link-default">
                           View All
-                        </Link>
+                        </Link> */}
                       </div>
                       <h6 className="fs-13 fw-medium text-default mb-1">
                         Conversion Rate
@@ -2813,9 +2815,9 @@ const CandidateDashboard = () => {
                         <span className="avatar rounded-circle bg-success">
                           <i className="ti ti-medal fs-16" />
                       </span>
-                        <Link to="candidates.html" className="link-default">
+                        {/* <Link to="candidates.html" className="link-default">
                         View All
-                      </Link>
+                      </Link> */}
                     </div>
                       <h6 className="fs-13 fw-medium text-default mb-1">
                         Top Recruiter
@@ -5494,7 +5496,7 @@ const CandidateDashboard = () => {
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">Schedules</h5>
-                  <Link to={routes.candidatesGrid} className="btn btn-light btn-md mb-2">
+                  <Link to={routes.adminInterviews} className="btn btn-light btn-md mb-2">
                     View All
                   </Link>
                 </div>
