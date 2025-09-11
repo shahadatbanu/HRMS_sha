@@ -673,6 +673,22 @@ const CandidateGrid = () => {
         };
     }, []);
 
+    // Cleanup backdrop when modal closes
+    useEffect(() => {
+        if (!showCandidateModal) {
+            // Clean up any lingering backdrop elements
+            const backdrops = document.querySelectorAll('.offcanvas-backdrop');
+            backdrops.forEach(backdrop => {
+                if (backdrop.parentNode) {
+                    backdrop.parentNode.removeChild(backdrop);
+                }
+            });
+            // Remove modal-open class from body
+            document.body.classList.remove('modal-open');
+        }
+    }, [showCandidateModal]);
+
+
     // Add event listener for offcanvas close
     useEffect(() => {
         const offcanvas = document.getElementById('candidate_details');
@@ -684,8 +700,8 @@ const CandidateGrid = () => {
                 const newSearchParams = new URLSearchParams(searchParams);
                 newSearchParams.delete('viewCandidate');
                 const newUrl = newSearchParams.toString() 
-                    ? `${window.location.pathname}?${newSearchParams.toString()}`
-                    : window.location.pathname;
+                    ? `?${newSearchParams.toString()}`
+                    : '';
                 navigate(newUrl, { replace: true });
             };
             
@@ -824,8 +840,27 @@ const CandidateGrid = () => {
     };
 
     const handleCandidateClick = (candidateId: string) => {
-        fetchCandidateDetails(candidateId);
-        setShowCandidateModal(true);
+        // Prevent multiple clicks while loading
+        if (loadingCandidateDetails) {
+            return;
+        }
+        
+        // If clicking on the same candidate that's already selected, just show the modal
+        if (selectedCandidate && selectedCandidate._id === candidateId && showCandidateModal) {
+            return;
+        }
+        
+        // Close any existing modal first
+        if (showCandidateModal) {
+            setShowCandidateModal(false);
+            setSelectedCandidate(null);
+        }
+        
+        // Small delay to ensure clean state before opening new modal
+        setTimeout(() => {
+            fetchCandidateDetails(candidateId);
+            setShowCandidateModal(true);
+        }, 50);
     };
 
     // Filter handling functions
@@ -3808,8 +3843,6 @@ const CandidateGrid = () => {
                                                 <div className="d-flex align-items-center flex-shrink-0">
                                                     <div
                                                         className="avatar avatar-lg avatar rounded me-2 cursor-pointer"
-                                                        data-bs-toggle="offcanvas"
-                                                        data-bs-target="#candidate_details"
                                                         onClick={() => handleCandidateClick(candidate._id)}
                                                         style={{ cursor: 'pointer' }}
                                                     >
@@ -3828,8 +3861,6 @@ const CandidateGrid = () => {
                                                             <h6 className="fs-16 fw-semibold me-1">
                                                                 <div
                                                                     className="cursor-pointer"
-                                                                    data-bs-toggle="offcanvas"
-                                                                    data-bs-target="#candidate_details"
                                                                     onClick={() => handleCandidateClick(candidate._id)}
                                                                     style={{ cursor: 'pointer' }}
                                                                 >
@@ -3926,12 +3957,13 @@ const CandidateGrid = () => {
                     className="offcanvas-backdrop fade show"
                     onClick={() => {
                         setShowCandidateModal(false);
+                        setSelectedCandidate(null);
                         // Clean the URL by removing the viewCandidate parameter
                         const newSearchParams = new URLSearchParams(searchParams);
                         newSearchParams.delete('viewCandidate');
                         const newUrl = newSearchParams.toString() 
-                            ? `${window.location.pathname}?${newSearchParams.toString()}`
-                            : window.location.pathname;
+                            ? `?${newSearchParams.toString()}`
+                            : '';
                         navigate(newUrl, { replace: true });
                     }}
                     style={{ zIndex: 1040 }}
@@ -3956,12 +3988,13 @@ const CandidateGrid = () => {
                         className="btn-close custom-btn-close"
                         onClick={() => {
                             setShowCandidateModal(false);
+                            setSelectedCandidate(null);
                             // Clean the URL by removing the viewCandidate parameter
                             const newSearchParams = new URLSearchParams(searchParams);
                             newSearchParams.delete('viewCandidate');
                             const newUrl = newSearchParams.toString() 
-                                ? `${window.location.pathname}?${newSearchParams.toString()}`
-                                : window.location.pathname;
+                                ? `?${newSearchParams.toString()}`
+                                : '';
                             navigate(newUrl, { replace: true });
                         }}
                         aria-label="Close"
