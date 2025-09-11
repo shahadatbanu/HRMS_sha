@@ -226,7 +226,7 @@ const Login = () => {
 */}
                     </div>
                     <div className="mt-5 pb-4 text-center">
-                      <p className="mb-0 text-gray-9">Copyright © 2024 - Insight Talent Solution</p>
+                      <p className="mb-0 text-gray-9">Copyright © 2025 - Insight Talent Solution</p>
                     </div>
                   </div>
                 </form>

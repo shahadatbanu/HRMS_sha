@@ -346,3 +346,62 @@ export function getUSCentralTimezoneInfo(): {
     isDST
   };
 }
+
+/**
+ * Format interview time consistently in IST
+ * @param date - The interview date
+ * @returns Formatted time string in IST
+ */
+export function formatInterviewTimeConsistent(date: Date | string | null | undefined): string {
+  if (!date) return '';
+  
+  const inputDate = new Date(date);
+  if (isNaN(inputDate.getTime())) return '';
+  
+  const result = inputDate.toLocaleTimeString('en-US', {
+    timeZone: IST_TIMEZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+  
+  // DEBUG: Log timezone conversion
+  console.log('🔍 TIMEZONE UTILS DEBUG - formatInterviewTimeConsistent:');
+  console.log('Input date:', date);
+  console.log('Parsed date:', inputDate);
+  console.log('Input ISO:', inputDate.toISOString());
+  console.log('Input local:', inputDate.toLocaleString());
+  console.log('Result (IST):', result);
+  console.log('---');
+  
+  return result;
+}
+
+/**
+ * Format interview date consistently in IST
+ * @param date - The interview date
+ * @returns Formatted date string in IST
+ */
+export function formatInterviewDateConsistent(date: Date | string | null | undefined): string {
+  if (!date) return '';
+  
+  const inputDate = new Date(date);
+  if (isNaN(inputDate.getTime())) return '';
+  
+  const result = inputDate.toLocaleDateString('en-US', {
+    timeZone: IST_TIMEZONE,
+    month: 'short',
+    day: 'numeric'
+  });
+  
+  // DEBUG: Log timezone conversion
+  console.log('🔍 TIMEZONE UTILS DEBUG - formatInterviewDateConsistent:');
+  console.log('Input date:', date);
+  console.log('Parsed date:', inputDate);
+  console.log('Input ISO:', inputDate.toISOString());
+  console.log('Input local:', inputDate.toLocaleString());
+  console.log('Result (IST):', result);
+  console.log('---');
+  
+  return result;
+}
