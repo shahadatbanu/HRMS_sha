@@ -42,6 +42,37 @@ export interface MarkAbsencesResult {
   reason?: string;
 }
 
+export interface CronStatus {
+  isInitialized: boolean;
+  autoAbsenceEnabled: boolean;
+  absenceMarkingJob: {
+    running: boolean;
+    lastRun: string | null;
+    lastRunResult: {
+      success: boolean;
+      result?: any;
+      error?: string;
+      timestamp: string;
+    } | null;
+    nextRun: string | null;
+    runCount: number;
+    errorCount: number;
+    successRate: string;
+  };
+  uptime: number;
+  timeSinceLastRun: number | null;
+  nextRunIn: number | null;
+  healthStatus: 'stopped' | 'healthy' | 'warning' | 'unhealthy' | 'disabled';
+}
+
+export interface CronLog {
+  id: string;
+  employeeName: string;
+  date: string;
+  markedAt: string;
+  notes: string;
+}
+
 // Get attendance settings
 export const getAttendanceSettings = async (): Promise<AttendanceSettings> => {
   try {
@@ -150,4 +181,53 @@ export const convertTo12Hour = (time24h: string): string => {
   const displayHour = hour % 12 || 12;
   
   return `${displayHour}:${minutes} ${ampm}`;
+};
+
+// Get cron service status
+export const getCronStatus = async (): Promise<CronStatus> => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_BASE_URL}/attendance-settings/cron-status`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('Error fetching cron status:', error);
+    throw error;
+  }
+};
+
+// Restart cron service
+export const restartCronService = async (): Promise<CronStatus> => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.post(`${API_BASE_URL}/attendance-settings/cron-restart`, {}, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('Error restarting cron service:', error);
+    throw error;
+  }
+};
+
+// Get cron service logs
+export const getCronLogs = async (limit: number = 10): Promise<{ logs: CronLog[]; total: number }> => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${API_BASE_URL}/attendance-settings/cron-logs`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      params: { limit }
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('Error fetching cron logs:', error);
+    throw error;
+  }
 };
