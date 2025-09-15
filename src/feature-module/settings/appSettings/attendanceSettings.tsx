@@ -6,9 +6,14 @@ import {
   updateAttendanceSettings, 
   markAbsences, 
   getAbsenceStats,
+  getCronStatus,
+  restartCronService,
+  getCronLogs,
   type AttendanceSettings,
   type AbsenceStats,
   type MarkAbsencesResult,
+  type CronStatus,
+  type CronLog,
   validateTimeFormat,
   formatTimeForDisplay
 } from '../../../core/services/attendanceSettingsService';
@@ -22,6 +27,10 @@ const AttendanceSettingsComponent = () => {
   const [markingAbsences, setMarkingAbsences] = useState(false);
   const [stats, setStats] = useState<AbsenceStats | null>(null);
   const [markResult, setMarkResult] = useState<MarkAbsencesResult | null>(null);
+  const [cronStatus, setCronStatus] = useState<CronStatus | null>(null);
+  const [cronLogs, setCronLogs] = useState<CronLog[]>([]);
+  const [loadingCron, setLoadingCron] = useState(false);
+  const [restartingCron, setRestartingCron] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -41,6 +50,15 @@ const AttendanceSettingsComponent = () => {
   useEffect(() => {
     fetchSettings();
     fetchStats();
+    fetchCronStatus();
+    fetchCronLogs();
+    
+    // Auto-refresh cron status every 30 seconds
+    const interval = setInterval(() => {
+      fetchCronStatus();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
 
@@ -77,6 +95,27 @@ const AttendanceSettingsComponent = () => {
       setStats(data);
     } catch (error) {
       console.error('Error fetching stats:', error);
+    }
+  };
+
+  const fetchCronStatus = async () => {
+    try {
+      setLoadingCron(true);
+      const data = await getCronStatus();
+      setCronStatus(data);
+    } catch (error) {
+      console.error('Error fetching cron status:', error);
+    } finally {
+      setLoadingCron(false);
+    }
+  };
+
+  const fetchCronLogs = async () => {
+    try {
+      const data = await getCronLogs(10);
+      setCronLogs(data.logs);
+    } catch (error) {
+      console.error('Error fetching cron logs:', error);
     }
   };
 
@@ -153,6 +192,63 @@ const AttendanceSettingsComponent = () => {
     } finally {
       setMarkingAbsences(false);
     }
+  };
+
+  const handleRestartCron = async () => {
+    try {
+      setRestartingCron(true);
+      setError(null);
+      setSuccess(null);
+
+      const newStatus = await restartCronService();
+      setCronStatus(newStatus);
+      setSuccess('Cron service restarted successfully!');
+      
+      // Refresh logs and stats
+      await fetchCronLogs();
+      await fetchStats();
+      
+      // Force refresh the cron status after a short delay
+      setTimeout(async () => {
+        await fetchCronStatus();
+      }, 1000);
+      
+    } catch (error) {
+      setError('Failed to restart cron service');
+      console.error('Error restarting cron service:', error);
+    } finally {
+      setRestartingCron(false);
+    }
+  };
+
+  const getHealthStatusColor = (status: string) => {
+    switch (status) {
+      case 'healthy': return 'success';
+      case 'warning': return 'warning';
+      case 'unhealthy': return 'danger';
+      case 'stopped': return 'secondary';
+      case 'disabled': return 'info';
+      default: return 'secondary';
+    }
+  };
+
+  const getHealthStatusIcon = (status: string) => {
+    switch (status) {
+      case 'healthy': return 'ti-check-circle';
+      case 'warning': return 'ti-alert-triangle';
+      case 'unhealthy': return 'ti-x-circle';
+      case 'stopped': return 'ti-pause-circle';
+      case 'disabled': return 'ti-toggle-off';
+      default: return 'ti-help-circle';
+    }
+  };
+
+  const formatTimeAgo = (minutes: number | null) => {
+    if (minutes === null) return 'Never';
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return `${hours}h ${remainingMinutes}m ago`;
   };
 
   if (loading) {
@@ -381,6 +477,118 @@ const AttendanceSettingsComponent = () => {
 
             {/* Statistics and Actions */}
             <div className="col-lg-4">
+              {/* Cron Service Status */}
+              <div className="card mb-3">
+                <div className="card-header d-flex justify-content-between align-items-center">
+                  <h5 className="card-title mb-0">
+                    Cron Service Status
+                    {loadingCron && <span className="ms-2 text-muted small">(Refreshing...)</span>}
+                  </h5>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={fetchCronStatus}
+                    disabled={loadingCron}
+                    title="Refresh Status"
+                  >
+                    {loadingCron ? (
+                      <span className="spinner-border spinner-border-sm" role="status"></span>
+                    ) : (
+                      <i className="ti ti-refresh"></i>
+                    )}
+                  </button>
+                </div>
+                <div className="card-body">
+                  {cronStatus ? (
+                    <>
+                      {/* Health Status */}
+                      <div className="d-flex justify-content-between align-items-center mb-3">
+                        <span className="fw-medium">Status:</span>
+                        <span className={`badge bg-${getHealthStatusColor(cronStatus.healthStatus)}`}>
+                          <i className={`ti ${getHealthStatusIcon(cronStatus.healthStatus)} me-1`}></i>
+                          {cronStatus.healthStatus.charAt(0).toUpperCase() + cronStatus.healthStatus.slice(1)}
+                        </span>
+                      </div>
+
+                      {/* Service Details */}
+                      <div className="mb-3">
+                        <div className="d-flex justify-content-between mb-1">
+                          <small className="text-muted">Auto Absence Enabled:</small>
+                          <small className={cronStatus.autoAbsenceEnabled ? 'text-success' : 'text-warning'}>
+                            {cronStatus.autoAbsenceEnabled ? 'Yes' : 'No'}
+                          </small>
+                        </div>
+                        <div className="d-flex justify-content-between mb-1">
+                          <small className="text-muted">Initialized:</small>
+                          <small className={cronStatus.isInitialized ? 'text-success' : 'text-danger'}>
+                            {cronStatus.isInitialized ? 'Yes' : 'No'}
+                          </small>
+                        </div>
+                        <div className="d-flex justify-content-between mb-1">
+                          <small className="text-muted">Job Running:</small>
+                          <small className={cronStatus.absenceMarkingJob.running ? 'text-success' : 'text-danger'}>
+                            {cronStatus.absenceMarkingJob.running ? 'Yes' : 'No'}
+                          </small>
+                        </div>
+                        <div className="d-flex justify-content-between mb-1">
+                          <small className="text-muted">Total Runs:</small>
+                          <small>{cronStatus.absenceMarkingJob.runCount}</small>
+                        </div>
+                        <div className="d-flex justify-content-between mb-1">
+                          <small className="text-muted">Success Rate:</small>
+                          <small className="text-success">{cronStatus.absenceMarkingJob.successRate}%</small>
+                        </div>
+                        <div className="d-flex justify-content-between mb-1">
+                          <small className="text-muted">Last Run:</small>
+                          <small>{formatTimeAgo(cronStatus.timeSinceLastRun)}</small>
+                        </div>
+                        <div className="d-flex justify-content-between">
+                          <small className="text-muted">Next Run:</small>
+                          <small>{formatTimeAgo(cronStatus.nextRunIn)}</small>
+                        </div>
+                      </div>
+
+                      {/* Disabled Message */}
+                      {cronStatus.healthStatus === 'disabled' && (
+                        <div className="alert alert-info alert-sm mb-3">
+                          <i className="ti ti-info-circle me-2"></i>
+                          <small>
+                            Cron service is disabled because automatic absence marking is turned off. 
+                            Enable it in the settings above to activate the cron service.
+                          </small>
+                        </div>
+                      )}
+
+                      {/* Restart Button */}
+                      <button
+                        type="button"
+                        className="btn btn-outline-warning btn-sm w-100"
+                        onClick={handleRestartCron}
+                        disabled={restartingCron || !cronStatus.autoAbsenceEnabled}
+                        title={!cronStatus.autoAbsenceEnabled ? 'Enable auto absence marking first' : 'Restart cron service'}
+                      >
+                        {restartingCron ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                            Restarting...
+                          </>
+                        ) : (
+                          <>
+                            <i className="ti ti-refresh me-2"></i>
+                            Restart Service
+                          </>
+                        )}
+                      </button>
+                    </>
+                  ) : (
+                    <div className="text-center text-muted">
+                      <i className="ti ti-loader-2 ti-spin me-2"></i>
+                      Loading cron status...
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Manual Absence Marking */}
               <div className="card mb-3">
                 <div className="card-header">
@@ -477,6 +685,46 @@ const AttendanceSettingsComponent = () => {
                       <small className="text-muted d-block mt-2">
                         Reason: {markResult.reason}
                       </small>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Cron Service Logs */}
+              {cronLogs.length > 0 && (
+                <div className="card mt-3">
+                  <div className="card-header d-flex justify-content-between align-items-center">
+                    <h6 className="card-title mb-0">Recent Cron Activity</h6>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-primary"
+                      onClick={fetchCronLogs}
+                    >
+                      <i className="ti ti-refresh"></i>
+                    </button>
+                  </div>
+                  <div className="card-body">
+                    <div className="list-group list-group-flush">
+                      {cronLogs.slice(0, 5).map((log, index) => (
+                        <div key={log.id} className="list-group-item px-0 py-2">
+                          <div className="d-flex justify-content-between align-items-start">
+                            <div className="flex-grow-1">
+                              <h6 className="mb-1 text-truncate">{log.employeeName}</h6>
+                              <p className="mb-1 text-muted small">
+                                {new Date(log.date).toLocaleDateString()} - {new Date(log.markedAt).toLocaleString()}
+                              </p>
+                            </div>
+                            <span className="badge bg-danger-transparent">Absent</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {cronLogs.length > 5 && (
+                      <div className="text-center mt-2">
+                        <small className="text-muted">
+                          Showing 5 of {cronLogs.length} recent activities
+                        </small>
+                      </div>
                     )}
                   </div>
                 </div>

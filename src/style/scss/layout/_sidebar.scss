@@ -48,6 +48,15 @@
             }
         }
         
+        // Custom logo size increase
+        .logo img {
+            max-height: 150px;
+            width: auto;
+            object-fit: contain;
+            margin-top: -43px;
+            margin-left: -84px;
+        }
+        
         @include respond-below(lg) {
             display: none;
         }
