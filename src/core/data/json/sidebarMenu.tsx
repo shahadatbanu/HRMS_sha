@@ -577,6 +577,7 @@ export const SidebarDataTest = [
             link: routes.leaveemployee,
             submenu: false,
             showSubRoute: false,
+            roles: ['employee', 'hr'], // Hide from admin users
           },
           // {
           //   label: 'Leave Settings',

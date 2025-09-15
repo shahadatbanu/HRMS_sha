@@ -270,7 +270,7 @@ const CandidateGrid = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalRecords, setTotalRecords] = useState(0);
-    const [pageSize, setPageSize] = useState(10);
+    const [pageSize, setPageSize] = useState(20);
     
     // Filter state
     const [filters, setFilters] = useState({
@@ -522,6 +522,16 @@ const CandidateGrid = () => {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
+        
+        // Validate yearsOfExperience to prevent negative values
+        if (name === 'yearsOfExperience') {
+            const numValue = parseFloat(value);
+            if (value !== '' && (isNaN(numValue) || numValue < 0)) {
+                // Don't update the state if the value is negative or invalid
+                return;
+            }
+        }
+        
         if (name.includes('.')) {
             const [parent, child] = name.split('.');
             setForm(prev => ({
@@ -647,8 +657,22 @@ const CandidateGrid = () => {
     useEffect(() => {
         fetchRecruiters();
         fetchTeamLeads();
+        // Only fetch candidates if user is available (authenticated)
+        if (user) {
         fetchCandidates(1, filters);
-    }, []);
+        } else {
+            // Fallback: try to fetch candidates after a short delay
+            // in case user context is still loading
+            const timer = setTimeout(() => {
+                const token = localStorage.getItem('token');
+                if (token) {
+                    console.log('🔍 Fallback: Fetching candidates with token');
+                    fetchCandidates(1, filters);
+                }
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [user]);
 
     // Cleanup timeout on unmount
     useEffect(() => {
@@ -659,6 +683,22 @@ const CandidateGrid = () => {
         };
     }, []);
 
+    // Cleanup backdrop when modal closes
+    useEffect(() => {
+        if (!showCandidateModal) {
+            // Clean up any lingering backdrop elements
+            const backdrops = document.querySelectorAll('.offcanvas-backdrop');
+            backdrops.forEach(backdrop => {
+                if (backdrop.parentNode) {
+                    backdrop.parentNode.removeChild(backdrop);
+                }
+            });
+            // Remove modal-open class from body
+            document.body.classList.remove('modal-open');
+        }
+    }, [showCandidateModal]);
+
+
     // Add event listener for offcanvas close
     useEffect(() => {
         const offcanvas = document.getElementById('candidate_details');
@@ -666,12 +706,13 @@ const CandidateGrid = () => {
             const handleOffcanvasClose = () => {
                 setSelectedCandidate(null);
                 setShowCandidateModal(false);
+                setActiveTab('basic-info'); // Reset tab to default
                 // Clean the URL by removing the viewCandidate parameter
                 const newSearchParams = new URLSearchParams(searchParams);
                 newSearchParams.delete('viewCandidate');
                 const newUrl = newSearchParams.toString() 
-                    ? `${window.location.pathname}?${newSearchParams.toString()}`
-                    : window.location.pathname;
+                    ? `?${newSearchParams.toString()}`
+                    : '';
                 navigate(newUrl, { replace: true });
             };
             
@@ -710,16 +751,24 @@ const CandidateGrid = () => {
             setLoadingCandidates(true);
             setFiltering(false);
             const token = localStorage.getItem('token');
+            console.log('🔍 Token exists:', !!token);
+            console.log('🔍 User context:', user);
             if (!token) {
                 console.error('No authentication token found');
                 return;
             }
 
-            // Build query parameters
+            // Build query parameters, filtering out empty values
             const params = new URLSearchParams({
                 page: page.toString(),
-                limit: pageSize.toString(),
-                ...filters
+                limit: pageSize.toString()
+            });
+            
+            // Only add non-empty filter values
+            Object.entries(filterParams).forEach(([key, value]) => {
+                if (value && value.toString().trim() !== '') {
+                    params.append(key, value.toString());
+                }
             });
 
             console.log('🔍 Fetching candidates with params:', params.toString());
@@ -808,8 +857,30 @@ const CandidateGrid = () => {
     };
 
     const handleCandidateClick = (candidateId: string) => {
+        // Prevent multiple clicks while loading
+        if (loadingCandidateDetails) {
+            return;
+        }
+        
+        // If clicking on the same candidate that's already selected, just show the modal
+        if (selectedCandidate && selectedCandidate._id === candidateId && showCandidateModal) {
+            return;
+        }
+        
+        // Close any existing modal first
+        if (showCandidateModal) {
+            setShowCandidateModal(false);
+            setSelectedCandidate(null);
+        }
+        
+        // Reset tab to default when opening a new candidate
+        setActiveTab('basic-info');
+        
+        // Small delay to ensure clean state before opening new modal
+        setTimeout(() => {
         fetchCandidateDetails(candidateId);
         setShowCandidateModal(true);
+        }, 50);
     };
 
     // Filter handling functions
@@ -862,7 +933,17 @@ const CandidateGrid = () => {
         };
         setFilters(clearedFilters);
         setCurrentPage(1);
+        // Force a fresh fetch with cleared filters
+        console.log('🔍 Clearing filters and fetching candidates...');
         fetchCandidates(1, clearedFilters);
+        
+        // Fallback: if no candidates are loaded after a short delay, try again
+        setTimeout(() => {
+            if (candidates.length === 0) {
+                console.log('🔍 Fallback: No candidates found, trying again...');
+                fetchCandidates(1, clearedFilters);
+            }
+        }, 1000);
     };
 
 
@@ -2869,6 +2950,13 @@ const CandidateGrid = () => {
             return;
         }
 
+        // Validate years of experience
+        if (form.yearsOfExperience && (isNaN(Number(form.yearsOfExperience)) || Number(form.yearsOfExperience) < 0)) {
+            setMessage('Years of experience must be a positive number');
+            setLoading(false);
+            return;
+        }
+
         try {
     
             const formDataToSend = new FormData();
@@ -3751,14 +3839,14 @@ const CandidateGrid = () => {
                                         </select>
                                     </div>
                                     <div className="me-3">
-                                        {/* <button
+                                        <button
                                             className="btn btn-outline-secondary btn-sm"
                                             onClick={clearFilters}
-                                            disabled={!filters.search && !filters.status && !filters.experience}
+                                            disabled={!filters.search && !filters.status && !filters.assignedTo && !filters.experience && !filters.techStack && !filters.dateFrom && !filters.dateTo}
                                         >
                                             <i className="ti ti-x me-1"></i>
                                             Clear Filters
-                                        </button> */}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -3792,8 +3880,6 @@ const CandidateGrid = () => {
                                                 <div className="d-flex align-items-center flex-shrink-0">
                                                     <div
                                                         className="avatar avatar-lg avatar rounded me-2 cursor-pointer"
-                                                        data-bs-toggle="offcanvas"
-                                                        data-bs-target="#candidate_details"
                                                         onClick={() => handleCandidateClick(candidate._id)}
                                                         style={{ cursor: 'pointer' }}
                                                     >
@@ -3812,8 +3898,6 @@ const CandidateGrid = () => {
                                                             <h6 className="fs-16 fw-semibold me-1">
                                                                 <div
                                                                     className="cursor-pointer"
-                                                                    data-bs-toggle="offcanvas"
-                                                                    data-bs-target="#candidate_details"
                                                                     onClick={() => handleCandidateClick(candidate._id)}
                                                                     style={{ cursor: 'pointer' }}
                                                                 >
@@ -3898,6 +3982,64 @@ const CandidateGrid = () => {
                         )}
                     </div>
                     {/* /Candidates Grid */}
+                    
+                    {/* Pagination Component */}
+                    {totalRecords > 0 && (
+                        <div className="d-flex justify-content-between align-items-center p-3 border-top">
+                            <div className="d-flex align-items-center">
+                                <span className="text-muted me-3">
+                                    Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalRecords)} of {totalRecords} candidates
+                                </span>
+                            </div>
+                            <nav>
+                                <ul className="pagination pagination-sm mb-0">
+                                    <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                                        <button 
+                                            className="page-link" 
+                                            onClick={() => handlePageChange(currentPage - 1)}
+                                            disabled={currentPage === 1}
+                                        >
+                                            Previous
+                                        </button>
+                                    </li>
+                                    
+                                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                        let pageNum: number;
+                                        if (totalPages <= 5) {
+                                            pageNum = i + 1;
+                                        } else if (currentPage <= 3) {
+                                            pageNum = i + 1;
+                                        } else if (currentPage >= totalPages - 2) {
+                                            pageNum = totalPages - 4 + i;
+                                        } else {
+                                            pageNum = currentPage - 2 + i;
+                                        }
+                                        
+                                        return (
+                                            <li key={pageNum} className={`page-item ${currentPage === pageNum ? 'active' : ''}`}>
+                                                <button 
+                                                    className="page-link"
+                                                    onClick={() => handlePageChange(pageNum)}
+                                                >
+                                                    {pageNum}
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
+                                    
+                                    <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                                        <button 
+                                            className="page-link" 
+                                            onClick={() => handlePageChange(currentPage + 1)}
+                                            disabled={currentPage === totalPages}
+                                        >
+                                            Next
+                                        </button>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    )}
                 </div>
                 <div className="footer d-sm-flex align-items-center justify-content-between border-top bg-white p-3">
                     <p className="mb-0">2014 - 2025 © Insight Talent Solution.</p>
@@ -3910,12 +4052,14 @@ const CandidateGrid = () => {
                     className="offcanvas-backdrop fade show"
                     onClick={() => {
                         setShowCandidateModal(false);
+                        setSelectedCandidate(null);
+                        setActiveTab('basic-info'); // Reset tab to default
                         // Clean the URL by removing the viewCandidate parameter
                         const newSearchParams = new URLSearchParams(searchParams);
                         newSearchParams.delete('viewCandidate');
                         const newUrl = newSearchParams.toString() 
-                            ? `${window.location.pathname}?${newSearchParams.toString()}`
-                            : window.location.pathname;
+                            ? `?${newSearchParams.toString()}`
+                            : '';
                         navigate(newUrl, { replace: true });
                     }}
                     style={{ zIndex: 1040 }}
@@ -3940,12 +4084,14 @@ const CandidateGrid = () => {
                         className="btn-close custom-btn-close"
                         onClick={() => {
                             setShowCandidateModal(false);
+                            setSelectedCandidate(null);
+                            setActiveTab('basic-info'); // Reset tab to default
                             // Clean the URL by removing the viewCandidate parameter
                             const newSearchParams = new URLSearchParams(searchParams);
                             newSearchParams.delete('viewCandidate');
                             const newUrl = newSearchParams.toString() 
-                                ? `${window.location.pathname}?${newSearchParams.toString()}`
-                                : window.location.pathname;
+                                ? `?${newSearchParams.toString()}`
+                                : '';
                             navigate(newUrl, { replace: true });
                         }}
                         aria-label="Close"
@@ -5307,7 +5453,7 @@ const CandidateGrid = () => {
                                                                                     <small className="text-muted">
                                                                                         {submission.createdBy?.firstName} {submission.createdBy?.lastName} on{' '}
                                                                                         {new Date(submission.createdAt).toLocaleDateString('en-US', {
-                                                                                            timeZone: 'America/Chicago',
+                                                                                            timeZone: 'Asia/Kolkata',
                                                                                             day: '2-digit',
                                                                                             month: 'short',
                                                                                             year: 'numeric',
@@ -5489,10 +5635,10 @@ const CandidateGrid = () => {
                                                                     min={new Date().toISOString().slice(0, 16)}
                                                                     style={{ borderRadius: '12px' }}
                                                                 />
-                                                                <small className="text-muted mt-1 d-block">
+                                                                {/* <small className="text-muted mt-1 d-block">
                                                                     <i className="ti ti-clock me-1"></i>
-                                                                    Time is in US Central Time (America/Chicago)
-                                                                </small>
+                                                                    Time is in IST (Asia/Kolkata)
+                                                                </small> */}
                                                             </div>
                                                         </div>
                                                         <div className="col-lg-6">
@@ -6458,74 +6604,6 @@ const CandidateGrid = () => {
                 </div>
             </div>
             
-            {/* Pagination Component - Temporarily Hidden */}
-            {/* {totalRecords > 0 && (
-                <div className="d-flex justify-content-between align-items-center mt-4 mb-3">
-                    <div className="d-flex align-items-center">
-                        <span className="text-muted me-3">
-                            Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalRecords)} of {totalRecords} candidates
-                        </span>
-                        <select 
-                            className="form-select form-select-sm" 
-                            style={{ width: 'auto' }}
-                            value={pageSize}
-                            onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                        >
-                            <option value={10}>10 per page</option>
-                            <option value={20}>20 per page</option>
-                            <option value={50}>50 per page</option>
-                        </select>
-                    </div>
-                    <nav>
-                        <ul className="pagination pagination-sm mb-0">
-                            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                                <button 
-                                    className="page-link" 
-                                    onClick={() => handlePageChange(currentPage - 1)}
-                                    disabled={currentPage === 1}
-                                >
-                                    <i className="ti ti-chevron-left"></i>
-                                </button>
-                            </li>
-                            
-                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                let pageNum: number;
-                                if (totalPages <= 5) {
-                                    pageNum = i + 1;
-                                } else if (currentPage <= 3) {
-                                    pageNum = i + 1;
-                                } else if (currentPage >= totalPages - 2) {
-                                    pageNum = totalPages - 4 + i;
-                                } else {
-                                    pageNum = currentPage - 2 + i;
-                                }
-                                
-                                return (
-                                    <li key={pageNum} className={`page-item ${currentPage === pageNum ? 'active' : ''}`}>
-                                        <button 
-                                            className="page-link"
-                                            onClick={() => handlePageChange(pageNum)}
-                                        >
-                                            {pageNum}
-                                        </button>
-                                    </li>
-                                );
-                            })}
-                            
-                            <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                                <button 
-                                    className="page-link" 
-                                    onClick={() => handlePageChange(currentPage + 1)}
-                                    disabled={currentPage === totalPages}
-                                >
-                                    <i className="ti ti-chevron-right"></i>
-                                </button>
-                            </li>
-                        </ul>
-                    </nav>
-                </div>
-            )} */}
-            
             {/* Candidate Details */}
 
             {/* Add Candidate Modal */}
@@ -6796,6 +6874,8 @@ const CandidateGrid = () => {
                                                         name="yearsOfExperience"
                                                         value={form.yearsOfExperience}
                                                         onChange={handleInputChange}
+                                                        min="0"
+                                                        step="0.1"
                                                     />
                                                 </div>
                                             </div>
@@ -6962,12 +7042,26 @@ const CandidateGrid = () => {
                                             className="btn btn-outline-secondary px-4 py-2" 
                                             onClick={() => {
                                                 handleSuccessModalClose();
-                                                // Ensure the add candidate modal is also closed
-                                                const modal = document.getElementById('add_candidate');
-                                                if (modal) {
-                                                    const bootstrapModal = window.bootstrap?.Modal.getInstance(modal);
-                                                    bootstrapModal?.hide();
+                                                // Close the add candidate modal using data-bs-dismiss
+                                                const addCandidateModal = document.getElementById('add_candidate');
+                                                if (addCandidateModal) {
+                                                    // Trigger the modal close event
+                                                    const closeButton = addCandidateModal.querySelector('[data-bs-dismiss="modal"]');
+                                                    if (closeButton) {
+                                                        (closeButton as HTMLElement).click();
+                                                    } else {
+                                                        // Fallback: hide the modal directly
+                                                        addCandidateModal.classList.remove('show');
+                                                        addCandidateModal.style.display = 'none';
+                                                        document.body.classList.remove('modal-open');
+                                                        const modalBackdrop = document.querySelector('.modal-backdrop');
+                                                        if (modalBackdrop) {
+                                                            modalBackdrop.remove();
+                                                        }
+                                                    }
                                                 }
+                                                // Refresh the page to show all candidates
+                                                window.location.reload();
                                             }}
                                             style={{ borderRadius: '8px', fontWeight: '500' }}
                                         >
@@ -6978,14 +7072,43 @@ const CandidateGrid = () => {
                                             <button 
                                                 className="btn btn-primary px-4 py-2" 
                                                 onClick={() => {
-                                                    handleSuccessModalClose();
-                                                    // Reopen the add candidate modal using data attributes
-                                                    setTimeout(() => {
-                                                        const addButton = document.querySelector('[data-bs-target="#add_candidate"]');
-                                                        if (addButton) {
-                                                            (addButton as HTMLElement).click();
-                                                        }
-                                                    }, 100);
+                                                    // Only close the success modal, keep add candidate modal open
+                                                    setShowSuccess(false);
+                                                    // Clear the form for new candidate
+                                                    setForm({
+                                                        candidateId: '',
+                                                        firstName: '',
+                                                        lastName: '',
+                                                        email: '',
+                                                        phone: '',
+                                                        appliedRole: '',
+                                                        appliedCompany: '',
+                                                        source: '',
+                                                        currentRole: '',
+                                                        yearsOfExperience: '',
+                                                        relevantExperience: '',
+                                                        recruiter: '',
+                                                        teamLead: '',
+                                                        address: {
+                                                            street: '',
+                                                            city: '',
+                                                            state: '',
+                                                            country: '',
+                                                            zipCode: ''
+                                                        },
+                                                        education: [],
+                                                        certifications: [],
+                                                        experience: [],
+                                                        techStack: [],
+                                                        coverLetter: '',
+                                                        portfolio: ''
+                                                    });
+                                                    // Clear file states
+                                                    setCvFile(null);
+                                                    setProfileImageFile(null);
+                                                    setImagePreview(null);
+                                                    setExistingCvFile(null);
+                                                    setExistingProfileImage(null);
                                                 }}
                                                 style={{ borderRadius: '8px', fontWeight: '500' }}
                                             >
@@ -7655,6 +7778,8 @@ const CandidateGrid = () => {
                                                             name="yearsOfExperience"
                                                             value={form.yearsOfExperience}
                                                             onChange={handleInputChange}
+                                                            min="0"
+                                                            step="0.1"
                                                         />
                                                     </div>
                                                 </div>
@@ -7876,7 +8001,7 @@ const CandidateGrid = () => {
 
             {/* Reschedule Interview Modal */}
             {showRescheduleModal && reschedulingInterview && (
-                <div className="modal fade show d-block" style={{ display: 'block', background: 'rgba(0,0,0,0.6)', zIndex: 9999 }}>
+                <div className="modal fade show d-block" style={{ display: 'block', background: 'rgba(0,0,0,0.6)', zIndex: 10000 }}>
                     <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: '500px' }}>
                         <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '16px' }}>
                             <div className="modal-header border-0 pb-0">
@@ -7913,7 +8038,7 @@ const CandidateGrid = () => {
                                         />
                                         <small className="text-muted">
                                             <i className="ti ti-clock me-1"></i>
-                                            Select a future date and time for the interview (US Central Time)
+                                            Select a future date and time for the interview (IST)
                                         </small>
                                     </div>
                                 </div>

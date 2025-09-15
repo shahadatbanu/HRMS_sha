@@ -77,7 +77,7 @@ const InterviewScheduleCard: React.FC<InterviewScheduleCardProps> = ({ employeeI
   const formatInterviewDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
-      timeZone: 'America/Chicago',
+      timeZone: 'Asia/Kolkata',
       month: 'short',
       day: 'numeric',
       year: 'numeric'
@@ -87,7 +87,7 @@ const InterviewScheduleCard: React.FC<InterviewScheduleCardProps> = ({ employeeI
   const formatInterviewTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString('en-US', {
-      timeZone: 'America/Chicago',
+      timeZone: 'Asia/Kolkata',
       hour: '2-digit',
       minute: '2-digit',
       hour12: true

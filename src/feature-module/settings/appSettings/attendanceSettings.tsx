@@ -252,7 +252,7 @@ const AttendanceSettingsComponent = () => {
                         />
                         <small className="form-text text-muted">
                           <i className="ti ti-clock me-1"></i>
-                          Employees will be marked as absent if they haven't checked in by this time (US Central Time)
+                          Employees will be marked as absent if they haven't checked in by this time (IST)
                         </small>
                       </div>
                       <div className="col-md-6">
@@ -285,7 +285,7 @@ const AttendanceSettingsComponent = () => {
                         />
                         <small className="form-text text-muted">
                           <i className="ti ti-clock me-1"></i>
-                          Start time in US Central Time
+                          Start time in IST
                         </small>
                       </div>
                       <div className="col-md-6">
@@ -298,7 +298,7 @@ const AttendanceSettingsComponent = () => {
                         />
                         <small className="form-text text-muted">
                           <i className="ti ti-clock me-1"></i>
-                          End time in US Central Time
+                          End time in IST
                         </small>
                       </div>
                     </div>

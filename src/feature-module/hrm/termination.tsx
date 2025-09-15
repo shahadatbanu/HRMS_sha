@@ -41,6 +41,7 @@ const Termination = () => {
   const [editDescription, setEditDescription] = useState('');
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deletingTermination, setDeletingTermination] = useState<any>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   // Fetch terminated employees for the table
   const fetchTerminated = async () => {
@@ -111,24 +112,9 @@ const Termination = () => {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       message.success('Termination added');
-      window.setTimeout(() => {
-        const modal = document.getElementById('new_termination');
-        const Modal = (window.bootstrap as any)?.Modal;
-        if (Modal && modal) {
-          let modalInstance = Modal.getInstance(modal);
-          if (!modalInstance && typeof Modal === 'function') {
-            try {
-              modalInstance = new Modal(modal);
-            } catch (e) {
-              // fallback: hide via jQuery if available
-              if ((window as any).$) (window as any).$(modal).modal('hide');
-            }
-          }
-          if (modalInstance && typeof modalInstance.hide === 'function') {
-            modalInstance.hide();
-          }
-        }
-      }, 100);
+      
+      // Close the modal
+      setShowAddModal(false);
       setSelectedEmployee(undefined);
       setSelectedType(undefined);
       setNoticeDate(null);
@@ -299,15 +285,14 @@ const Termination = () => {
             </div>
             <div className="d-flex my-xl-auto right-content align-items-center flex-wrap ">
               <div className="mb-2">
-                <Link
-                  to="#"
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(true)}
                   className="btn btn-primary d-flex align-items-center"
-                  data-bs-toggle="modal"
-                  data-bs-target="#new_termination"
                 >
                   <i className="ti ti-circle-plus me-2" />
                   Add Termination
-                </Link>
+                </button>
               </div>
               <div className="head-icons ms-2">
                 <CollapseHeader />
@@ -331,21 +316,28 @@ const Termination = () => {
           <p className="mb-0">2014 - 2025 © Insight Talent Solution.</p>
         </div>
       </div>
-      {/* Add Termination (Bootstrap modal, theme style) */}
-      <div className="modal fade" id="new_termination" tabIndex={-1} aria-hidden="true">
-        <div className="modal-dialog modal-dialog-centered modal-md">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h4 className="modal-title">Add Termination</h4>
-              <button
-                type="button"
-                className="btn-close custom-btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-              >
-                <i className="ti ti-x" />
-              </button>
-            </div>
+      {/* Add Termination */}
+      {showAddModal && (
+        <>
+          <div 
+            className="modal-backdrop fade show"
+            onClick={() => setShowAddModal(false)}
+            style={{ zIndex: 1040 }}
+          ></div>
+          <div className="modal fade show" style={{ display: 'block', zIndex: 1050 }} tabIndex={-1}>
+            <div className="modal-dialog modal-dialog-centered modal-md">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h4 className="modal-title">Add Termination</h4>
+                  <button
+                    type="button"
+                    className="btn-close custom-btn-close"
+                    onClick={() => setShowAddModal(false)}
+                    aria-label="Close"
+                  >
+                    <i className="ti ti-x" />
+                  </button>
+                </div>
             <form
               onSubmit={e => {
                 e.preventDefault();
@@ -423,7 +415,7 @@ const Termination = () => {
                 <button
                   type="button"
                   className="btn btn-white border me-2"
-                  data-bs-dismiss="modal"
+                  onClick={() => setShowAddModal(false)}
                 >
                   Cancel
                 </button>
@@ -432,9 +424,11 @@ const Termination = () => {
                 </button>
               </div>
             </form>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
       {editModalVisible && (
         <div className="modal fade show" style={{ display: 'block' }} tabIndex={-1}>
           <div className="modal-dialog modal-dialog-centered modal-md">
