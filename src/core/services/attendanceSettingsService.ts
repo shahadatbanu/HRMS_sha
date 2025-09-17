@@ -12,6 +12,7 @@ export interface AttendanceSettings {
   };
   lateThresholdMinutes: number;
   halfDayThresholdHours: number;
+  autoCheckoutHours: number;
   description: string;
   formattedAbsenceMarkingTime: string; // 12-hour format
   formattedWorkingHours: {
