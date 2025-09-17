@@ -433,22 +433,22 @@ const AttendanceSettingsComponent = () => {
                       </div>
                     </div>
 
-                    <div className="row mb-3">
-                      <div className="col-md-6">
-                        <label className="form-label">Auto Checkout Hours</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          value={formData.autoCheckoutHours}
-                          onChange={(e) => handleInputChange('autoCheckoutHours', parseInt(e.target.value))}
-                          min="1"
-                          max="48"
-                        />
-                        <small className="form-text text-muted">
-                          Hours after which employee can check in again after first punch-in (1-48 hours)
-                        </small>
-                      </div>
-                    </div>
+        <div className="row mb-3">
+          <div className="col-md-6">
+            <label className="form-label">Check-in Cooldown Hours</label>
+            <input
+              type="number"
+              className="form-control"
+              value={formData.autoCheckoutHours}
+              onChange={(e) => handleInputChange('autoCheckoutHours', parseInt(e.target.value))}
+              min="1"
+              max="48"
+            />
+            <small className="form-text text-muted">
+              Hours after which employee can check in again after first punch-in (1-48 hours)
+            </small>
+          </div>
+        </div>
 
                     
 

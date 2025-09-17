@@ -546,12 +546,16 @@ const AttendanceEmployee = () => {
   // Fetch auto checkout hours setting
   const fetchAutoCheckoutHours = async () => {
     try {
+      console.log('🔧 Fetching auto checkout hours setting...');
       const response = await getAutoCheckoutHours();
-      setAutoCheckoutHours(response.data.autoCheckoutHours);
-      console.log('🔧 Auto checkout hours setting:', response.data.autoCheckoutHours);
+      console.log('🔧 API Response:', response);
+      const hours = response.data.autoCheckoutHours;
+      setAutoCheckoutHours(hours);
+      console.log('🔧 Auto checkout hours setting updated to:', hours);
     } catch (error) {
-      console.error('Error fetching auto checkout hours:', error);
+      console.error('❌ Error fetching auto checkout hours:', error);
       // Keep default value of 16 hours
+      console.log('🔧 Using default value: 16 hours');
     }
   };
 
@@ -1465,11 +1469,23 @@ const AttendanceEmployee = () => {
                             const hoursSinceFirstCheckIn = (now.getTime() - firstCheckInTime.getTime()) / (1000 * 60 * 60);
                             const remainingHours = Math.max(0, autoCheckoutHours - hoursSinceFirstCheckIn);
                             
+                            console.log('🕐 Cooldown calculation:', {
+                              firstCheckInTime: firstCheckInTime.toLocaleString(),
+                              now: now.toLocaleString(),
+                              hoursSinceFirstCheckIn: hoursSinceFirstCheckIn.toFixed(2),
+                              autoCheckoutHours: autoCheckoutHours,
+                              remainingHours: remainingHours.toFixed(2)
+                            });
+                            
                             if (remainingHours > 0) {
+                              const hours = Math.floor(remainingHours);
+                              const minutes = Math.floor((remainingHours - hours) * 60);
+                              const timeText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                              
                               return (
                                 <div className="text-warning mt-2">
                                   <i className="ti ti-clock me-1" />
-                                  Can check in again in {Math.ceil(remainingHours)} hours
+                                  Can check in again in {timeText}
                                 </div>
                               );
                             } else {
@@ -1497,10 +1513,10 @@ const AttendanceEmployee = () => {
                         <small>
                           {(() => {
                             const hours = getHoursSinceCheckIn();
-                            if (hours >= 16) {
+                            if (hours >= autoCheckoutHours) {
                               return (
                                 <span className="text-warning">
-                                  ⚠️ 16+ hours passed. You can check in again.
+                                  ⚠️ {autoCheckoutHours}+ hours passed. You can check in again.
                                 </span>
                               );
                             } else {
