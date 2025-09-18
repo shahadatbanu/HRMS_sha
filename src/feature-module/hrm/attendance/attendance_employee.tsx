@@ -14,6 +14,7 @@ import {
   checkIn, 
   checkOut, 
   getAttendanceStatistics,
+  getAutoCheckoutHours,
   formatAttendanceForTable,
   type AttendanceRecord,
   type AttendanceStatistics
@@ -32,6 +33,7 @@ const AttendanceEmployee = () => {
   const [attendanceData, setAttendanceData] = useState<any[]>([]);
   const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord | null>(null);
   const [statistics, setStatistics] = useState<AttendanceStatistics | null>(null);
+  const [weekStatistics, setWeekStatistics] = useState<AttendanceStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkInLoading, setCheckInLoading] = useState(false);
   const [checkOutLoading, setCheckOutLoading] = useState(false);
@@ -427,9 +429,11 @@ const AttendanceEmployee = () => {
       fetchAttendanceData();
       fetchTodayAttendance();
       fetchStatistics();
+      fetchWeekStatistics();
       fetchPrevPeriodStats();
       fetchSubmissionsData();
       fetchPerformanceData();
+      fetchAutoCheckoutHours();
     }
   }, [employeeId, filters]);
 
@@ -444,6 +448,16 @@ const AttendanceEmployee = () => {
       }
     })();
   }, [employeeId, filters]);
+
+  // Update UI every minute to show real-time status and button states
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Force re-render to update time display and button states
+      setForceUpdate(prev => !prev);
+    }, 60000); // Update every minute
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch attendance data
   const fetchAttendanceData = async () => {
@@ -466,8 +480,24 @@ const AttendanceEmployee = () => {
     if (!employeeId) return;
     
     try {
+      console.log('🔍 Fetching today attendance for employee:', employeeId);
       const response = await getTodayAttendance(employeeId);
-      console.log('Today attendance data:', response.data);
+      console.log('📊 Today attendance API response:', response);
+      console.log('📊 Today attendance data:', response.data);
+      
+      if (response.data) {
+        console.log('📊 Detailed attendance data:', {
+          hasCheckIn: !!response.data.checkIn?.time,
+          checkInTime: response.data.checkIn?.time,
+          hasCheckOut: !!response.data.checkOut?.time,
+          checkOutTime: response.data.checkOut?.time,
+          status: response.data.status,
+          totalWorkingHours: response.data.totalWorkingHours
+        });
+      } else {
+        console.log('📊 No attendance data found for today');
+      }
+      
       setTodayAttendance(response.data);
       
       // Set location data from attendance record if available
@@ -498,6 +528,34 @@ const AttendanceEmployee = () => {
       setStatistics(response.data);
     } catch (error) {
       console.error('Error fetching statistics:', error);
+    }
+  };
+
+  // Fetch week statistics
+  const fetchWeekStatistics = async () => {
+    if (!employeeId) return;
+    
+    try {
+      const response = await getAttendanceStatistics(employeeId, 'week');
+      setWeekStatistics(response.data);
+    } catch (error) {
+      console.error('Error fetching week statistics:', error);
+    }
+  };
+
+  // Fetch auto checkout hours setting
+  const fetchAutoCheckoutHours = async () => {
+    try {
+      console.log('🔧 Fetching auto checkout hours setting...');
+      const response = await getAutoCheckoutHours();
+      console.log('🔧 API Response:', response);
+      const hours = response.data.autoCheckoutHours;
+      setAutoCheckoutHours(hours);
+      console.log('🔧 Auto checkout hours setting updated to:', hours);
+    } catch (error) {
+      console.error('❌ Error fetching auto checkout hours:', error);
+      // Keep default value of 16 hours
+      console.log('🔧 Using default value: 16 hours');
     }
   };
 
@@ -600,9 +658,22 @@ const AttendanceEmployee = () => {
       
       console.log('Final location data for check-in:', { locationNameResult, geolocation });
       
+      console.log('🔄 Starting check-in process...');
       await checkIn(employeeId, '', locationNameResult, geolocation);
+      console.log('✅ Check-in API call completed');
+      
+      console.log('🔄 Fetching today attendance...');
       await fetchTodayAttendance();
+      console.log('✅ Today attendance fetched');
+      
+      console.log('🔄 Fetching attendance data...');
       await fetchAttendanceData();
+      console.log('✅ Attendance data fetched');
+      
+      // Force UI update to reflect new attendance state
+      console.log('🔄 Forcing UI update...');
+      setForceUpdate(prev => !prev);
+      console.log('✅ UI update triggered');
     } catch (error: any) {
       console.error('Error during check-in:', error);
       if (error.response?.data?.message) {
@@ -642,6 +713,9 @@ const AttendanceEmployee = () => {
       await checkOut(employeeId, '', locationNameResult, geolocation);
       await fetchTodayAttendance();
       await fetchAttendanceData();
+      
+      // Force UI update to reflect new attendance state
+      setForceUpdate(prev => !prev);
     } catch (error: any) {
       console.error('Error during check-out:', error);
       if (error.response?.data?.message) {
@@ -659,6 +733,8 @@ const AttendanceEmployee = () => {
   const endOfYesterday = new Date(yesterday);
   endOfYesterday.setHours(23, 59, 59, 999);
   const [yesterdayStats, setYesterdayStats] = useState<AttendanceStatistics | null>(null);
+  const [forceUpdate, setForceUpdate] = useState(false);
+  const [autoCheckoutHours, setAutoCheckoutHours] = useState(16); // Default to 16 hours
 
   // Calculate current production hours
   const getCurrentProductionHours = () => {
@@ -683,12 +759,96 @@ const AttendanceEmployee = () => {
     }
   };
 
+
   // Check if employee is currently checked in
-  const isCheckedIn = todayAttendance && todayAttendance.checkIn && !todayAttendance.checkOut;
+  const isCheckedIn = todayAttendance && todayAttendance.checkIn && !todayAttendance.checkOut?.time;
+
+  // Check if employee can check in (16-hour rule from first punch-in)
+  const canCheckIn = () => {
+    console.log('🔍 canCheckIn called with:', {
+      hasTodayAttendance: !!todayAttendance,
+      hasCheckIn: !!todayAttendance?.checkIn,
+      hasCheckOut: !!todayAttendance?.checkOut
+    });
+    
+    if (!todayAttendance) {
+      console.log('🔍 No attendance today - can check in');
+      return true; // No attendance today
+    }
+    
+    // If there's any attendance record today (checked in or checked out), 
+    // check if 16+ hours have passed since the FIRST check-in
+    if (todayAttendance.checkIn) {
+      const firstCheckInTime = new Date(todayAttendance.checkIn.time);
+      const now = new Date();
+      const hoursSinceFirstCheckIn = (now.getTime() - firstCheckInTime.getTime()) / (1000 * 60 * 60);
+      
+      console.log('🔍 Found attendance record - checking auto checkout rule from first check-in:', {
+        hasCheckIn: !!todayAttendance.checkIn,
+        hasCheckOut: !!todayAttendance.checkOut,
+        firstCheckInTime: firstCheckInTime.toLocaleString(),
+        hoursSinceFirstCheckIn,
+        autoCheckoutHours,
+        canCheckIn: hoursSinceFirstCheckIn >= autoCheckoutHours
+      });
+      
+      // Can only check in again after configured hours from the FIRST check-in
+      const result = hoursSinceFirstCheckIn >= autoCheckoutHours;
+      console.log('🔍 canCheckIn result:', result);
+      return result;
+    }
+    
+    console.log('🔍 Default case - cannot check in');
+    return false;
+  };
+  
+  // Check if employee can check out (immediate checkout allowed)
+  const canCheckOut = () => {
+    console.log('🔍 canCheckOut called with:', {
+      hasTodayAttendance: !!todayAttendance,
+      hasCheckIn: !!todayAttendance?.checkIn,
+      hasCheckOut: !!todayAttendance?.checkOut
+    });
+    
+    if (!todayAttendance) {
+      console.log('🔍 No attendance today - cannot check out');
+      return false;
+    }
+    
+    if (todayAttendance.checkOut && todayAttendance.checkOut.time) {
+      console.log('🔍 Already checked out - cannot check out');
+      return false; // Already checked out
+    }
+    
+    // If checked in but not checked out, allow immediate checkout
+    if (todayAttendance.checkIn && !todayAttendance.checkOut?.time) {
+      console.log('🔍 Checked in but not out - can check out immediately');
+      return true; // Allow immediate checkout
+    }
+    
+    console.log('🔍 Default case - cannot check out');
+    return false;
+  };
+
+  // Get hours since check-in for display
+  const getHoursSinceCheckIn = () => {
+    if (!todayAttendance || !todayAttendance.checkIn || todayAttendance.checkOut?.time) return 0;
+    
+    const checkInTime = new Date(todayAttendance.checkIn.time);
+    const now = new Date();
+    return (now.getTime() - checkInTime.getTime()) / (1000 * 60 * 60);
+  };
 
   // Calculate total working hours for today (including in-progress if checked in)
-  let totalWorkingHours = statistics?.totalWorkingHours || 0;
-  if (
+  let totalWorkingHours = 0;
+  
+  // If there's a completed attendance record for today, use its totalWorkingHours
+  if (todayAttendance && todayAttendance.checkOut?.time) {
+    totalWorkingHours = todayAttendance.totalWorkingHours || 0;
+    console.log('📊 Today hours (completed):', totalWorkingHours);
+  }
+  // If checked in but not checked out, calculate in-progress hours
+  else if (
     todayAttendance &&
     todayAttendance.checkIn &&
     !todayAttendance.checkOut?.time &&
@@ -698,34 +858,40 @@ const AttendanceEmployee = () => {
     const now = new Date();
     const breakHours = (todayAttendance.totalBreakTime || 0) / 60;
     const inProgressHours = Math.max(0, (now.getTime() - checkInTime.getTime()) / (1000 * 60 * 60) - breakHours);
-    totalWorkingHours += inProgressHours;
+    totalWorkingHours = inProgressHours;
+    console.log('📊 Today hours (in-progress):', totalWorkingHours);
+  }
+  // If no attendance today, show 0 hours
+  else {
+    totalWorkingHours = 0;
+    console.log('📊 Today hours (no attendance):', totalWorkingHours);
   }
 
   // Calculate total working hours for this week (including in-progress if checked in and today is in this week)
-  let totalWorkingHoursWeek = statistics?.totalWorkingHours || 0;
-  const firstDayOfWeek = new Date(today);
-  firstDayOfWeek.setDate(today.getDate() - today.getDay()); // Sunday as first day
-  const lastDayOfWeek = new Date(firstDayOfWeek);
-  lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
+  let totalWorkingHoursWeek = weekStatistics?.totalWorkingHours || 0;
+  
+  // Add today's in-progress hours if checked in (only if today is in the current week)
   if (
     todayAttendance &&
     todayAttendance.checkIn &&
     !todayAttendance.checkOut?.time &&
-    todayAttendance.status !== 'Absent' &&
-    today >= firstDayOfWeek &&
-    today <= lastDayOfWeek
+    todayAttendance.status !== 'Absent'
   ) {
     const checkInTime = new Date(todayAttendance.checkIn.time);
     const breakHours = (todayAttendance.totalBreakTime || 0) / 60;
-    const inProgressHours = Math.max(0, (today.getTime() - checkInTime.getTime()) / (1000 * 60 * 60) - breakHours);
+    const inProgressHours = Math.max(0, (new Date().getTime() - checkInTime.getTime()) / (1000 * 60 * 60) - breakHours);
     totalWorkingHoursWeek += inProgressHours;
+    console.log('📊 Week hours (added today in-progress):', inProgressHours, 'Total week:', totalWorkingHoursWeek);
   }
 
   // Helper to calculate percent change and arrow
   const getPercentChange = (current: number, prev: number) => {
-    if (prev === 0) return { percent: 100, up: current > 0 };
+    if (prev === 0) {
+      // If previous is 0, show 100% if current > 0, otherwise 0%
+      return { percent: current > 0 ? 100 : 0, up: current > 0 };
+    }
     const percent = ((current - prev) / prev) * 100;
-    return { percent: Math.abs(percent), up: percent >= 0 };
+    return { percent: Math.abs(percent), up: percent > 0 };
   };
 
   // Function to fetch submissions data for the logged-in user
@@ -1258,10 +1424,23 @@ const AttendanceEmployee = () => {
                         : 'Not checked in today'
                       }
                     </h6>
+                    {(() => {
+                      console.log('🎯 Button rendering debug:', {
+                        hasCheckIn: !!todayAttendance?.checkIn?.time,
+                        hasCheckOut: !!todayAttendance?.checkOut?.time,
+                        canCheckIn: canCheckIn(),
+                        canCheckOut: canCheckOut(),
+                        todayAttendance: todayAttendance,
+                        checkInTime: todayAttendance?.checkIn?.time,
+                        checkOutTime: todayAttendance?.checkOut?.time,
+                        status: todayAttendance?.status
+                      });
+                      return null;
+                    })()}
                     {(!todayAttendance?.checkIn?.time && punchMessage) ? (
                       <div className="text-info fw-medium" style={{ marginTop: 16 }}>{punchMessage}</div>
                     ) :
-                    (!todayAttendance?.checkIn?.time ? (
+                    (canCheckIn() ? (
                       <button 
                         className="btn btn-primary btn-sm w-auto"
                         style={{ minWidth: 140, margin: '0 auto', display: 'block' }}
@@ -1270,7 +1449,7 @@ const AttendanceEmployee = () => {
                       >
                         {checkInLoading ? 'Checking In...' : 'Punch In'}
                       </button>
-                    ) : todayAttendance?.checkIn?.time && !todayAttendance?.checkOut?.time && todayAttendance?.status !== 'Absent' ? (
+                    ) : canCheckOut() ? (
                       <button 
                         className="btn btn-dark btn-sm w-auto"
                         style={{ minWidth: 140, margin: '0 auto', display: 'block' }}
@@ -1283,11 +1462,72 @@ const AttendanceEmployee = () => {
                       <div className="text-success">
                         <i className="ti ti-check-circle me-1" />
                         Checked out for today
+                        {(() => {
+                          if (todayAttendance.checkIn) {
+                            const firstCheckInTime = new Date(todayAttendance.checkIn.time);
+                            const now = new Date();
+                            const hoursSinceFirstCheckIn = (now.getTime() - firstCheckInTime.getTime()) / (1000 * 60 * 60);
+                            const remainingHours = Math.max(0, autoCheckoutHours - hoursSinceFirstCheckIn);
+                            
+                            console.log('🕐 Cooldown calculation:', {
+                              firstCheckInTime: firstCheckInTime.toLocaleString(),
+                              now: now.toLocaleString(),
+                              hoursSinceFirstCheckIn: hoursSinceFirstCheckIn.toFixed(2),
+                              autoCheckoutHours: autoCheckoutHours,
+                              remainingHours: remainingHours.toFixed(2)
+                            });
+                            
+                            if (remainingHours > 0) {
+                              const hours = Math.floor(remainingHours);
+                              const minutes = Math.floor((remainingHours - hours) * 60);
+                              const timeText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                              
+                              return (
+                                <div className="text-warning mt-2">
+                                  <i className="ti ti-clock me-1" />
+                                  Can check in again in {timeText}
+                                </div>
+                              );
+                            } else {
+                              return (
+                                <div className="text-info mt-2">
+                                  <i className="ti ti-check me-1" />
+                                  Can check in again now
+                                </div>
+                              );
+                            }
+                          }
+                          return null;
+                        })()}
                       </div>
                     ) : todayAttendance?.status === 'Absent' ? (
                       <div className="text-danger">
                         <i className="ti ti-user-x me-1" />
                         Marked as absent today
+                      </div>
+                    ) : todayAttendance?.checkIn?.time && !todayAttendance?.checkOut?.time ? (
+                      <div className="alert alert-warning">
+                        <i className="ti ti-clock me-1" />
+                        Checked in since {new Date(todayAttendance.checkIn.time).toLocaleTimeString()}
+                        <br />
+                        <small>
+                          {(() => {
+                            const hours = getHoursSinceCheckIn();
+                            if (hours >= autoCheckoutHours) {
+                              return (
+                                <span className="text-warning">
+                                  ⚠️ {autoCheckoutHours}+ hours passed. You can check in again.
+                                </span>
+                              );
+                            } else {
+                              return (
+                                <span className="text-success">
+                                  ✅ {hours.toFixed(1)} hours worked
+                                </span>
+                              );
+                            }
+                          })()}
+                        </small>
                       </div>
                     ) : null)}
                     

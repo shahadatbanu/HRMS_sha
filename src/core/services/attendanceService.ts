@@ -300,6 +300,17 @@ export const formatAttendanceForTable = (attendance: AttendanceRecord) => {
   };
 };
 
+// Get auto checkout hours setting
+export const getAutoCheckoutHours = async () => {
+  try {
+    const response = await api.get('/attendance-settings/auto-checkout-hours');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching auto checkout hours:', error);
+    throw error;
+  }
+};
+
 export default {
   getAttendanceRecords,
   getEmployeeAttendance,
