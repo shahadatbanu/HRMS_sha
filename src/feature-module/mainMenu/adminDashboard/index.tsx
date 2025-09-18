@@ -524,7 +524,7 @@ const AdminDashboard = () => {
         const data = await response.json();
         // Count employees who joined in current month
         const newHires = data.filter((employee: any) => {
-          const joinDate = new Date(employee.joinDate);
+          const joinDate = new Date(employee.joiningDate);
           return joinDate >= startOfMonth && joinDate <= endOfMonth;
         });
         

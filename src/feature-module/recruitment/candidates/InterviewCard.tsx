@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatInterviewTimeConsistent, formatInterviewDateConsistent } from '../../../core/utils/timezoneUtils';
 
 // TypeScript interfaces
 interface Interviewer {
@@ -90,12 +91,10 @@ const InterviewCard: React.FC<InterviewCardProps> = ({
         weekday: 'long', 
         year: 'numeric', 
         month: 'long', 
-        day: 'numeric' 
+        day: 'numeric',
+        timeZone: 'Asia/Kolkata'
       }),
-      time: date.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      })
+      time: formatInterviewTimeConsistent(dateTimeStr)
     };
   };
 

@@ -9,6 +9,7 @@ import CollapseHeader from '../../../core/common/collapse-header/collapse-header
 import CommonSelect from '../../../core/common/commonSelect';
 import { useUser } from '../../../core/context/UserContext';
 import InterviewCard from './InterviewCard';
+import { formatInterviewTimeConsistent, formatInterviewDateConsistent } from '../../../core/utils/timezoneUtils';
 
 // Add CSS animations for notifications
 const notificationStyles = `
@@ -2063,8 +2064,19 @@ const CandidateGrid = () => {
             return;
         }
         
-        // Validate interview date is not in the past
+        // DEBUG: Log the input time
+        console.log('🔍 INTERVIEW TIME DEBUG - Input Phase:');
+        console.log('Raw input value:', interviewForm.scheduledDate);
+        console.log('Input type:', typeof interviewForm.scheduledDate);
+        
         const selectedDate = new Date(interviewForm.scheduledDate);
+        console.log('Parsed Date object:', selectedDate);
+        console.log('Selected date ISO string:', selectedDate.toISOString());
+        console.log('Selected date local string:', selectedDate.toLocaleString());
+        console.log('Selected date IST string:', selectedDate.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+        console.log('User timezone offset (minutes):', selectedDate.getTimezoneOffset());
+        
+        // Validate interview date is not in the past
         const now = new Date();
         if (selectedDate < now) {
             setErrorMessage('Interview date cannot be in the past. Please select a future date.');
@@ -2072,6 +2084,10 @@ const CandidateGrid = () => {
             setShowErrorModal(true);
             return;
         }
+        
+        // DEBUG: Log what we're sending to backend
+        console.log('🔍 INTERVIEW TIME DEBUG - Sending to Backend:');
+        console.log('Form data being sent:', interviewForm);
         
         setIsSavingInterview(true);
         try {
@@ -2102,6 +2118,19 @@ const CandidateGrid = () => {
             
             if (!response.ok) {
                 throw new Error(interviewFormMode === 'edit' ? 'Failed to update interview' : 'Failed to add interview');
+            }
+            
+            // DEBUG: Log response from backend
+            const responseData = await response.json();
+            console.log('🔍 INTERVIEW TIME DEBUG - Backend Response:');
+            console.log('Response data:', responseData);
+            if (responseData.data && responseData.data.interviews) {
+                const latestInterview = responseData.data.interviews[responseData.data.interviews.length - 1];
+                console.log('Latest interview from backend:', latestInterview);
+                console.log('Stored scheduledDate:', latestInterview.scheduledDate);
+                console.log('Stored date type:', typeof latestInterview.scheduledDate);
+                console.log('Stored date parsed:', new Date(latestInterview.scheduledDate));
+                console.log('Stored date IST:', new Date(latestInterview.scheduledDate).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
             }
             
             // Refresh candidate details to get updated data
@@ -2345,9 +2374,13 @@ const CandidateGrid = () => {
         // Find the interview and set it for rescheduling (date/time only)
         const interview = selectedCandidate?.interviews?.find(i => i._id === interviewId);
         if (interview) {
+            // Convert to local datetime-local format for the input field
+            const interviewDate = new Date(interview.scheduledDate);
+            const localDateTime = new Date(interviewDate.getTime() - (interviewDate.getTimezoneOffset() * 60000));
+            
             setReschedulingInterview({
                 id: interview._id,
-                scheduledDate: interview.scheduledDate ? new Date(interview.scheduledDate).toISOString().slice(0, 16) : '',
+                scheduledDate: localDateTime.toISOString().slice(0, 16),
                 interviewLevel: interview.interviewLevel,
                 interviewer: interview.interviewer,
                 interviewLink: interview.interviewLink || '',
@@ -5635,10 +5668,10 @@ const CandidateGrid = () => {
                                                                     min={new Date().toISOString().slice(0, 16)}
                                                                     style={{ borderRadius: '12px' }}
                                                                 />
-                                                                {/* <small className="text-muted mt-1 d-block">
+                                                                <small className="text-muted mt-1 d-block">
                                                                     <i className="ti ti-clock me-1"></i>
                                                                     Time is in IST (Asia/Kolkata)
-                                                                </small> */}
+                                                                </small>
                                                             </div>
                                                         </div>
                                                         <div className="col-lg-6">
@@ -5819,22 +5852,26 @@ const CandidateGrid = () => {
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
-                                                                        {getPaginatedInterviews().map((interview) => (
+                                                                        {getPaginatedInterviews().map((interview) => {
+                                                                            // DEBUG: Log display data
+                                                                            console.log('🔍 INTERVIEW TIME DEBUG - Display Phase:');
+                                                                            console.log('Interview ID:', interview._id);
+                                                                            console.log('Raw scheduledDate from DB:', interview.scheduledDate);
+                                                                            console.log('Parsed date object:', new Date(interview.scheduledDate));
+                                                                            console.log('Display date (IST):', formatInterviewDateConsistent(interview.scheduledDate));
+                                                                            console.log('Display time (IST):', formatInterviewTimeConsistent(interview.scheduledDate));
+                                                                            console.log('---');
+                                                                            
+                                                                            return (
                                                                             <tr key={interview._id} className="align-middle">
                                                                                 <td>
                                                                                     <div className="d-flex flex-column">
                                                                                         <span className="fw-semibold text-dark small">
-                                                                                            {new Date(interview.scheduledDate).toLocaleDateString('en-US', {
-                                                                                                month: 'short',
-                                                                                                day: 'numeric'
-                                                                                            })}
+                                                                                            {formatInterviewDateConsistent(interview.scheduledDate)}
                                                                                         </span>
                                                                                         <small className="text-muted">
                                                                                             <i className="ti ti-clock me-1"></i>
-                                                                                            {new Date(interview.scheduledDate).toLocaleTimeString('en-US', {
-                                                                                                hour: '2-digit',
-                                                                                                minute: '2-digit'
-                                                                                            })}
+                                                                                            {formatInterviewTimeConsistent(interview.scheduledDate)}
                                                                                         </small>
                                                                                     </div>
                                                                                 </td>
@@ -5922,7 +5959,8 @@ const CandidateGrid = () => {
                                                                                     </div>
                                                                                 </td>
                                                                             </tr>
-                                                                        ))}
+                                                                            );
+                                                                        })}
                                                                     </tbody>
                                                                 </table>
                                                             </div>
