@@ -3010,9 +3010,9 @@ const AdminDashboard = () => {
                       <p className="mt-2 text-muted">Loading attendance data...</p>
                     </div>
                   ) : (
-                  <div>
+                  <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
                       {/* Present Employees */}
-                      {clockInOutData.present.map((attendance: any, index: number) => (
+                      {clockInOutData.present.slice(0, 6).map((attendance: any, index: number) => (
                         <div key={index} className="d-flex align-items-center justify-content-between mb-3 p-2 border border-dashed br-5">
                       <div className="d-flex align-items-center">
                             <Link to="#" className="avatar flex-shrink-0">
@@ -3061,11 +3061,13 @@ const AdminDashboard = () => {
                     </div>
                       ))}
                       
-                      {/* Late Employees */}
-                      {clockInOutData.late.length > 0 && (
+                      {/* Late Employees (fill remaining slots up to 6) */}
+                      {Math.max(0, 6 - clockInOutData.present.length) > 0 && clockInOutData.late.length > 0 && (
                         <>
                   <h6 className="mb-2">Late</h6>
-                          {clockInOutData.late.map((attendance: any, index: number) => (
+                          {clockInOutData.late
+                            .slice(0, Math.max(0, 6 - clockInOutData.present.length))
+                            .map((attendance: any, index: number) => (
                             <div key={index} className="d-flex align-items-center justify-content-between mb-3 p-2 border border-dashed br-5">
                     <div className="d-flex align-items-center">
                       <span className="avatar flex-shrink-0">
@@ -4663,7 +4665,7 @@ const AdminDashboard = () => {
                         )}
                       </div>
                         <Link
-                            to={interview.interviewLink || routes.candidatesGrid} 
+                            to={interview.interviewLink || `${routes.candidatesGrid}?viewCandidate=${interview.candidateId}`}
                             className="btn btn-primary btn-xs"
                             target={interview.interviewLink ? "_blank" : undefined}
                         >
