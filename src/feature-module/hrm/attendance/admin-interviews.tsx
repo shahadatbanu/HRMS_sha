@@ -4,6 +4,7 @@ import { backend_url } from '../../../environment';
 import { all_routes } from '../../router/all_routes';
 import { useUser } from '../../../core/context/UserContext';
 import ImageWithBasePath from '../../../core/common/imageWithBasePath';
+import Swal from 'sweetalert2';
 
 interface Interview {
   _id: string;
@@ -34,6 +35,7 @@ const AdminInterviews = () => {
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [employeeFilter, setEmployeeFilter] = useState<string>('all');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [levelFilter, setLevelFilter] = useState<'all' | 'L1' | 'L2' | 'L3'>('all');
   const [employees, setEmployees] = useState<any[]>([]);
 
@@ -155,6 +157,49 @@ const AdminInterviews = () => {
 
   const handleViewEmployee = (employeeId: string) => {
     navigate(routes.employeedetailsWithId.replace(':id', employeeId));
+  };
+
+  const handleDeleteInterview = async (candidateId: string, interviewId: string) => {
+    const result = await Swal.fire({
+      title: 'Delete interview?',
+      text: 'This action cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, delete it',
+      cancelButtonText: 'Cancel'
+    });
+    if (!result.isConfirmed) return;
+    try {
+      setDeletingId(interviewId);
+      const response = await fetch(`${backend_url}/api/candidates/${candidateId}/interviews/${interviewId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        setInterviews(prev => prev.filter(i => i._id !== interviewId));
+        await Swal.fire({
+          title: 'Deleted!',
+          text: 'Interview deleted successfully.',
+          icon: 'success',
+          timer: 1500,
+          showConfirmButton: false
+        });
+      } else {
+        const text = await response.text();
+        console.error('Failed to delete interview:', response.status, text);
+        await Swal.fire({ title: 'Failed', text: 'Failed to delete interview.', icon: 'error' });
+      }
+    } catch (error) {
+      console.error('Error deleting interview:', error);
+      await Swal.fire({ title: 'Error', text: 'Error deleting interview.', icon: 'error' });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const filteredInterviews = interviews.filter(interview => {
@@ -596,6 +641,18 @@ const AdminInterviews = () => {
                               <i className="ti ti-user" />
                             </button>
                           )}
+                          <button
+                            onClick={() => handleDeleteInterview(interview.candidateId, interview._id)}
+                            className="btn btn-outline-danger btn-sm btn-action"
+                            title="Delete Interview"
+                            disabled={deletingId === interview._id}
+                          >
+                            {deletingId === interview._id ? (
+                              <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            ) : (
+                              <i className="ti ti-trash" />
+                            )}
+                          </button>
                         </div>
                       </div>
                     </div>
