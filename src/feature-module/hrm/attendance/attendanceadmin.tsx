@@ -41,6 +41,7 @@ const AttendanceAdmin = () => {
   // Filter options
   const statusOptions = [
     { value: '', label: 'All Status' },
+    { value: 'On Time', label: 'On Time' },
     { value: 'Present', label: 'Present' },
     { value: 'Absent', label: 'Absent' },
     { value: 'Late', label: 'Late' },
@@ -173,7 +174,7 @@ const AttendanceAdmin = () => {
       title: "Status",
       dataIndex: "Status",
       render: (text: String, record: any) => (
-        <span className={`badge ${text === 'Present' ? 'badge-success-transparent' : 'badge-danger-transparent'} d-inline-flex align-items-center`}>
+        <span className={`badge ${text === 'On Time' || text === 'Present' ? 'badge-success-transparent' : text === 'Late' ? 'badge-warning-transparent' : 'badge-danger-transparent'} d-inline-flex align-items-center`}>
           <i className="ti ti-point-filled me-1" />
           {record.Status}
         </span>
@@ -270,6 +271,7 @@ const AttendanceAdmin = () => {
 
   // Simulate previous period data (replace with real data if available)
   const previousStats = {
+    'On Time': 0,
     Present: 0,
     Late: 0,
     'Half Day': 0,
@@ -278,6 +280,7 @@ const AttendanceAdmin = () => {
   };
 
   // Current period counts
+  const onTimeCount = attendanceData.filter(item => item.Status === 'On Time').length;
   const presentCount = attendanceData.filter(item => item.Status === 'Present').length;
   const lateCount = attendanceData.filter(item => item.Status === 'Late').length;
   const halfDayCount = attendanceData.filter(item => item.Status === 'Half Day').length;
@@ -416,12 +419,12 @@ const AttendanceAdmin = () => {
                 <div className="row gx-0">
                   <div className="col-md col-sm-4 border-end">
                     <div className="p-3">
-                      <span className="fw-medium mb-1 d-block">Present</span>
+                      <span className="fw-medium mb-1 d-block">On Time</span>
                       <div className="d-flex align-items-center justify-content-between">
-                        <h5>{presentCount}</h5>
+                        <h5>{onTimeCount}</h5>
                         <span className="badge badge-success d-inline-flex align-items-center">
                           <i className="ti ti-arrow-wave-right-down me-1" />
-                          {calculatePercentageChange(presentCount, previousStats.Present)}
+                          {calculatePercentageChange(onTimeCount, previousStats['On Time'])}
                         </span>
                       </div>
                     </div>
@@ -757,28 +760,46 @@ const AttendanceAdmin = () => {
               <div className="card shadow-none bg-transparent-light">
                 <div className="card-body pb-1">
                   <div className="row">
-                    <div className="col-sm-3">
+                    <div className="col-lg-2 col-md-3 col-sm-4 col-6">
                       <div className="mb-3">
                         <span>Total Records</span>
                         <p className="text-gray-9 fw-medium">{pagination.totalRecords}</p>
                       </div>
                     </div>
-                    <div className="col-sm-3">
+                    <div className="col-lg-2 col-md-3 col-sm-4 col-6">
+                      <div className="mb-3">
+                        <span>On Time</span>
+                        <p className="text-gray-9 fw-medium">{onTimeCount}</p>
+                      </div>
+                    </div>
+                    <div className="col-lg-2 col-md-3 col-sm-4 col-6">
                       <div className="mb-3">
                         <span>Present</span>
-                        <p className="text-gray-9 fw-medium">{attendanceData.filter(item => item.Status === 'Present').length}</p>
+                        <p className="text-gray-9 fw-medium">{presentCount}</p>
                       </div>
                     </div>
-                    <div className="col-sm-3">
-                      <div className="mb-3">
-                        <span>Absent</span>
-                        <p className="text-gray-9 fw-medium">{attendanceData.filter(item => item.Status === 'Absent').length}</p>
-                      </div>
-                    </div>
-                    <div className="col-sm-3">
+                    <div className="col-lg-2 col-md-3 col-sm-4 col-6">
                       <div className="mb-3">
                         <span>Late</span>
-                        <p className="text-gray-9 fw-medium">{attendanceData.filter(item => item.Status === 'Late').length}</p>
+                        <p className="text-gray-9 fw-medium">{lateCount}</p>
+                      </div>
+                    </div>
+                    <div className="col-lg-2 col-md-3 col-sm-4 col-6">
+                      <div className="mb-3">
+                        <span>Half Day</span>
+                        <p className="text-gray-9 fw-medium">{halfDayCount}</p>
+                      </div>
+                    </div>
+                    <div className="col-lg-2 col-md-3 col-sm-4 col-6">
+                      <div className="mb-3">
+                        <span>Leave</span>
+                        <p className="text-gray-9 fw-medium">{leaveCount}</p>
+                      </div>
+                    </div>
+                    <div className="col-lg-2 col-md-3 col-sm-4 col-6">
+                      <div className="mb-3">
+                        <span>Absent</span>
+                        <p className="text-gray-9 fw-medium">{absentCount}</p>
                       </div>
                     </div>
                   </div>

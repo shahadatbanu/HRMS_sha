@@ -1137,7 +1137,7 @@ const AttendanceEmployee = () => {
       title: "Status",
       dataIndex: "Status",
       render: (text: String, record: any) => (
-        <span className={`badge ${text === 'Present' ? 'badge-success-transparent' : 'badge-danger-transparent'} d-inline-flex align-items-center`}>
+        <span className={`badge ${text === 'On Time' || text === 'Present' ? 'badge-success-transparent' : text === 'Late' ? 'badge-warning-transparent' : 'badge-danger-transparent'} d-inline-flex align-items-center`}>
           <i className="ti ti-point-filled me-1" />
           {record.Status}
         </span>
@@ -1437,7 +1437,12 @@ const AttendanceEmployee = () => {
                       });
                       return null;
                     })()}
-                    {(!todayAttendance?.checkIn?.time && punchMessage) ? (
+                    {todayAttendance?.status === 'Absent' ? (
+                      <div className="text-danger">
+                        <i className="ti ti-user-x me-1" />
+                        Marked as absent today
+                      </div>
+                    ) : (!todayAttendance?.checkIn?.time && punchMessage) ? (
                       <div className="text-info fw-medium" style={{ marginTop: 16 }}>{punchMessage}</div>
                     ) :
                     (canCheckIn() ? (
@@ -1499,11 +1504,6 @@ const AttendanceEmployee = () => {
                           }
                           return null;
                         })()}
-                      </div>
-                    ) : todayAttendance?.status === 'Absent' ? (
-                      <div className="text-danger">
-                        <i className="ti ti-user-x me-1" />
-                        Marked as absent today
                       </div>
                     ) : todayAttendance?.checkIn?.time && !todayAttendance?.checkOut?.time ? (
                       <div className="alert alert-warning">
