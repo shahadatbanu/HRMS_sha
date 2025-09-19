@@ -5668,10 +5668,10 @@ const CandidateGrid = () => {
                                                                     min={new Date().toISOString().slice(0, 16)}
                                                                     style={{ borderRadius: '12px' }}
                                                                 />
-                                                                <small className="text-muted mt-1 d-block">
+                                                                {/* <small className="text-muted mt-1 d-block">
                                                                     <i className="ti ti-clock me-1"></i>
                                                                     Time is in IST (Asia/Kolkata)
-                                                                </small>
+                                                                </small> */}
                                                             </div>
                                                         </div>
                                                         <div className="col-lg-6">

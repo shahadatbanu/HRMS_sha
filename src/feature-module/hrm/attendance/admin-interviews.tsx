@@ -4,6 +4,7 @@ import { backend_url } from '../../../environment';
 import { all_routes } from '../../router/all_routes';
 import { useUser } from '../../../core/context/UserContext';
 import ImageWithBasePath from '../../../core/common/imageWithBasePath';
+import Swal from 'sweetalert2';
 
 interface Interview {
   _id: string;
@@ -34,6 +35,8 @@ const AdminInterviews = () => {
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [employeeFilter, setEmployeeFilter] = useState<string>('all');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [levelFilter, setLevelFilter] = useState<'all' | 'L1' | 'L2' | 'L3'>('all');
   const [employees, setEmployees] = useState<any[]>([]);
 
   // Check if user is admin
@@ -149,11 +152,54 @@ const AdminInterviews = () => {
   };
 
   const handleViewCandidate = (candidateId: string) => {
-    navigate(routes.candidateDetails.replace(':id', candidateId));
+    navigate(`${routes.candidatesGrid}?viewCandidate=${candidateId}`);
   };
 
   const handleViewEmployee = (employeeId: string) => {
     navigate(routes.employeedetailsWithId.replace(':id', employeeId));
+  };
+
+  const handleDeleteInterview = async (candidateId: string, interviewId: string) => {
+    const result = await Swal.fire({
+      title: 'Delete interview?',
+      text: 'This action cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, delete it',
+      cancelButtonText: 'Cancel'
+    });
+    if (!result.isConfirmed) return;
+    try {
+      setDeletingId(interviewId);
+      const response = await fetch(`${backend_url}/api/candidates/${candidateId}/interviews/${interviewId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        setInterviews(prev => prev.filter(i => i._id !== interviewId));
+        await Swal.fire({
+          title: 'Deleted!',
+          text: 'Interview deleted successfully.',
+          icon: 'success',
+          timer: 1500,
+          showConfirmButton: false
+        });
+      } else {
+        const text = await response.text();
+        console.error('Failed to delete interview:', response.status, text);
+        await Swal.fire({ title: 'Failed', text: 'Failed to delete interview.', icon: 'error' });
+      }
+    } catch (error) {
+      console.error('Error deleting interview:', error);
+      await Swal.fire({ title: 'Error', text: 'Error deleting interview.', icon: 'error' });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const filteredInterviews = interviews.filter(interview => {
@@ -163,18 +209,28 @@ const AdminInterviews = () => {
     
     const matchesEmployee = employeeFilter === 'all' || 
                            (interview.assignedTo && interview.assignedTo._id === employeeFilter);
+
+    const level = (interview.interviewLevel || '').toUpperCase().trim();
+    const matchesLevel = levelFilter === 'all' || level === levelFilter;
     
-    if (filter === 'all') return matchesSearch && matchesEmployee;
+    if (filter === 'all') return matchesSearch && matchesEmployee && matchesLevel;
     
     const interviewDate = new Date(interview.scheduledDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     interviewDate.setHours(0, 0, 0, 0);
     
-    if (filter === 'upcoming') return matchesSearch && matchesEmployee && interviewDate >= today;
-    if (filter === 'past') return matchesSearch && matchesEmployee && interviewDate < today;
+    if (filter === 'upcoming') return matchesSearch && matchesEmployee && matchesLevel && interviewDate >= today;
+    if (filter === 'past') return matchesSearch && matchesEmployee && matchesLevel && interviewDate < today;
     
-    return matchesSearch && matchesEmployee;
+    return matchesSearch && matchesEmployee && matchesLevel;
+  });
+
+  // Sort by scheduled date in descending order (latest first)
+  const sortedInterviews = [...filteredInterviews].sort((a, b) => {
+    const dateA = new Date(a.scheduledDate).getTime();
+    const dateB = new Date(b.scheduledDate).getTime();
+    return dateB - dateA;
   });
 
   // Show loading while checking authentication
@@ -221,6 +277,12 @@ const AdminInterviews = () => {
             border: 1px solid rgba(0, 0, 0, 0.05);
             background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
           }
+          /* Ensure consistent layout so actions can stick to bottom */
+          .interview-card .card-body {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+          }
           
           .interview-card:hover {
             transform: translateY(-2px);
@@ -263,6 +325,10 @@ const AdminInterviews = () => {
           .btn-action:hover {
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          }
+          /* Push the actions section to the bottom of the card */
+          .interview-card .card-actions {
+            margin-top: auto;
           }
           
           .filter-btn {
@@ -396,7 +462,7 @@ const AdminInterviews = () => {
 
           {/* Filters and Search */}
           <div className="row mb-4">
-            <div className="col-lg-4">
+            <div className="col-lg-3">
               <div className="d-flex flex-wrap gap-2">
                 <button
                   className={`btn filter-btn ${filter === 'all' ? 'btn-primary active' : 'btn-outline-primary'}`}
@@ -432,7 +498,19 @@ const AdminInterviews = () => {
                 ))}
               </select>
             </div>
-            <div className="col-lg-5">
+            <div className="col-lg-2">
+              <select
+                className="form-select"
+                value={levelFilter}
+                onChange={(e) => setLevelFilter(e.target.value as any)}
+              >
+                <option value="all">All Levels</option>
+                <option value="L1">L1</option>
+                <option value="L2">L2</option>
+                <option value="L3">L3</option>
+              </select>
+            </div>
+            <div className="col-lg-4">
               <div className="input-group">
                 <span className="input-group-text">
                   <i className="ti ti-search" />
@@ -459,8 +537,8 @@ const AdminInterviews = () => {
                   <p className="mt-3 text-muted">Loading interviews...</p>
                 </div>
               </div>
-            ) : filteredInterviews.length > 0 ? (
-              filteredInterviews.map((interview) => {
+            ) : sortedInterviews.length > 0 ? (
+              sortedInterviews.map((interview) => {
                 const status = getStatusBadge(interview.scheduledDate);
                 return (
                   <div key={interview._id} className="col-lg-6 col-xl-4 mb-4">
@@ -534,7 +612,7 @@ const AdminInterviews = () => {
                         )}
 
                         {/* Actions */}
-                        <div className="d-flex gap-2">
+                        <div className="card-actions d-flex gap-2">
                           {interview.interviewLink ? (
                             <a
                               href={interview.interviewLink}
@@ -546,13 +624,13 @@ const AdminInterviews = () => {
                               Join Meeting
                             </a>
                           ) : (
-                            <button
-                              onClick={() => handleViewCandidate(interview.candidateId)}
+                            <Link
+                              to={`${routes.candidatesGrid}?viewCandidate=${interview.candidateId}`}
                               className="btn btn-outline-primary btn-sm btn-action flex-fill"
                             >
                               <i className="ti ti-eye me-1" />
                               View Candidate
-                            </button>
+                            </Link>
                           )}
                           {interview.assignedTo && (
                             <button
@@ -563,6 +641,18 @@ const AdminInterviews = () => {
                               <i className="ti ti-user" />
                             </button>
                           )}
+                          <button
+                            onClick={() => handleDeleteInterview(interview.candidateId, interview._id)}
+                            className="btn btn-outline-danger btn-sm btn-action"
+                            title="Delete Interview"
+                            disabled={deletingId === interview._id}
+                          >
+                            {deletingId === interview._id ? (
+                              <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            ) : (
+                              <i className="ti ti-trash" />
+                            )}
+                          </button>
                         </div>
                       </div>
                     </div>
