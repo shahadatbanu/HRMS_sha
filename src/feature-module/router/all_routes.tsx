@@ -379,6 +379,7 @@ export const all_routes = {
   candidateDetails: "/candidates/details/:id",
   topActiveCandidates: "/candidates/top-active",
   deadLowCandidates: "/candidates/dead-low",
+  candidateActivityThreshold: "/candidates/activity-threshold",
   refferal: "/refferals",
   //FINANCE & ACCOUNTS
   estimate: "/estimates",

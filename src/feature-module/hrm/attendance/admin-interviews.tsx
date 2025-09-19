@@ -216,21 +216,19 @@ const AdminInterviews = () => {
     if (filter === 'all') return matchesSearch && matchesEmployee && matchesLevel;
     
     const interviewDate = new Date(interview.scheduledDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    interviewDate.setHours(0, 0, 0, 0);
+    const now = new Date();
     
-    if (filter === 'upcoming') return matchesSearch && matchesEmployee && matchesLevel && interviewDate >= today;
-    if (filter === 'past') return matchesSearch && matchesEmployee && matchesLevel && interviewDate < today;
+    if (filter === 'upcoming') return matchesSearch && matchesEmployee && matchesLevel && interviewDate >= now;
+    if (filter === 'past') return matchesSearch && matchesEmployee && matchesLevel && interviewDate < now;
     
     return matchesSearch && matchesEmployee && matchesLevel;
   });
 
-  // Sort by scheduled date in descending order (latest first)
+  // Sort by scheduled date in ascending order (oldest first)
   const sortedInterviews = [...filteredInterviews].sort((a, b) => {
     const dateA = new Date(a.scheduledDate).getTime();
     const dateB = new Date(b.scheduledDate).getTime();
-    return dateB - dateA;
+    return dateA - dateB;
   });
 
   // Show loading while checking authentication

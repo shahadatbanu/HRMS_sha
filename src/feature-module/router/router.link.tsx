@@ -213,6 +213,7 @@ const CandidateKanban = React.lazy(() => import("../recruitment/candidates/candi
 const CandidatesList = React.lazy(() => import("../recruitment/candidates/candidatelist"));
 const TopActiveCandidates = React.lazy(() => import("../recruitment/candidates/top-active-candidates"));
 const DeadLowCandidates = React.lazy(() => import("../recruitment/candidates/dead-low-candidates"));
+const CandidateActivityThreshold = React.lazy(() => import("../recruitment/candidates/candidateActivityThreshold"));
 const RefferalList = React.lazy(() => import("../recruitment/refferal/refferallist"));
 const ClienttGrid = React.lazy(() => import("../projects/clinet/clienttgrid"));
 const ClientList = React.lazy(() => import("../projects/clinet/clientlist"));
@@ -1435,6 +1436,11 @@ export const publicRoutes = [
   {
     path: routes.deadLowCandidates,
     element: <DeadLowCandidates />,
+    route: Route,
+  },
+  {
+    path: routes.candidateActivityThreshold,
+    element: <CandidateActivityThreshold />,
     route: Route,
   },
   {
