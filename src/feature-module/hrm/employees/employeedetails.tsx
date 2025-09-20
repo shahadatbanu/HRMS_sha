@@ -204,6 +204,11 @@ const EmployeeDetails = () => {
   const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
   const [userProfileLoading, setUserProfileLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  // Attachment state
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentNote, setAttachmentNote] = useState<string>('');
+  const [attachmentSaving, setAttachmentSaving] = useState<boolean>(false);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -324,6 +329,114 @@ const EmployeeDetails = () => {
 
   const handleViewAssetInfo = (assetIndex: number) => {
     setSelectedAssetIndex(assetIndex);
+  };
+
+  const handleAttachmentFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setAttachmentFile(file);
+  };
+
+  const handleAddAttachmentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id || !employee) return;
+    try {
+      setAttachmentSaving(true);
+      setAttachmentError(null);
+      if (!attachmentFile) {
+        setAttachmentError('Please select a file');
+        setAttachmentSaving(false);
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', attachmentFile);
+
+      const uploadRes = await axios.post(
+        `${BACKEND_URL}/api/employees/upload/attachment`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        }
+      );
+
+      const newAttachment = {
+        fileName: uploadRes.data.fileName,
+        filePath: uploadRes.data.filePath,
+        fileType: uploadRes.data.fileType,
+        uploadedBy: `${currentUserProfile?.firstName || user?.firstName || ''} ${currentUserProfile?.lastName || user?.lastName || ''}`.trim() || currentUserProfile?.email || user?.email || '',
+        uploadedOn: new Date(),
+        note: attachmentNote || '',
+      };
+
+      const updatedAttachments = Array.isArray(employee.attachments) ? [...employee.attachments, newAttachment] : [newAttachment];
+
+      const response = await axios.put(
+        `${BACKEND_URL}/api/employees/${id}`,
+        { attachments: updatedAttachments },
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      );
+
+      setEmployee(response.data?.employee ?? ((prev: any) => ({ ...prev, attachments: updatedAttachments })));
+
+      // Reset and close modal
+      setAttachmentFile(null);
+      setAttachmentNote('');
+      await showSuccessAndCloseModal('Success!', 'Attachment uploaded successfully.', 'add_attachment');
+    } catch (err: any) {
+      setAttachmentError(err.response?.data?.message || 'Failed to upload attachment');
+    } finally {
+      setAttachmentSaving(false);
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentIndex: number) => {
+    if (!id || !employee) return;
+    
+    const attachment = employee.attachments[attachmentIndex];
+    if (!attachment) return;
+
+    // Show confirmation dialog
+    const confirmed = await Swal.fire({
+      title: 'Delete Attachment',
+      text: `Are you sure you want to delete "${attachment.fileName}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!confirmed.isConfirmed) return;
+
+    try {
+      await axios.delete(
+        `${BACKEND_URL}/api/employees/${id}/attachments/${attachmentIndex}`,
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      );
+
+      // Update local state
+      const updatedAttachments = employee.attachments.filter((_: any, index: number) => index !== attachmentIndex);
+      setEmployee((prev: any) => ({ ...prev, attachments: updatedAttachments }));
+
+      await Swal.fire({
+        title: 'Deleted!',
+        text: 'Attachment has been deleted successfully.',
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } catch (err: any) {
+      console.error('Error deleting attachment:', err);
+      await Swal.fire({
+        title: 'Error!',
+        text: err.response?.data?.message || 'Failed to delete attachment',
+        icon: 'error'
+      });
+    }
   };
 
   const handleAssignAssetSave = async (e: React.FormEvent) => {
@@ -1649,6 +1762,19 @@ const EmployeeDetails = () => {
                                                                     Assets
                                                                 </button>
                                                             </li>
+                                                            <li className="nav-item" role="presentation">
+                                                                <button
+                                                                    className="nav-link"
+                                                                    id="attachments-tab2"
+                                                                    data-bs-toggle="tab"
+                                                                    data-bs-target="#attachments2"
+                                                                    type="button"
+                                                                    role="tab"
+                                                                    aria-selected="false"
+                                                                >
+                                                                    Attachments
+                                                                </button>
+                                                            </li>
                                                         </ul>
                                                     </div>
                                                     <div className="tab-content" id="myTabContent3">
@@ -1936,6 +2062,90 @@ const EmployeeDetails = () => {
                                                             </div>
                                                         </div>
                                                     </div>
+                                                        <div
+                                                            className="tab-pane fade"
+                                                            id="attachments2"
+                                                            role="tabpanel"
+                                                            aria-labelledby="attachments-tab2"
+                                                            tabIndex={0}
+                                                        >
+                                                            <div className="row">
+                                                                <div className="col-md-12 d-flex">
+                                                                    <div className="card flex-fill">
+                                                                        <div className="card-header">
+                                                                            <div className="d-flex justify-content-between align-items-center">
+                                                                                <h5 className="card-title mb-0">Attachments</h5>
+                                                                                {(user?.role === 'admin' || user?.role === 'hr') && (
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        className="btn btn-primary btn-sm"
+                                                                                        data-bs-toggle="modal"
+                                                                                        data-bs-target="#add_attachment"
+                                                                                    >
+                                                                                        <i className="ti ti-plus me-1"></i>
+                                                                                        Add Attachment
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="card-body">
+                                                                            {employee?.attachments && employee.attachments.length > 0 ? (
+                                                                                employee.attachments.map((att: any, index: number) => (
+                                                                                    <div key={index} className="row align-items-center mb-3">
+                                                                                        <div className="col-md-7">
+                                                                                            <div className="d-flex align-items-center">
+                                                                                                <div>
+                                                                                                    <h6 className="mb-1">
+                                                                                                        {att.fileName}
+                                                                                                    </h6>
+                                                                                                    <div className="d-flex align-items-center">
+                                                                                                        <p className="mb-0 text-muted">
+                                                                                                            <span className="text-primary">{att.fileType}</span>
+                                                                                                            <i className="ti ti-point-filled text-primary mx-1" />
+                                                                                                            Uploaded on {dayjs(att.uploadedOn).format('DD MMM, YYYY hh:mm A')}
+                                                                                                        </p>
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        <div className="col-md-3">
+                                                                                            <div>
+                                                                                                <span className="mb-1 d-block">Uploaded by</span>
+                                                                                                <div className="fw-normal">{att.uploadedBy || '-'}</div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        <div className="col-md-2 text-end">
+                                                                                            <div className="d-flex justify-content-end gap-1">
+                                                                                                <a className="btn btn-sm btn-light" href={`${BACKEND_URL}/uploads/${att.filePath}`} target="_blank" rel="noreferrer" title="Download">
+                                                                                                    <i className="ti ti-download" />
+                                                                                                </a>
+                                                                                                {(user?.role === 'admin' || user?.role === 'hr') && (
+                                                                                                    <button 
+                                                                                                        className="btn btn-sm btn-light text-danger" 
+                                                                                                        onClick={() => handleDeleteAttachment(index)}
+                                                                                                        title="Delete"
+                                                                                                    >
+                                                                                                        <i className="ti ti-trash" />
+                                                                                                    </button>
+                                                                                                )}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))
+                                                                            ) : (
+                                                                                <div className="text-center py-4">
+                                                                                    <div className="mb-3">
+                                                                                        <i className="ti ti-paperclip text-muted" style={{ fontSize: '3rem' }}></i>
+                                                                                    </div>
+                                                                                    <h6 className="text-muted">No attachments</h6>
+                                                                                    <p className="text-muted">Upload documents like ID proofs, offer letters, etc.</p>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1947,6 +2157,44 @@ const EmployeeDetails = () => {
                 </div>
                 </div>
             {/* /Edit Employee */}
+            {/* Add Attachment Modal */}
+            <div className="modal fade" id="add_attachment">
+                <div className="modal-dialog modal-dialog-centered">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h4 className="modal-title">Add Attachment</h4>
+                            <button
+                                type="button"
+                                className="btn-close custom-btn-close"
+                                data-bs-dismiss="modal"
+                                aria-label="Close"
+                            >
+                                <i className="ti ti-x" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleAddAttachmentSubmit}>
+                            <div className="modal-body pb-0">
+                                {attachmentError && <div className="alert alert-danger">{attachmentError}</div>}
+                                <div className="mb-3">
+                                    <label className="form-label">File</label>
+                                    <input type="file" className="form-control" onChange={handleAttachmentFileChange} required />
+                                </div>
+                                <div className="mb-3">
+                                    <label className="form-label">Note</label>
+                                    <textarea className="form-control" rows={3} value={attachmentNote} onChange={(e) => setAttachmentNote(e.target.value)} />
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-white border" data-bs-dismiss="modal" disabled={attachmentSaving}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" disabled={attachmentSaving}>
+                                    {attachmentSaving ? 'Uploading...' : 'Upload'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {/* /Add Attachment Modal */}
             {/* Edit Personal */}
             <div className="modal fade" id="edit_personal">
                 <div className="modal-dialog modal-dialog-centered modal-lg">

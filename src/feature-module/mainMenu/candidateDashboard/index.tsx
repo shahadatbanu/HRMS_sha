@@ -641,7 +641,7 @@ const CandidateDashboard = () => {
         ];
       }
       
-      const labels = chartData.map((item: any) => item.recruiter || 'Unknown');
+      const labels = chartData.map((item: any) => item.recruiter || 'Unassigned');
       const series = chartData.map((item: any) => item.count || 0);
       
       setCandidatesPerRecruiterChart((prev: any) => ({
@@ -2894,7 +2894,7 @@ const CandidateDashboard = () => {
                                     }}
                                     title={item?.recruiter === 'Unassigned' ? 'Candidates not assigned to any recruiter' : ''}
                                   >
-                                    {item?.recruiter === 'Unassigned' ? 'Unassigned' : item?.recruiter || 'Unknown'}
+                                    {item?.recruiter === 'Unassigned' ? 'Unassigned' : item?.recruiter || 'Unassigned'}
                                     {item?.recruiter === 'Unassigned' && (
                                       <i className="ti ti-info-circle ms-1 fs-12" title="Candidates not assigned to any recruiter"></i>
                                     )}
@@ -4111,10 +4111,18 @@ const CandidateDashboard = () => {
                           </Link>
                         </li>
                       </ul>
-                    </div>
-                    <Link to={all_routes.topActiveCandidates} className="btn btn-light btn-md mb-2">
-                    View All
-                  </Link>
+                      </div>
+                      <Link to={all_routes.topActiveCandidates} className="btn btn-light btn-md mb-2 me-2">
+                        View All
+                      </Link>
+                      <Link
+                        to={all_routes.candidateActivityThreshold}
+                        className="btn btn-light btn-md mb-2 d-inline-flex align-items-center justify-content-center"
+                        title="Activity Threshold Settings"
+                        aria-label="Activity Threshold Settings"
+                      >
+                        <i className="ti ti-settings" />
+                      </Link>
                   </div>
                 </div>
                 <div className="card-body p-0">
@@ -4269,10 +4277,18 @@ const CandidateDashboard = () => {
                           </Link>
                         </li>
                       </ul>
-                    </div>
-                    <Link to={all_routes.deadLowCandidates} className="btn btn-light btn-md mb-2">
-                      View All
-                    </Link>
+                      </div>
+                      <Link to={all_routes.deadLowCandidates} className="btn btn-light btn-md mb-2 me-2">
+                        View All
+                      </Link>
+                      <Link
+                        to={all_routes.candidateActivityThreshold}
+                        className="btn btn-light btn-md mb-2 d-inline-flex align-items-center justify-content-center"
+                        title="Activity Threshold Settings"
+                        aria-label="Activity Threshold Settings"
+                      >
+                        <i className="ti ti-settings" />
+                      </Link>
                   </div>
                 </div>
                 <div className="card-body p-0">
