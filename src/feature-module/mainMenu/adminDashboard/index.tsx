@@ -562,14 +562,15 @@ const AdminDashboard = () => {
         console.log('Raw attendance data:', data);
         
         // Count attendance by status
-        const onTime = data.filter((attendance: any) => attendance.status === 'Present').length;
+        const onTime = data.filter((attendance: any) => attendance.status === 'On Time').length;
+        const present = data.filter((attendance: any) => attendance.status === 'Present').length;
         const late = data.filter((attendance: any) => attendance.status === 'Late').length;
         const onLeave = data.filter((attendance: any) => attendance.status === 'On Leave').length;
         const absent = data.filter((attendance: any) => attendance.status === 'Absent').length;
         const total = data.length;
         
-        // Calculate present as onTime + late (same as backend logic)
-        const present = onTime + late;
+        // Calculate total present as onTime + present + late (includes both new On Time and legacy Present)
+        const totalPresent = onTime + present + late;
         
         // Store absent employees for avatar placeholders
         const absentEmployeesData = data.filter((attendance: any) => attendance.status === 'Absent');
@@ -577,13 +578,13 @@ const AdminDashboard = () => {
         
         setAttendanceOverview({
           total,
-          present,
+          present: totalPresent,
           late,
           onLeave,
           absent
         });
         
-        console.log('Attendance overview:', { total, present, late, onLeave, absent });
+        console.log('Attendance overview:', { total, present: totalPresent, late, onLeave, absent });
         console.log('Absent employees:', absentEmployeesData);
       } else {
         console.error('Error fetching attendance overview data');
