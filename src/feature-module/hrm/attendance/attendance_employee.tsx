@@ -63,6 +63,28 @@ const AttendanceEmployee = () => {
   const [submissionsData, setSubmissionsData] = useState<any[]>([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(true);
   const [submissionsDataType, setSubmissionsDataType] = useState<string>('submissions');
+  // My Documents (compact card)
+  const [myDocs, setMyDocs] = useState<Array<{ fileName?: string; filePath: string; fileType?: string; uploadedOn?: string }>>([]);
+  const [myDocsLoading, setMyDocsLoading] = useState<boolean>(true);
+  const [newDocsCount, setNewDocsCount] = useState<number>(0);
+
+  // Helpers for lightweight per-file seen tracking
+  const getSeenDocs = (): Set<string> => {
+    try {
+      const raw = localStorage.getItem('myDocsSeenFiles');
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return new Set(arr);
+      return new Set();
+    } catch {
+      return new Set();
+    }
+  };
+  const saveSeenDocs = (seen: Set<string>) => {
+    try {
+      localStorage.setItem('myDocsSeenFiles', JSON.stringify(Array.from(seen)));
+    } catch {}
+  };
   const [submissionsChartData, setSubmissionsChartData] = useState<any>({
     chart: {
       height: 290,
@@ -437,6 +459,42 @@ const AttendanceEmployee = () => {
       fetchSubmissionsData();
       fetchPerformanceData();
       fetchAutoCheckoutHours();
+      // Fetch my documents for the compact card
+      (async () => {
+        try {
+          setMyDocsLoading(true);
+          const token = localStorage.getItem('token') || '';
+          const res = await fetch(`${BACKEND_URL}/api/employees/me`, {
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+          });
+          if (res.ok) {
+            const me = await res.json();
+            const attachments = Array.isArray(me.attachments) ? me.attachments : [];
+            const sorted = [...attachments].sort((a: any, b: any) => {
+              const at = a.uploadedOn ? new Date(a.uploadedOn).getTime() : 0;
+              const bt = b.uploadedOn ? new Date(b.uploadedOn).getTime() : 0;
+              if (bt !== at) return bt - at; // newest first
+              // fallback: stable-ish by filePath
+              const af = (a.filePath || '').toLowerCase();
+              const bf = (b.filePath || '').toLowerCase();
+              return af < bf ? -1 : af > bf ? 1 : 0;
+            });
+            setMyDocs(sorted);
+            // Compute new documents based on per-file seen set
+            const seen = getSeenDocs();
+            const count = sorted.filter((a: any) => !seen.has(a.filePath)).length;
+            setNewDocsCount(count);
+          } else {
+            setMyDocs([]);
+            setNewDocsCount(0);
+          }
+        } catch {
+          setMyDocs([]);
+          setNewDocsCount(0);
+        } finally {
+          setMyDocsLoading(false);
+        }
+      })();
       // Prefetch cooldown status so we can disable the punch button proactively
       (async () => {
         try {
@@ -1749,9 +1807,9 @@ const AttendanceEmployee = () => {
             </div>
           </div>
           
-          {/* Submissions Overview Card - Full Width */}
+          {/* Submissions (3/4) + My Documents (1/4) */}
           <div className="row">
-            <div className="col-xl-12 d-flex">
+            <div className="col-xl-9 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">
@@ -1840,8 +1898,97 @@ const AttendanceEmployee = () => {
                 </div>
               </div>
             </div>
+            <div className="col-xl-3 d-flex">
+              <div className="card flex-fill">
+                <div className="card-header pb-2 d-flex align-items-start justify-content-between flex-nowrap">
+                  <div>
+                    <h5 className="mb-1">My Documents</h5>
+                    {newDocsCount > 0 && (
+                      <small className="d-block text-danger fw-semibold">
+                        You have {newDocsCount} new document{newDocsCount > 1 ? 's' : ''} available
+                      </small>
+                    )}
+                  </div>
+                  <Link to={all_routes.myDocuments} className="btn btn-light btn-sm ms-auto" onClick={() => {
+                    // Mark all currently listed docs as seen
+                    const seen = getSeenDocs();
+                    myDocs.forEach(d => seen.add(d.filePath));
+                    saveSeenDocs(seen);
+                    setNewDocsCount(0);
+                  }}>
+                    View All
+                  </Link>
+                </div>
+                <div className="card-body p-0">
+                  {myDocsLoading ? (
+                    <div className="text-center py-4">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                      <p className="mt-2 text-muted">Loading documents...</p>
+                    </div>
+                  ) : myDocs.length === 0 ? (
+                    <div className="text-center py-4">
+                      <i className="ti ti-file-off fs-1 text-muted mb-2"></i>
+                      <p className="text-muted mb-0">No documents</p>
+                    </div>
+                  ) : (
+                    <ul className="list-group list-group-flush">
+                      {myDocs.slice(0, 5).map((doc, idx) => {
+                        const isNew = !getSeenDocs().has(doc.filePath);
+                        return (
+                        <li key={`${doc.filePath}-${idx}`} className="list-group-item d-flex align-items-center justify-content-between py-2" style={isNew ? { backgroundColor: '#FFF5F5' } : undefined}>
+                          <div className="d-flex align-items-center overflow-hidden">
+                            <span className="avatar avatar-xs bg-light flex-shrink-0 me-2"><i className="ti ti-file-description text-muted" /></span>
+                            <div className="text-truncate" style={{ maxWidth: '160px' }} title={doc.fileName || doc.filePath}>
+                              <span className="fw-medium fs-13 d-block" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {doc.fileName || doc.filePath}
+                                {isNew && <span className="badge badge-danger badge-xs ms-2">New</span>}
+                              </span>
+                              <small className="text-muted d-block">{doc.fileType || '-'}</small>
+                            </div>
+                          </div>
+                          <button
+                            className="btn btn-sm btn-light"
+                            onClick={async () => {
+                              try {
+                                const token = localStorage.getItem('token') || '';
+                                const res = await fetch(`${BACKEND_URL}/api/employees/attachments/${encodeURIComponent(doc.filePath)}`, {
+                                  headers: { 'Authorization': `Bearer ${token}` },
+                                });
+                                if (!res.ok) return;
+                                const blob = await res.blob();
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = doc.fileName || doc.filePath;
+                                document.body.appendChild(a);
+                                a.click();
+                                a.remove();
+                                window.URL.revokeObjectURL(url);
+
+                                // Mark this file as seen and decrement counter
+                                const seen = getSeenDocs();
+                                if (!seen.has(doc.filePath)) {
+                                  seen.add(doc.filePath);
+                                  saveSeenDocs(seen);
+                                  setNewDocsCount(prev => Math.max(0, prev - 1));
+                                }
+                              } catch {}
+                            }}
+                            title="Download"
+                          >
+                            <i className="ti ti-download" />
+                          </button>
+                        </li>
+                      )})}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-          {/* /Submissions Overview Card */}
+          {/* /Submissions + My Documents */}
           
           {/* Performance and Interview Schedule Cards */}
           <div className="row">
