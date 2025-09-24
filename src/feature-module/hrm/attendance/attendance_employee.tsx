@@ -67,11 +67,13 @@ const AttendanceEmployee = () => {
   const [myDocs, setMyDocs] = useState<Array<{ fileName?: string; filePath: string; fileType?: string; uploadedOn?: string }>>([]);
   const [myDocsLoading, setMyDocsLoading] = useState<boolean>(true);
   const [newDocsCount, setNewDocsCount] = useState<number>(0);
+  const [lastSeenServerAt, setLastSeenServerAt] = useState<string | null>(null);
 
   // Helpers for lightweight per-file seen tracking
   const getSeenDocs = (): Set<string> => {
+    const seenKey = `myDocsSeenFiles:${user?._id || 'anonymous'}`;
     try {
-      const raw = localStorage.getItem('myDocsSeenFiles');
+      const raw = localStorage.getItem(seenKey);
       if (!raw) return new Set();
       const arr = JSON.parse(raw);
       if (Array.isArray(arr)) return new Set(arr);
@@ -81,8 +83,9 @@ const AttendanceEmployee = () => {
     }
   };
   const saveSeenDocs = (seen: Set<string>) => {
+    const seenKey = `myDocsSeenFiles:${user?._id || 'anonymous'}`;
     try {
-      localStorage.setItem('myDocsSeenFiles', JSON.stringify(Array.from(seen)));
+      localStorage.setItem(seenKey, JSON.stringify(Array.from(seen)));
     } catch {}
   };
   const [submissionsChartData, setSubmissionsChartData] = useState<any>({
@@ -459,31 +462,19 @@ const AttendanceEmployee = () => {
       fetchSubmissionsData();
       fetchPerformanceData();
       fetchAutoCheckoutHours();
-      // Fetch my documents for the compact card
+      // Fetch my documents for the compact card (server-driven new count)
       (async () => {
         try {
           setMyDocsLoading(true);
           const token = localStorage.getItem('token') || '';
-          const res = await fetch(`${BACKEND_URL}/api/employees/me`, {
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-          });
+          const params = new URLSearchParams({ page: '1', limit: '50' });
+          const res = await fetch(`${BACKEND_URL}/api/employees/me/attachments?${params.toString()}`, { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } });
           if (res.ok) {
-            const me = await res.json();
-            const attachments = Array.isArray(me.attachments) ? me.attachments : [];
-            const sorted = [...attachments].sort((a: any, b: any) => {
-              const at = a.uploadedOn ? new Date(a.uploadedOn).getTime() : 0;
-              const bt = b.uploadedOn ? new Date(b.uploadedOn).getTime() : 0;
-              if (bt !== at) return bt - at; // newest first
-              // fallback: stable-ish by filePath
-              const af = (a.filePath || '').toLowerCase();
-              const bf = (b.filePath || '').toLowerCase();
-              return af < bf ? -1 : af > bf ? 1 : 0;
-            });
-            setMyDocs(sorted);
-            // Compute new documents based on per-file seen set
-            const seen = getSeenDocs();
-            const count = sorted.filter((a: any) => !seen.has(a.filePath)).length;
-            setNewDocsCount(count);
+            const payload = await res.json();
+            const attachments = Array.isArray(payload.data) ? payload.data : [];
+            setMyDocs(attachments);
+            setNewDocsCount(payload.newCount || 0);
+            setLastSeenServerAt(payload.lastSeenAttachmentsAt || null);
           } else {
             setMyDocs([]);
             setNewDocsCount(0);
@@ -1909,12 +1900,13 @@ const AttendanceEmployee = () => {
                       </small>
                     )}
                   </div>
-                  <Link to={all_routes.myDocuments} className="btn btn-light btn-sm ms-auto" onClick={() => {
-                    // Mark all currently listed docs as seen
-                    const seen = getSeenDocs();
-                    myDocs.forEach(d => seen.add(d.filePath));
-                    saveSeenDocs(seen);
-                    setNewDocsCount(0);
+                  <Link to={all_routes.myDocuments} className="btn btn-light btn-sm ms-auto" onClick={async () => {
+                    try {
+                      const token = localStorage.getItem('token') || '';
+                      await fetch(`${BACKEND_URL}/api/employees/me/attachments/mark-seen`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } });
+                      setLastSeenServerAt(new Date().toISOString());
+                      setNewDocsCount(0);
+                    } catch {}
                   }}>
                     View All
                   </Link>
@@ -1934,8 +1926,8 @@ const AttendanceEmployee = () => {
                     </div>
                   ) : (
                     <ul className="list-group list-group-flush">
-                      {myDocs.slice(0, 5).map((doc, idx) => {
-                        const isNew = !getSeenDocs().has(doc.filePath);
+                      {myDocs.slice(0, 5).map((doc: any, idx) => {
+                        const isNew = doc.isNew === true || (lastSeenServerAt ? ((doc.uploadedOn ? new Date(doc.uploadedOn).getTime() : 0) > new Date(lastSeenServerAt).getTime()) : false);
                         return (
                         <li key={`${doc.filePath}-${idx}`} className="list-group-item d-flex align-items-center justify-content-between py-2" style={isNew ? { backgroundColor: '#FFF5F5' } : undefined}>
                           <div className="d-flex align-items-center overflow-hidden">
@@ -1966,13 +1958,20 @@ const AttendanceEmployee = () => {
                                 a.click();
                                 a.remove();
                                 window.URL.revokeObjectURL(url);
-
-                                // Mark this file as seen and decrement counter
-                                const seen = getSeenDocs();
-                                if (!seen.has(doc.filePath)) {
-                                  seen.add(doc.filePath);
-                                  saveSeenDocs(seen);
+                                // Mark this file as seen on the server
+                                const markRes = await fetch(`${BACKEND_URL}/api/employees/me/attachments/${encodeURIComponent(doc.filePath)}/mark-seen`, {
+                                  method: 'POST',
+                                  headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                                });
+                                if (markRes.ok) {
                                   setNewDocsCount(prev => Math.max(0, prev - 1));
+                                  // Optimistically clear highlight on this item
+                                  const idx = myDocs.findIndex(d => d.filePath === doc.filePath);
+                                  if (idx !== -1) {
+                                    const updated = [...myDocs] as any[];
+                                    (updated[idx] as any).isNew = false;
+                                    setMyDocs(updated as any);
+                                  }
                                 }
                               } catch {}
                             }}
