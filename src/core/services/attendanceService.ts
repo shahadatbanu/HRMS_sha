@@ -82,6 +82,28 @@ export interface AttendanceStatistics {
   averageProductionHours: number;
 }
 
+export interface CooldownStatus {
+  active: boolean;
+  code?: string;
+  retryAt?: string;
+  remainingHours?: number;
+  message?: string;
+}
+
+export async function getCooldownStatus(employeeId: string) {
+  const token = localStorage.getItem('token') || '';
+  const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'}/api/attendance/cooldown/${employeeId}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch cooldown status');
+  }
+  return response.json() as Promise<{ success: boolean; data: CooldownStatus }>;
+}
+
 export interface AttendanceFilters {
   page?: number;
   limit?: number;

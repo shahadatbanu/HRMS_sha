@@ -15,6 +15,7 @@ import {
   checkOut, 
   getAttendanceStatistics,
   getAutoCheckoutHours,
+  getCooldownStatus,
   formatAttendanceForTable,
   type AttendanceRecord,
   type AttendanceStatistics
@@ -54,6 +55,8 @@ const AttendanceEmployee = () => {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [locationName, setLocationName] = useState<string | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [punchError, setPunchError] = useState<string | null>(null);
+  const [retryAt, setRetryAt] = useState<Date | null>(null);
   const today = new Date();
 
   // State for Submissions Overview card
@@ -434,6 +437,18 @@ const AttendanceEmployee = () => {
       fetchSubmissionsData();
       fetchPerformanceData();
       fetchAutoCheckoutHours();
+      // Prefetch cooldown status so we can disable the punch button proactively
+      (async () => {
+        try {
+          const res = await getCooldownStatus(employeeId);
+          if (res.success && res.data.active && res.data.retryAt) {
+            setRetryAt(new Date(res.data.retryAt));
+            if (res.data.message) setPunchError(res.data.message);
+          } else {
+            setRetryAt(null);
+          }
+        } catch {}
+      })();
     }
   }, [employeeId, filters]);
 
@@ -454,6 +469,11 @@ const AttendanceEmployee = () => {
     const interval = setInterval(() => {
       // Force re-render to update time display and button states
       setForceUpdate(prev => !prev);
+      // If cooldown exists, re-render countdown
+      if (retryAt && new Date() >= retryAt) {
+        setRetryAt(null);
+        setPunchError(null);
+      }
     }, 60000); // Update every minute
     
     return () => clearInterval(interval);
@@ -599,6 +619,7 @@ const AttendanceEmployee = () => {
     try {
       setCheckInLoading(true);
       setLocationError(null);
+      setPunchError(null);
       
       console.log('Punch in clicked - checking geolocation support:', geolocationSupported);
       console.log('Current permission status:', geolocationPermission);
@@ -676,8 +697,12 @@ const AttendanceEmployee = () => {
       console.log('✅ UI update triggered');
     } catch (error: any) {
       console.error('Error during check-in:', error);
-      if (error.response?.data?.message) {
-        setLocationError(error.response.data.message);
+      const apiMessage = error.response?.data?.message;
+      const apiCode = error.response?.data?.code;
+      if (apiCode === 'RECHECKIN_THRESHOLD' && apiMessage) {
+        setPunchError(apiMessage);
+      } else if (apiMessage) {
+        setLocationError(apiMessage);
       }
     } finally {
       setCheckInLoading(false);
@@ -1424,6 +1449,12 @@ const AttendanceEmployee = () => {
                         : 'Not checked in today'
                       }
                     </h6>
+                    {punchError && (
+                      <div className="alert alert-warning alert-sm mt-2 mb-2">
+                        <i className="ti ti-alert-triangle me-1" />
+                        <span className="fs-12">{punchError}</span>
+                      </div>
+                    )}
                     {(() => {
                       console.log('🎯 Button rendering debug:', {
                         hasCheckIn: !!todayAttendance?.checkIn?.time,
@@ -1445,7 +1476,15 @@ const AttendanceEmployee = () => {
                     ) : (!todayAttendance?.checkIn?.time && punchMessage) ? (
                       <div className="text-info fw-medium" style={{ marginTop: 16 }}>{punchMessage}</div>
                     ) :
-                    (canCheckIn() ? (
+                    ((retryAt && new Date() < retryAt) ? (
+                      <button 
+                        className="btn btn-primary btn-sm w-auto"
+                        style={{ minWidth: 140, margin: '0 auto', display: 'block' }}
+                        disabled
+                      >
+                        Punch In
+                      </button>
+                    ) : canCheckIn() ? (
                       <button 
                         className="btn btn-primary btn-sm w-auto"
                         style={{ minWidth: 140, margin: '0 auto', display: 'block' }}
@@ -1589,6 +1628,12 @@ const AttendanceEmployee = () => {
                         <div className="alert alert-warning alert-sm mt-2 mb-0">
                           <i className="ti ti-alert-triangle me-1" />
                           <span className="fs-12">{locationError}</span>
+                        </div>
+                      )}
+                      {retryAt && new Date() < retryAt && (
+                        <div className="alert alert-info alert-sm mt-2 mb-0">
+                          <i className="ti ti-clock me-1" />
+                          <span className="fs-12">Re-check-in at {retryAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} ({Math.max(0, Math.ceil((retryAt.getTime() - Date.now())/60000))}m remaining)</span>
                         </div>
                       )}
                     </div>

@@ -215,11 +215,12 @@ const AdminInterviews = () => {
     
     if (filter === 'all') return matchesSearch && matchesEmployee && matchesLevel;
     
-    const interviewDate = new Date(interview.scheduledDate);
-    const now = new Date();
-    
-    if (filter === 'upcoming') return matchesSearch && matchesEmployee && matchesLevel && interviewDate >= now;
-    if (filter === 'past') return matchesSearch && matchesEmployee && matchesLevel && interviewDate < now;
+		const interviewDate = new Date(interview.scheduledDate);
+		const startOfToday = new Date();
+		startOfToday.setHours(0, 0, 0, 0);
+		
+		if (filter === 'upcoming') return matchesSearch && matchesEmployee && matchesLevel && interviewDate >= startOfToday;
+		if (filter === 'past') return matchesSearch && matchesEmployee && matchesLevel && interviewDate < startOfToday;
     
     return matchesSearch && matchesEmployee && matchesLevel;
   });
