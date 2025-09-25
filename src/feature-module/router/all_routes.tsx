@@ -370,6 +370,8 @@ export const all_routes = {
   promotion: "/promotion",
   resignation: "/resignation",
   termination: "/termination",
+  // Employee self-service
+  myDocuments: "/my-documents",
   // RECRUITMENT
   jobgrid: "/job-grid",
   joblist: "/job-list",

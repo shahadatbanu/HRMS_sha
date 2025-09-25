@@ -287,6 +287,7 @@ const LeaveEmployee = React.lazy(() => import("../hrm/attendance/leaves/leaveEmp
 const LeaveSettings = React.lazy(() => import("../hrm/attendance/leaves/leavesettings"));
 const AttendanceAdmin = React.lazy(() => import("../hrm/attendance/attendanceadmin"));
 const AttendanceEmployee = React.lazy(() => import("../hrm/attendance/attendance_employee"));
+const MyDocuments = React.lazy(() => import("../self-service/my-documents"));
 const EmployeeInterviews = React.lazy(() => import("../hrm/attendance/employee-interviews"));
 const AdminInterviews = React.lazy(() => import("../hrm/attendance/admin-interviews"));
 const TimeSheet = React.lazy(() => import("../hrm/attendance/timesheet"));
@@ -1616,6 +1617,11 @@ export const publicRoutes = [
   {
     path: routes.attendanceemployee,
     element: <AttendanceEmployee />,
+    route: Route,
+  },
+  {
+    path: routes.myDocuments,
+    element: <MyDocuments />,
     route: Route,
   },
   {

@@ -28,6 +28,16 @@ export const SidebarDataTest = [
 
         ],
       },
+      {
+        label: 'My Documents',
+        link: routes.myDocuments,
+        submenu: false,
+        showSubRoute: false,
+        icon: 'file-description',
+        base: 'my-documents',
+        materialicons: 'description',
+        roles: ['employee', 'hr', 'admin'],
+      },
       // {
       //   label: 'Applications',
       //   link: 'apps',

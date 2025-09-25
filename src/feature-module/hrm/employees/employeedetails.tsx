@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import PredefinedDateRanges from '../../../core/common/datePicker'
 import Table from "../../../core/common/dataTable/index";
@@ -209,6 +209,20 @@ const EmployeeDetails = () => {
   const [attachmentNote, setAttachmentNote] = useState<string>('');
   const [attachmentSaving, setAttachmentSaving] = useState<boolean>(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const attachmentInputRef = useRef<HTMLInputElement | null>(null);
+  const resetAttachmentForm = () => {
+    setAttachmentFile(null);
+    setAttachmentNote('');
+    setAttachmentError(null);
+    if (attachmentInputRef.current) {
+      attachmentInputRef.current.value = '';
+    }
+  };
+
+  const handleOpenAddAttachment = () => {
+    resetAttachmentForm();
+  };
+
 
   useEffect(() => {
     if (id) {
@@ -222,6 +236,25 @@ const EmployeeDetails = () => {
   // Separate useEffect for fetching current user profile
   useEffect(() => {
     fetchCurrentUserProfile();
+  }, []);
+
+  // Ensure modal backdrop cleans up so next open works with a single click
+  useEffect(() => {
+    const modalEl = document.getElementById('add_attachment');
+    const onHidden = () => {
+      // Remove any lingering backdrops/classes
+      document.body.classList.remove('modal-open');
+      const backdrops = document.querySelectorAll('.modal-backdrop');
+      backdrops.forEach((bd) => bd.parentNode && bd.parentNode.removeChild(bd));
+    };
+    if (modalEl) {
+      modalEl.addEventListener('hidden.bs.modal', onHidden as any);
+    }
+    return () => {
+      if (modalEl) {
+        modalEl.removeEventListener('hidden.bs.modal', onHidden as any);
+      }
+    };
   }, []);
 
   // Remove the memoized profile image URL since we'll use ProfileImage component
@@ -381,10 +414,17 @@ const EmployeeDetails = () => {
 
       setEmployee(response.data?.employee ?? ((prev: any) => ({ ...prev, attachments: updatedAttachments })));
 
-      // Reset and close modal
-      setAttachmentFile(null);
-      setAttachmentNote('');
-      await showSuccessAndCloseModal('Success!', 'Attachment uploaded successfully.', 'add_attachment');
+      // Reset and close modal (force immediate hide to prevent double-click issue)
+      resetAttachmentForm();
+      const modalId = 'add_attachment';
+      const el = document.getElementById(modalId);
+      if (el && (window as any).bootstrap && (window as any).bootstrap.Modal) {
+        try {
+          const modalInstance = (window as any).bootstrap.Modal.getInstance(el) || new (window as any).bootstrap.Modal(el);
+          modalInstance.hide();
+        } catch {}
+      }
+      await showSuccessAndCloseModal('Success!', 'Attachment uploaded successfully.', modalId);
     } catch (err: any) {
       setAttachmentError(err.response?.data?.message || 'Failed to upload attachment');
     } finally {
@@ -2081,6 +2121,7 @@ const EmployeeDetails = () => {
                                                                                         className="btn btn-primary btn-sm"
                                                                                         data-bs-toggle="modal"
                                                                                         data-bs-target="#add_attachment"
+                                                                                        onClick={handleOpenAddAttachment}
                                                                                     >
                                                                                         <i className="ti ti-plus me-1"></i>
                                                                                         Add Attachment
@@ -2090,7 +2131,17 @@ const EmployeeDetails = () => {
                                                                         </div>
                                                                         <div className="card-body">
                                                                             {employee?.attachments && employee.attachments.length > 0 ? (
-                                                                                employee.attachments.map((att: any, index: number) => (
+                                                                                employee.attachments
+                                                                                  .slice()
+                                                                                  .sort((a: any, b: any) => {
+                                                                                      const at = a?.uploadedOn ? new Date(a.uploadedOn).getTime() : 0;
+                                                                                      const bt = b?.uploadedOn ? new Date(b.uploadedOn).getTime() : 0;
+                                                                                      if (bt !== at) return bt - at; // newest first
+                                                                                      const af = (a?.filePath || '').toLowerCase();
+                                                                                      const bf = (b?.filePath || '').toLowerCase();
+                                                                                      return af < bf ? -1 : af > bf ? 1 : 0;
+                                                                                  })
+                                                                                  .map((att: any, index: number) => (
                                                                                     <div key={index} className="row align-items-center mb-3">
                                                                                         <div className="col-md-7">
                                                                                             <div className="d-flex align-items-center">
@@ -2177,7 +2228,7 @@ const EmployeeDetails = () => {
                                 {attachmentError && <div className="alert alert-danger">{attachmentError}</div>}
                                 <div className="mb-3">
                                     <label className="form-label">File</label>
-                                    <input type="file" className="form-control" onChange={handleAttachmentFileChange} required />
+                                    <input type="file" className="form-control" onChange={handleAttachmentFileChange} required ref={attachmentInputRef} />
                                 </div>
                                 <div className="mb-3">
                                     <label className="form-label">Note</label>
@@ -2185,7 +2236,7 @@ const EmployeeDetails = () => {
                                 </div>
                             </div>
                             <div className="modal-footer">
-                                <button type="button" className="btn btn-white border" data-bs-dismiss="modal" disabled={attachmentSaving}>Cancel</button>
+                                <button type="button" className="btn btn-white border" data-bs-dismiss="modal" disabled={attachmentSaving} onClick={resetAttachmentForm}>Cancel</button>
                                 <button type="submit" className="btn btn-primary" disabled={attachmentSaving}>
                                     {attachmentSaving ? 'Uploading...' : 'Upload'}
                                 </button>

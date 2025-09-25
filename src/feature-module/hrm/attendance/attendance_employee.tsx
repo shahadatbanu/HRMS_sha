@@ -63,6 +63,31 @@ const AttendanceEmployee = () => {
   const [submissionsData, setSubmissionsData] = useState<any[]>([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(true);
   const [submissionsDataType, setSubmissionsDataType] = useState<string>('submissions');
+  // My Documents (compact card)
+  const [myDocs, setMyDocs] = useState<Array<{ fileName?: string; filePath: string; fileType?: string; uploadedOn?: string }>>([]);
+  const [myDocsLoading, setMyDocsLoading] = useState<boolean>(true);
+  const [newDocsCount, setNewDocsCount] = useState<number>(0);
+  const [lastSeenServerAt, setLastSeenServerAt] = useState<string | null>(null);
+
+  // Helpers for lightweight per-file seen tracking
+  const getSeenDocs = (): Set<string> => {
+    const seenKey = `myDocsSeenFiles:${user?._id || 'anonymous'}`;
+    try {
+      const raw = localStorage.getItem(seenKey);
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return new Set(arr);
+      return new Set();
+    } catch {
+      return new Set();
+    }
+  };
+  const saveSeenDocs = (seen: Set<string>) => {
+    const seenKey = `myDocsSeenFiles:${user?._id || 'anonymous'}`;
+    try {
+      localStorage.setItem(seenKey, JSON.stringify(Array.from(seen)));
+    } catch {}
+  };
   const [submissionsChartData, setSubmissionsChartData] = useState<any>({
     chart: {
       height: 290,
@@ -437,17 +462,48 @@ const AttendanceEmployee = () => {
       fetchSubmissionsData();
       fetchPerformanceData();
       fetchAutoCheckoutHours();
+      // Fetch my documents for the compact card (server-driven new count)
+      (async () => {
+        try {
+          setMyDocsLoading(true);
+          const token = localStorage.getItem('token') || '';
+          const params = new URLSearchParams({ page: '1', limit: '50' });
+          const res = await fetch(`${BACKEND_URL}/api/employees/me/attachments?${params.toString()}`, { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } });
+          if (res.ok) {
+            const payload = await res.json();
+            const attachments = Array.isArray(payload.data) ? payload.data : [];
+            setMyDocs(attachments);
+            setNewDocsCount(payload.newCount || 0);
+            setLastSeenServerAt(payload.lastSeenAttachmentsAt || null);
+          } else {
+            setMyDocs([]);
+            setNewDocsCount(0);
+          }
+        } catch {
+          setMyDocs([]);
+          setNewDocsCount(0);
+        } finally {
+          setMyDocsLoading(false);
+        }
+      })();
       // Prefetch cooldown status so we can disable the punch button proactively
       (async () => {
         try {
           const res = await getCooldownStatus(employeeId);
-          if (res.success && res.data.active && res.data.retryAt) {
+          // Only apply cooldown if not currently checked in on this tab
+          const hasActiveCheckIn = !!todayAttendance?.checkIn?.time && !todayAttendance?.checkOut?.time && todayAttendance?.status !== 'Absent';
+          if (!hasActiveCheckIn && res.success && res.data.active && res.data.retryAt) {
             setRetryAt(new Date(res.data.retryAt));
             if (res.data.message) setPunchError(res.data.message);
           } else {
             setRetryAt(null);
+            if (!hasActiveCheckIn) setPunchError(null);
           }
-        } catch {}
+        } catch (error) {
+          console.error('Error fetching cooldown status:', error);
+          setPunchError('Unable to check cooldown status. Please try again.');
+          setRetryAt(null);
+        }
       })();
     }
   }, [employeeId, filters]);
@@ -474,10 +530,17 @@ const AttendanceEmployee = () => {
         setRetryAt(null);
         setPunchError(null);
       }
+      // Multi-tab safety: if we detect an active check-in on this tab, clear cooldown warning
+      if (todayAttendance?.checkIn?.time && !todayAttendance?.checkOut?.time && todayAttendance?.status !== 'Absent') {
+        if (retryAt) setRetryAt(null);
+        if (punchError && punchError.toLowerCase().includes('previous shift')) {
+          setPunchError(null);
+        }
+      }
     }, 60000); // Update every minute
     
     return () => clearInterval(interval);
-  }, []);
+  }, [retryAt, todayAttendance, punchError]);
 
   // Fetch attendance data
   const fetchAttendanceData = async () => {
@@ -695,12 +758,33 @@ const AttendanceEmployee = () => {
       console.log('🔄 Forcing UI update...');
       setForceUpdate(prev => !prev);
       console.log('✅ UI update triggered');
+      // Clear any cooldown state since we now have an active shift
+      setRetryAt(null);
+      setPunchError(null);
     } catch (error: any) {
       console.error('Error during check-in:', error);
       const apiMessage = error.response?.data?.message;
       const apiCode = error.response?.data?.code;
       if (apiCode === 'RECHECKIN_THRESHOLD' && apiMessage) {
         setPunchError(apiMessage);
+      } else if (apiCode === 'PREVIOUS_SHIFT_OPEN') {
+        // Another tab already started the shift. Reflect that state without refresh.
+        try {
+          await fetchTodayAttendance();
+          // If we now have a check-in, show Punch Out and a friendly message
+          if (todayAttendance?.checkIn?.time && !todayAttendance?.checkOut?.time) {
+            setRetryAt(null);
+            setPunchError('You are already punched in.');
+            setForceUpdate(prev => !prev);
+          } else {
+            // Fallback to a friendlier copy
+            setPunchError('You are already punched in.');
+          }
+        } catch {
+          setPunchError('You are already punched in.');
+        }
+      } else if (apiCode === 'TOKEN_EXPIRED') {
+        setPunchError('Token expired, please login again to punch in.');
       } else if (apiMessage) {
         setLocationError(apiMessage);
       }
@@ -741,6 +825,9 @@ const AttendanceEmployee = () => {
       
       // Force UI update to reflect new attendance state
       setForceUpdate(prev => !prev);
+      // Clear any stale punch-in warnings after successful checkout
+      setPunchError(null);
+      setRetryAt(null);
     } catch (error: any) {
       console.error('Error during check-out:', error);
       if (error.response?.data?.message) {
@@ -801,24 +888,42 @@ const AttendanceEmployee = () => {
       return true; // No attendance today
     }
     
-    // If there's any attendance record today (checked in or checked out), 
+    // Use IST timezone for consistency with backend
+    const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+    
+    // Handle absent mark cooldown
+    if (!todayAttendance.checkIn && todayAttendance.status === 'Absent') {
+      const referenceTime = new Date(todayAttendance.date);
+      const retryAt = new Date(referenceTime.getTime() + (autoCheckoutHours * 60 * 60 * 1000));
+      
+      console.log('🔍 Absent mark cooldown check:', {
+        referenceTime: referenceTime.toLocaleString(),
+        retryAt: retryAt.toLocaleString(),
+        now: now.toLocaleString(),
+        canCheckIn: now >= retryAt
+      });
+      
+      return now >= retryAt; // Allow check-in if retry time has passed
+    }
+    
+    // If there's any attendance record with check-in (checked in or checked out), 
     // check if 16+ hours have passed since the FIRST check-in
     if (todayAttendance.checkIn) {
       const firstCheckInTime = new Date(todayAttendance.checkIn.time);
-      const now = new Date();
-      const hoursSinceFirstCheckIn = (now.getTime() - firstCheckInTime.getTime()) / (1000 * 60 * 60);
+      const retryAt = new Date(firstCheckInTime.getTime() + (autoCheckoutHours * 60 * 60 * 1000));
       
       console.log('🔍 Found attendance record - checking auto checkout rule from first check-in:', {
         hasCheckIn: !!todayAttendance.checkIn,
         hasCheckOut: !!todayAttendance.checkOut,
         firstCheckInTime: firstCheckInTime.toLocaleString(),
-        hoursSinceFirstCheckIn,
+        retryAt: retryAt.toLocaleString(),
+        now: now.toLocaleString(),
         autoCheckoutHours,
-        canCheckIn: hoursSinceFirstCheckIn >= autoCheckoutHours
+        canCheckIn: now >= retryAt
       });
       
-      // Can only check in again after configured hours from the FIRST check-in
-      const result = hoursSinceFirstCheckIn >= autoCheckoutHours;
+      // Backend will auto-checkout after 16 hours, so allow check-in if retry time has passed
+      const result = now >= retryAt;
       console.log('🔍 canCheckIn result:', result);
       return result;
     }
@@ -1449,7 +1554,7 @@ const AttendanceEmployee = () => {
                         : 'Not checked in today'
                       }
                     </h6>
-                    {punchError && (
+                    {punchError && !(todayAttendance?.checkIn?.time && !todayAttendance?.checkOut?.time) && (
                       <div className="alert alert-warning alert-sm mt-2 mb-2">
                         <i className="ti ti-alert-triangle me-1" />
                         <span className="fs-12">{punchError}</span>
@@ -1476,7 +1581,16 @@ const AttendanceEmployee = () => {
                     ) : (!todayAttendance?.checkIn?.time && punchMessage) ? (
                       <div className="text-info fw-medium" style={{ marginTop: 16 }}>{punchMessage}</div>
                     ) :
-                    ((retryAt && new Date() < retryAt) ? (
+                    (canCheckOut() ? (
+                      <button 
+                        className="btn btn-dark btn-sm w-auto"
+                        style={{ minWidth: 140, margin: '0 auto', display: 'block' }}
+                        onClick={handleCheckOut}
+                        disabled={checkOutLoading}
+                      >
+                        {checkOutLoading ? 'Checking Out...' : 'Punch Out'}
+                      </button>
+                    ) : (retryAt && new Date() < retryAt) ? (
                       <button 
                         className="btn btn-primary btn-sm w-auto"
                         style={{ minWidth: 140, margin: '0 auto', display: 'block' }}
@@ -1492,15 +1606,6 @@ const AttendanceEmployee = () => {
                         disabled={checkInLoading || isTodayHoliday || isTodaySunday || !geolocationSupported || geolocationPermission === 'denied'}
                       >
                         {checkInLoading ? 'Checking In...' : 'Punch In'}
-                      </button>
-                    ) : canCheckOut() ? (
-                      <button 
-                        className="btn btn-dark btn-sm w-auto"
-                        style={{ minWidth: 140, margin: '0 auto', display: 'block' }}
-                        onClick={handleCheckOut}
-                        disabled={checkOutLoading}
-                      >
-                        {checkOutLoading ? 'Checking Out...' : 'Punch Out'}
                       </button>
                     ) : todayAttendance?.checkOut?.time ? (
                       <div className="text-success">
@@ -1749,9 +1854,9 @@ const AttendanceEmployee = () => {
             </div>
           </div>
           
-          {/* Submissions Overview Card - Full Width */}
+          {/* Submissions (3/4) + My Documents (1/4) */}
           <div className="row">
-            <div className="col-xl-12 d-flex">
+            <div className="col-xl-9 d-flex">
               <div className="card flex-fill">
                 <div className="card-header pb-2 d-flex align-items-center justify-content-between flex-wrap">
                   <h5 className="mb-2">
@@ -1840,8 +1945,105 @@ const AttendanceEmployee = () => {
                 </div>
               </div>
             </div>
+            <div className="col-xl-3 d-flex">
+              <div className="card flex-fill">
+                <div className="card-header pb-2 d-flex align-items-start justify-content-between flex-nowrap">
+                  <div>
+                    <h5 className="mb-1">My Documents</h5>
+                    {newDocsCount > 0 && (
+                      <small className="d-block text-danger fw-semibold">
+                        You have {newDocsCount} new document{newDocsCount > 1 ? 's' : ''} available
+                      </small>
+                    )}
+                  </div>
+                  <Link to={all_routes.myDocuments} className="btn btn-light btn-sm ms-auto" onClick={async () => {
+                    try {
+                      const token = localStorage.getItem('token') || '';
+                      await fetch(`${BACKEND_URL}/api/employees/me/attachments/mark-seen`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } });
+                      setLastSeenServerAt(new Date().toISOString());
+                      setNewDocsCount(0);
+                    } catch {}
+                  }}>
+                    View All
+                  </Link>
+                </div>
+                <div className="card-body p-0">
+                  {myDocsLoading ? (
+                    <div className="text-center py-4">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                      <p className="mt-2 text-muted">Loading documents...</p>
+                    </div>
+                  ) : myDocs.length === 0 ? (
+                    <div className="text-center py-4">
+                      <i className="ti ti-file-off fs-1 text-muted mb-2"></i>
+                      <p className="text-muted mb-0">No documents</p>
+                    </div>
+                  ) : (
+                    <ul className="list-group list-group-flush">
+                      {myDocs.slice(0, 5).map((doc: any, idx) => {
+                        const isNew = doc.isNew === true || (lastSeenServerAt ? ((doc.uploadedOn ? new Date(doc.uploadedOn).getTime() : 0) > new Date(lastSeenServerAt).getTime()) : false);
+                        return (
+                        <li key={`${doc.filePath}-${idx}`} className="list-group-item d-flex align-items-center justify-content-between py-2" style={isNew ? { backgroundColor: '#FFF5F5' } : undefined}>
+                          <div className="d-flex align-items-center overflow-hidden">
+                            <span className="avatar avatar-xs bg-light flex-shrink-0 me-2"><i className="ti ti-file-description text-muted" /></span>
+                            <div className="text-truncate" style={{ maxWidth: '160px' }} title={doc.fileName || doc.filePath}>
+                              <span className="fw-medium fs-13 d-block" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {doc.fileName || doc.filePath}
+                                {isNew && <span className="badge badge-danger badge-xs ms-2">New</span>}
+                              </span>
+                              <small className="text-muted d-block">{doc.fileType || '-'}</small>
+                            </div>
+                          </div>
+                          <button
+                            className="btn btn-sm btn-light"
+                            onClick={async () => {
+                              try {
+                                const token = localStorage.getItem('token') || '';
+                                const res = await fetch(`${BACKEND_URL}/api/employees/attachments/${encodeURIComponent(doc.filePath)}`, {
+                                  headers: { 'Authorization': `Bearer ${token}` },
+                                });
+                                if (!res.ok) return;
+                                const blob = await res.blob();
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = doc.fileName || doc.filePath;
+                                document.body.appendChild(a);
+                                a.click();
+                                a.remove();
+                                window.URL.revokeObjectURL(url);
+                                // Mark this file as seen on the server
+                                const markRes = await fetch(`${BACKEND_URL}/api/employees/me/attachments/${encodeURIComponent(doc.filePath)}/mark-seen`, {
+                                  method: 'POST',
+                                  headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                                });
+                                if (markRes.ok) {
+                                  setNewDocsCount(prev => Math.max(0, prev - 1));
+                                  // Optimistically clear highlight on this item
+                                  const idx = myDocs.findIndex(d => d.filePath === doc.filePath);
+                                  if (idx !== -1) {
+                                    const updated = [...myDocs] as any[];
+                                    (updated[idx] as any).isNew = false;
+                                    setMyDocs(updated as any);
+                                  }
+                                }
+                              } catch {}
+                            }}
+                            title="Download"
+                          >
+                            <i className="ti ti-download" />
+                          </button>
+                        </li>
+                      )})}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-          {/* /Submissions Overview Card */}
+          {/* /Submissions + My Documents */}
           
           {/* Performance and Interview Schedule Cards */}
           <div className="row">
