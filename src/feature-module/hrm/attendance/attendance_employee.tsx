@@ -495,8 +495,13 @@ const AttendanceEmployee = () => {
             if (res.data.message) setPunchError(res.data.message);
           } else {
             setRetryAt(null);
+            setPunchError(null);
           }
-        } catch {}
+        } catch (error) {
+          console.error('Error fetching cooldown status:', error);
+          setPunchError('Unable to check cooldown status. Please try again.');
+          setRetryAt(null);
+        }
       })();
     }
   }, [employeeId, filters]);
@@ -850,24 +855,42 @@ const AttendanceEmployee = () => {
       return true; // No attendance today
     }
     
-    // If there's any attendance record today (checked in or checked out), 
+    // Use IST timezone for consistency with backend
+    const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+    
+    // Handle absent mark cooldown
+    if (!todayAttendance.checkIn && todayAttendance.status === 'Absent') {
+      const referenceTime = new Date(todayAttendance.date);
+      const retryAt = new Date(referenceTime.getTime() + (autoCheckoutHours * 60 * 60 * 1000));
+      
+      console.log('🔍 Absent mark cooldown check:', {
+        referenceTime: referenceTime.toLocaleString(),
+        retryAt: retryAt.toLocaleString(),
+        now: now.toLocaleString(),
+        canCheckIn: now >= retryAt
+      });
+      
+      return now >= retryAt; // Allow check-in if retry time has passed
+    }
+    
+    // If there's any attendance record with check-in (checked in or checked out), 
     // check if 16+ hours have passed since the FIRST check-in
     if (todayAttendance.checkIn) {
       const firstCheckInTime = new Date(todayAttendance.checkIn.time);
-      const now = new Date();
-      const hoursSinceFirstCheckIn = (now.getTime() - firstCheckInTime.getTime()) / (1000 * 60 * 60);
+      const retryAt = new Date(firstCheckInTime.getTime() + (autoCheckoutHours * 60 * 60 * 1000));
       
       console.log('🔍 Found attendance record - checking auto checkout rule from first check-in:', {
         hasCheckIn: !!todayAttendance.checkIn,
         hasCheckOut: !!todayAttendance.checkOut,
         firstCheckInTime: firstCheckInTime.toLocaleString(),
-        hoursSinceFirstCheckIn,
+        retryAt: retryAt.toLocaleString(),
+        now: now.toLocaleString(),
         autoCheckoutHours,
-        canCheckIn: hoursSinceFirstCheckIn >= autoCheckoutHours
+        canCheckIn: now >= retryAt
       });
       
-      // Can only check in again after configured hours from the FIRST check-in
-      const result = hoursSinceFirstCheckIn >= autoCheckoutHours;
+      // Backend will auto-checkout after 16 hours, so allow check-in if retry time has passed
+      const result = now >= retryAt;
       console.log('🔍 canCheckIn result:', result);
       return result;
     }
