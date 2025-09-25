@@ -490,12 +490,14 @@ const AttendanceEmployee = () => {
       (async () => {
         try {
           const res = await getCooldownStatus(employeeId);
-          if (res.success && res.data.active && res.data.retryAt) {
+          // Only apply cooldown if not currently checked in on this tab
+          const hasActiveCheckIn = !!todayAttendance?.checkIn?.time && !todayAttendance?.checkOut?.time && todayAttendance?.status !== 'Absent';
+          if (!hasActiveCheckIn && res.success && res.data.active && res.data.retryAt) {
             setRetryAt(new Date(res.data.retryAt));
             if (res.data.message) setPunchError(res.data.message);
           } else {
             setRetryAt(null);
-            setPunchError(null);
+            if (!hasActiveCheckIn) setPunchError(null);
           }
         } catch (error) {
           console.error('Error fetching cooldown status:', error);
@@ -528,10 +530,17 @@ const AttendanceEmployee = () => {
         setRetryAt(null);
         setPunchError(null);
       }
+      // Multi-tab safety: if we detect an active check-in on this tab, clear cooldown warning
+      if (todayAttendance?.checkIn?.time && !todayAttendance?.checkOut?.time && todayAttendance?.status !== 'Absent') {
+        if (retryAt) setRetryAt(null);
+        if (punchError && punchError.toLowerCase().includes('previous shift')) {
+          setPunchError(null);
+        }
+      }
     }, 60000); // Update every minute
     
     return () => clearInterval(interval);
-  }, []);
+  }, [retryAt, todayAttendance, punchError]);
 
   // Fetch attendance data
   const fetchAttendanceData = async () => {
@@ -749,12 +758,33 @@ const AttendanceEmployee = () => {
       console.log('🔄 Forcing UI update...');
       setForceUpdate(prev => !prev);
       console.log('✅ UI update triggered');
+      // Clear any cooldown state since we now have an active shift
+      setRetryAt(null);
+      setPunchError(null);
     } catch (error: any) {
       console.error('Error during check-in:', error);
       const apiMessage = error.response?.data?.message;
       const apiCode = error.response?.data?.code;
       if (apiCode === 'RECHECKIN_THRESHOLD' && apiMessage) {
         setPunchError(apiMessage);
+      } else if (apiCode === 'PREVIOUS_SHIFT_OPEN') {
+        // Another tab already started the shift. Reflect that state without refresh.
+        try {
+          await fetchTodayAttendance();
+          // If we now have a check-in, show Punch Out and a friendly message
+          if (todayAttendance?.checkIn?.time && !todayAttendance?.checkOut?.time) {
+            setRetryAt(null);
+            setPunchError('You are already punched in.');
+            setForceUpdate(prev => !prev);
+          } else {
+            // Fallback to a friendlier copy
+            setPunchError('You are already punched in.');
+          }
+        } catch {
+          setPunchError('You are already punched in.');
+        }
+      } else if (apiCode === 'TOKEN_EXPIRED') {
+        setPunchError('Token expired, please login again to punch in.');
       } else if (apiMessage) {
         setLocationError(apiMessage);
       }
@@ -795,6 +825,9 @@ const AttendanceEmployee = () => {
       
       // Force UI update to reflect new attendance state
       setForceUpdate(prev => !prev);
+      // Clear any stale punch-in warnings after successful checkout
+      setPunchError(null);
+      setRetryAt(null);
     } catch (error: any) {
       console.error('Error during check-out:', error);
       if (error.response?.data?.message) {
@@ -1521,7 +1554,7 @@ const AttendanceEmployee = () => {
                         : 'Not checked in today'
                       }
                     </h6>
-                    {punchError && (
+                    {punchError && !(todayAttendance?.checkIn?.time && !todayAttendance?.checkOut?.time) && (
                       <div className="alert alert-warning alert-sm mt-2 mb-2">
                         <i className="ti ti-alert-triangle me-1" />
                         <span className="fs-12">{punchError}</span>
@@ -1548,7 +1581,16 @@ const AttendanceEmployee = () => {
                     ) : (!todayAttendance?.checkIn?.time && punchMessage) ? (
                       <div className="text-info fw-medium" style={{ marginTop: 16 }}>{punchMessage}</div>
                     ) :
-                    ((retryAt && new Date() < retryAt) ? (
+                    (canCheckOut() ? (
+                      <button 
+                        className="btn btn-dark btn-sm w-auto"
+                        style={{ minWidth: 140, margin: '0 auto', display: 'block' }}
+                        onClick={handleCheckOut}
+                        disabled={checkOutLoading}
+                      >
+                        {checkOutLoading ? 'Checking Out...' : 'Punch Out'}
+                      </button>
+                    ) : (retryAt && new Date() < retryAt) ? (
                       <button 
                         className="btn btn-primary btn-sm w-auto"
                         style={{ minWidth: 140, margin: '0 auto', display: 'block' }}
@@ -1564,15 +1606,6 @@ const AttendanceEmployee = () => {
                         disabled={checkInLoading || isTodayHoliday || isTodaySunday || !geolocationSupported || geolocationPermission === 'denied'}
                       >
                         {checkInLoading ? 'Checking In...' : 'Punch In'}
-                      </button>
-                    ) : canCheckOut() ? (
-                      <button 
-                        className="btn btn-dark btn-sm w-auto"
-                        style={{ minWidth: 140, margin: '0 auto', display: 'block' }}
-                        onClick={handleCheckOut}
-                        disabled={checkOutLoading}
-                      >
-                        {checkOutLoading ? 'Checking Out...' : 'Punch Out'}
                       </button>
                     ) : todayAttendance?.checkOut?.time ? (
                       <div className="text-success">
